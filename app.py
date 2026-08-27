@@ -84,7 +84,7 @@ else:
                     try:
                         # Pede ao Google a lista exata de modelos que a sua chave tem direito
                         modelos = []
-                        for m in client.models.list_models():
+                        for m in client.models.list():
                             modelos.append(m.name)
                         
                         st.warning('⚠️ MODO INVESTIGAÇÃO: O Google exige um destes nomes exatos abaixo:')
