@@ -79,7 +79,18 @@ else:
             st.image(image, caption='Imagem Enviada', use_container_width=True)
         with col2:
             st.success('Imagem carregada com sucesso!')
-            if st.button('🔍 Analisar Carta com IA'):
+            if st.button('🔍 Investigar Modelos Disponíveis'):
+                with st.spinner('Consultando os servidores do Google...'):
+                    try:
+                        # Pede ao Google a lista exata de modelos que a sua chave tem direito
+                        modelos = []
+                        for m in client.models.list_models():
+                            modelos.append(m.name)
+                        
+                        st.warning('⚠️ MODO INVESTIGAÇÃO: O Google exige um destes nomes exatos abaixo:')
+                        st.write(modelos)
+                    except Exception as e:
+                        st.error(f'Erro na investigação: {e}')
                 with st.spinner('Analisando mercado e gerando links de busca...'):
                     try:
                         prompt = 'Analise a carta e retorne formatado em tópicos: 1. Nome da Carta e Numeração, 2. Jogo/Coleção, 3. Raridade, 4. Condição visual, 5. Título chamativo para venda, 6. Preço médio estimado. Por fim, adicione links clicáveis em Markdown de pesquisa para esta exata carta nas seguintes plataformas: Mercado Livre, eBay, TCGPlayer, Shopee, Amazon e LigaPokemon/LigaMagic.'
