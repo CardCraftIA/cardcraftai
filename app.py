@@ -83,7 +83,7 @@ else:
                 with st.spinner('Analisando mercado e gerando links de busca...'):
                     try:
                         prompt = 'Analise a carta e retorne formatado em tópicos: 1. Nome da Carta e Numeração, 2. Jogo/Coleção, 3. Raridade, 4. Condição visual, 5. Título chamativo para venda, 6. Preço médio estimado. Por fim, adicione links clicáveis em Markdown de pesquisa para esta exata carta nas seguintes plataformas: Mercado Livre, eBay, TCGPlayer, Shopee, Amazon e LigaPokemon/LigaMagic.'
-                        response = client.models.generate_content(model='gemini-2.0-flash', contents=[image, prompt])
+                        response = client.models.generate_content(model='gemini-1.5-flash', contents=[image, prompt])
                         st.subheader('📋 Resultado da Análise e Mercado Multiplataforma')
                         st.markdown(response.text)
                     except Exception as e:
