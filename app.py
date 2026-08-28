@@ -79,30 +79,27 @@ idioma = st.sidebar.selectbox("🌐 Idioma / Language", ["Português (BR)", "Eng
 st.sidebar.markdown("---")
 pagina = st.sidebar.radio("Navegação", ["📸 Análise por Foto", "🔍 Buscar Carta por Nome", "💳 Planos e Créditos"])
 
-# Função de Análise com Gemini
+# Função de Análise com Gemini aprimorada com links reais de busca
 def analisar_carta(imagem_pil, nome_carta_info=None):
-    model = genai.GenerativeModel('gemini-3.6-flash')
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    prompt_base = f"""
+    Por favor, forneça em {idioma}:
+    1. Nome exato da carta, Jogo (Pokémon, Magic, Yu-Gi-Oh, etc.) e Número/Set.
+    2. Estimativa detalhada de preço de mercado atual em Reais (BRL) e Dólares (USD).
+    3. Condição estimada provável e dicas de conservação.
+    4. Sugestão de texto pronto para venda (copywriting) para marketplaces.
+    5. **Links úteis de pesquisa:** Crie links de busca formatados em Markdown usando o nome da carta para as seguintes plataformas:
+       - LigaPokémon (Busca: https://www.ligapokemon.com.br/?view=cards%2Fsearch&card=NOME_DA_CARTA)
+       - Mercado Livre (Busca: https://lista.mercadolivre.com.br/NOME_DA_CARTA)
+       - eBay (Busca: https://www.ebay.com/sch/i.html?_nkw=NOME_DA_CARTA)
+    """
     
     if nome_carta_info:
-        prompt = f"""
-        Analise a carta de TCG com base nestas informações fornecidas pelo usuário: {nome_carta_info}.
-        Por favor, forneça em {idioma}:
-        1. Nome exato da carta, Jogo (Pokémon, Magic, Yu-Gi-Oh, etc.) e Número/Set.
-        2. Estimativa detalhada de preço de mercado atual em Reais (BRL) e Dólares (USD).
-        3. Condição estimada provável e dicas de conservação.
-        4. Sugestão de texto pronto para venda (copywriting) para marketplaces (Mercado Livre, eBay, TCGPlayer, LigaPokémon).
-        5. Links simulados úteis de pesquisa em plataformas globais.
-        """
+        prompt = f"Analise a carta de TCG com base nestas informações fornecidas pelo usuário: {nome_carta_info}. " + prompt_base
         response = model.generate_content([prompt, imagem_pil])
     else:
-        prompt = f"""
-        Analise esta carta de TCG enviada por imagem.
-        Por favor, forneça em {idioma}:
-        1. Nome exato da carta, Jogo (Pokémon, Magic, Yu-Gi-Oh, Esportes) e Número/Set.
-        2. Avaliação rigorosa da condição visual (Ex: Near Mint, Lightly Played, Moderately Played, Heavily Played, Damaged) com justificativa de bordas, centro e superfície.
-        3. Estimativa precisa de preço médio de mercado atual em BRL e USD.
-        4. Texto otimizado e atrativo para anúncio de vendas pronto para copiar e colar.
-        """
+        prompt = "Analise esta carta de TCG enviada por imagem. " + prompt_base
         response = model.generate_content([prompt, imagem_pil])
         
     return response.text
@@ -188,8 +185,10 @@ elif pagina == "💳 Planos e Créditos":
                 </ul>
             </div>
         """, unsafe_allow_html=True)
+        
+        # Substitua o texto COLOQUE_SEU_LINK_DO_STRIPE_AQUI pelo seu link do Stripe gerado
         if st.button("Comprar Pacote Colecionador", use_container_width=True):
-            st.info("🔗 Redirecionando para o ambiente seguro do Stripe...")
+            st.markdown('<meta http-equiv="refresh" content="0;url=COLOQUE_SEU_LINK_DO_STRIPE_AQUI">', unsafe_allow_html=True)
             
     with col_p2:
         st.markdown("""
@@ -204,8 +203,10 @@ elif pagina == "💳 Planos e Créditos":
                 </ul>
             </div>
         """, unsafe_allow_html=True)
+        
+        # Substitua o texto COLOQUE_SEU_LINK_DO_STRIPE_AQUI pelo seu link do Stripe gerado
         if st.button("Assinar Plano Lojista", use_container_width=True):
-            st.info("🔗 Redirecionando para o ambiente seguro do Stripe...")
+            st.markdown('<meta http-equiv="refresh" content="0;url=COLOQUE_SEU_LINK_DO_STRIPE_AQUI">', unsafe_allow_html=True)
 
 # Rodapé profissional
 st.markdown("---")
