@@ -3,3 +3,7 @@ google-genai
 pillow
 python-dotenv
 supabase
+streamlit
+google-generativeai
+Pillow
+requests
