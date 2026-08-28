@@ -126,7 +126,7 @@ if pagina == "📸 Análise por Foto":
     with col2:
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
-            st.image(image, caption="Carta Selecionada", use_column_width=True)
+            st.image(image, caption="Carta Selecionada", use_container_width=True)
             
             if st.button("🚀 Analisar Carta Agora", use_container_width=True):
                 with st.spinner("✨ Inteligência Artificial analisando raridade, condição e mercado..."):
