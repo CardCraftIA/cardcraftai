@@ -81,7 +81,7 @@ pagina = st.sidebar.radio("Navegação", ["📸 Análise por Foto", "🔍 Buscar
 
 # Função de Análise com Gemini
 def analisar_carta(imagem_pil, nome_carta_info=None):
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel('gemini-3.6-flash')
     
     if nome_carta_info:
         prompt = f"""
