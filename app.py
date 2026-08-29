@@ -79,9 +79,9 @@ idioma = st.sidebar.selectbox("🌐 Idioma / Language", ["Português (BR)", "Eng
 st.sidebar.markdown("---")
 pagina = st.sidebar.radio("Navegação", ["📸 Análise por Foto", "🔍 Buscar Carta por Nome", "💳 Planos e Créditos"])
 
-# Função de Análise com Gemini aprimorada com links reais de busca
+# Função de Análise com Gemini aprimorada com links reais de busca e Afiliados
 def analisar_carta(imagem_pil, nome_carta_info=None):
-    model = genai.GenerativeModel('gemini-3.6-flash')
+    model = genai.GenerativeModel('gemini-1.5-flash-latest')
     
     prompt_base = f"""
     Por favor, forneça em {idioma}:
@@ -92,7 +92,7 @@ def analisar_carta(imagem_pil, nome_carta_info=None):
     5. **Links úteis de pesquisa:** Crie links de busca formatados em Markdown usando o nome da carta para as seguintes plataformas:
        - LigaPokémon (Busca: https://www.ligapokemon.com.br/?view=cards%2Fsearch&card=NOME_DA_CARTA)
        - Mercado Livre (Busca: https://lista.mercadolivre.com.br/NOME_DA_CARTA)
-       - eBay (Busca: https://www.ebay.com/sch/i.html?_nkw=NOME_DA_CARTA)
+       - eBay (Busca: https://www.ebay.com/sch/i.html?_nkw=NOME_DA_CARTA&mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid=SEU_CAMPAIGN_ID_AQUI&customid=cardcraftai&toolid=10001&mkevt=1)
     """
     
     if nome_carta_info:
@@ -104,21 +104,23 @@ def analisar_carta(imagem_pil, nome_carta_info=None):
         
     return response.text
 
-# PÁGINA 1: ANÁLISE POR FOTO
+# PÁGINA 1: ANÁLISE POR FOTO (Com Abas para Mobile)
 if pagina == "📸 Análise por Foto":
     st.markdown("### 📸 Envie ou Tire a Foto da sua Carta")
-    st.write("Faça o upload de uma imagem clara da frente da sua carta para análise instantânea por IA.")
+    st.write("Faça o upload ou tire uma foto clara da frente da sua carta para análise instantânea por IA.")
     
     col1, col2 = st.columns([1, 1], gap="large")
     
     with col1:
-        uploaded_file = st.file_uploader("Escolha a imagem (PNG, JPG, JPEG)", type=["jpg", "jpeg", "png"])
-        usar_camera = st.checkbox("Usar a câmera do dispositivo")
+        aba_upload, aba_camera = st.tabs(["📁 Enviar Arquivo", "📷 Usar Câmera"])
         
-        if usar_camera:
-            camera_file = st.camera_input("Tire uma foto da carta")
-            if camera_file:
-                uploaded_file = camera_file
+        with aba_upload:
+            arquivo_upload = st.file_uploader("Escolha a imagem da galeria", type=["jpg", "jpeg", "png"])
+        
+        with aba_camera:
+            arquivo_camera = st.camera_input("Tire uma foto da carta")
+            
+        uploaded_file = arquivo_camera if arquivo_camera is not None else arquivo_upload
 
     with col2:
         if uploaded_file is not None:
@@ -135,7 +137,7 @@ if pagina == "📸 Análise por Foto":
                     except Exception as e:
                         st.error(f"Erro ao processar a imagem: {e}")
         else:
-            st.info("👈 Envie uma foto ao lado para habilitar o botão de análise.")
+            st.info("👈 Envie ou tire uma foto na aba ao lado para habilitar a análise.")
 
 # PÁGINA 2: BUSCAR CARTA POR NOME
 elif pagina == "🔍 Buscar Carta por Nome":
@@ -151,7 +153,6 @@ elif pagina == "🔍 Buscar Carta por Nome":
     if st.button("🔍 Buscar e Analisar"):
         if termo_busca:
             with st.spinner(f"Buscando dados de mercado para '{termo_busca}'..."):
-                # Criando uma imagem em branco temporária apenas para estruturar o prompt combinando texto
                 blank_img = Image.new('RGB', (300, 400), color=(30, 41, 59))
                 info_texto = f"Carta pesquisada por texto: {termo_busca} da coleção {colecao_busca}"
                 
@@ -186,9 +187,8 @@ elif pagina == "💳 Planos e Créditos":
             </div>
         """, unsafe_allow_html=True)
         
-        # Substitua o texto COLOQUE_SEU_LINK_DO_STRIPE_AQUI pelo seu link do Stripe gerado
         if st.button("Comprar Pacote Colecionador", use_container_width=True):
-            st.markdown('<meta http-equiv="refresh" content="0;url=COLOQUE_SEU_LINK_DO_STRIPE_AQUI">', unsafe_allow_html=True)
+            st.markdown('<meta http-equiv="refresh" content="0;url=SEU_LINK_STRIPE_PACOTE_AQUI">', unsafe_allow_html=True)
             
     with col_p2:
         st.markdown("""
@@ -204,9 +204,8 @@ elif pagina == "💳 Planos e Créditos":
             </div>
         """, unsafe_allow_html=True)
         
-        # Substitua o texto COLOQUE_SEU_LINK_DO_STRIPE_AQUI pelo seu link do Stripe gerado
         if st.button("Assinar Plano Lojista", use_container_width=True):
-            st.markdown('<meta http-equiv="refresh" content="0;url=COLOQUE_SEU_LINK_DO_STRIPE_AQUI">', unsafe_allow_html=True)
+            st.markdown('<meta http-equiv="refresh" content="0;url=SEU_LINK_STRIPE_ASSINATURA_AQUI">', unsafe_allow_html=True)
 
 # Rodapé profissional
 st.markdown("---")
