@@ -63,8 +63,9 @@ pagina = st.sidebar.radio("Navegação", ["📸 Análise por Foto", "🔍 Buscar
 def analisar_carta(imagem_pil=None, nome_carta_info=None):
     # Lista atualizada com identificadores exatos e sufixos 'latest'
     ultimo_erro = None
-    modelos_disponiveis = [
-        'gemini-3.6-flash'
+   modelos_disponiveis = [
+        'gemini-1.5-flash',
+        'gemini-1.5-pro'
     ]
   
     prompt_base = f"""
