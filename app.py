@@ -217,9 +217,11 @@ def analisar_carta(
     nome_carta_info=None,
 ):
     ultimo_erro = None
-modelos_disponiveis = [
-    "gemini-3.6-flash",
-]
+
+    modelos_disponiveis = [
+        "gemini-3.6-flash",
+    ]
+
     prompt_base = f"""
 Você é um especialista profissional em Trading Card Games (TCG),
 colecionismo, identificação de cartas e pesquisa de mercado.
@@ -358,6 +360,7 @@ Analise esta carta com base nas informações fornecidas:
 
 {prompt_base}
 """
+
     else:
         prompt_final = f"""
 Identifique cuidadosamente a carta presente na imagem.
@@ -438,6 +441,7 @@ def mostrar_resultado(
 
     if fontes:
         st.markdown("---")
+
         st.markdown(
             "### 🌐 Fontes consultadas"
         )
@@ -645,7 +649,10 @@ elif pagina == "💳 Planos e Créditos":
             <div class="card-metric">
                 <h3>🎒 Pacote Colecionador</h3>
                 <h2 style="color: #818cf8;">R$ 29,90</h2>
-                <p>Para colecionadores que desejam analisar suas cartas.</p>
+                <p>
+                    Para colecionadores que desejam
+                    analisar suas cartas.
+                </p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -665,7 +672,10 @@ elif pagina == "💳 Planos e Créditos":
             <div class="card-metric" style="border: 2px solid #818cf8;">
                 <h3>🏢 Plano Lojista B2B</h3>
                 <h2 style="color: #c084fc;">R$ 149,90/mês</h2>
-                <p>Para lojas e vendedores profissionais de TCG.</p>
+                <p>
+                    Para lojas e vendedores
+                    profissionais de TCG.
+                </p>
             </div>
             """,
             unsafe_allow_html=True,
