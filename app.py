@@ -31,7 +31,11 @@ st.markdown(
     }
 
     .stButton > button {
-        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        background: linear-gradient(
+            135deg,
+            #6366f1 0%,
+            #a855f7 100%
+        );
         color: white;
         border-radius: 8px;
         padding: 0.6rem 1.2rem;
@@ -47,7 +51,11 @@ st.markdown(
     }
 
     .hero-box {
-        background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+        background: linear-gradient(
+            135deg,
+            #1e1b4b 0%,
+            #311042 100%
+        );
         border: 1px solid #4c1d95;
         padding: 2.5rem;
         border-radius: 16px;
@@ -81,11 +89,15 @@ st.markdown(
 
 try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-    client = genai.Client(api_key=GEMINI_API_KEY)
+
+    client = genai.Client(
+        api_key=GEMINI_API_KEY
+    )
 
 except Exception:
     st.error(
-        "⚠️ GEMINI_API_KEY não configurada nos Secrets do Streamlit."
+        "⚠️ GEMINI_API_KEY não configurada "
+        "nos Secrets do Streamlit."
     )
     st.stop()
 
@@ -97,11 +109,30 @@ except Exception:
 st.markdown(
     """
     <div class="hero-box">
-        <h1 style="font-size: 2.8rem; font-weight: 800; background: linear-gradient(90deg, #818cf8, #c084fc, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">
+        <h1 style="
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(
+                90deg,
+                #818cf8,
+                #c084fc,
+                #f472b6
+            );
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        ">
             🃏 CardCraftAI
         </h1>
-        <p style="font-size: 1.25rem; color: #cbd5e1; max-width: 700px; margin: 0 auto;">
-            Inteligência artificial para identificação, avaliação e pesquisa de mercado de cartas TCG.
+
+        <p style="
+            font-size: 1.25rem;
+            color: #cbd5e1;
+            max-width: 700px;
+            margin: 0 auto;
+        ">
+            Inteligência artificial para identificação,
+            avaliação e pesquisa de mercado de cartas TCG.
         </p>
     </div>
     """,
@@ -113,7 +144,9 @@ st.markdown(
 # SIDEBAR
 # ============================================================
 
-st.sidebar.markdown("### ⚙️ Painel de Controle")
+st.sidebar.markdown(
+    "### ⚙️ Painel de Controle"
+)
 
 idioma = st.sidebar.selectbox(
     "🌐 Idioma / Language",
@@ -156,58 +189,6 @@ def imagem_para_base64(imagem_pil):
     ).decode("utf-8")
 
 
-def extrair_fontes(interaction):
-    fontes = []
-    urls_vistas = set()
-
-    try:
-        for step in interaction.steps or []:
-            if getattr(step, "type", None) != "model_output":
-                continue
-
-            for bloco in getattr(step, "content", []) or []:
-                anotacoes = getattr(
-                    bloco,
-                    "annotations",
-                    None,
-                ) or []
-
-                for anotacao in anotacoes:
-                    if getattr(
-                        anotacao,
-                        "type",
-                        None,
-                    ) != "url_citation":
-                        continue
-
-                    url = getattr(
-                        anotacao,
-                        "url",
-                        None,
-                    )
-
-                    titulo = getattr(
-                        anotacao,
-                        "title",
-                        None,
-                    )
-
-                    if url and url not in urls_vistas:
-                        urls_vistas.add(url)
-
-                        fontes.append(
-                            {
-                                "titulo": titulo or "Fonte",
-                                "url": url,
-                            }
-                        )
-
-    except Exception:
-        pass
-
-    return fontes
-
-
 # ============================================================
 # FUNÇÃO PRINCIPAL DE ANÁLISE
 # ============================================================
@@ -216,53 +197,33 @@ def analisar_carta(
     imagem_pil=None,
     nome_carta_info=None,
 ):
-    ultimo_erro = None
-
-    modelos_disponiveis = [
-        "gemini-3.6-flash",
-    ]
+    modelo = "gemini-3.6-flash"
 
     prompt_base = f"""
-Você é um especialista profissional em Trading Card Games (TCG),
-colecionismo, identificação de cartas e pesquisa de mercado.
+Você é um especialista profissional em Trading Card Games (TCG)
+e colecionismo de cartas.
 
 Responda obrigatoriamente em {idioma}.
 
-Sua tarefa possui duas partes:
+ESTE É UM TESTE TÉCNICO DO CARDFCRAFTAI.
 
-1. Identificar corretamente a carta.
-2. Pesquisar informações atuais de mercado na web.
+Neste momento você NÃO possui acesso a pesquisa web.
 
-IMPORTANTE:
+Portanto:
 
-Use a Pesquisa Google para procurar informações atuais.
+- Não invente preços atuais.
+- Não afirme que consultou sites.
+- Não invente vendas concluídas.
+- Não invente anúncios.
+- Não apresente valores como atuais se não puder confirmá-los.
+- Caso não tenha informação atual de mercado,
+  diga claramente que uma pesquisa web será necessária.
 
-Ao pesquisar preços, priorize quando disponíveis:
-
-- Liga Pokémon
-- Mercado Livre
-- eBay
-- TCGplayer
-- Cardmarket
-- PriceCharting
-- lojas especializadas confiáveis
-
-Não invente preços.
-
-Diferencie claramente:
-
-- preço anunciado;
-- preço estimado;
-- preço de venda concluída, quando realmente encontrado.
-
-Se não encontrar evidência suficiente,
-diga explicitamente que o valor é incerto.
-
-Organize a resposta desta forma:
+Organize a análise desta forma:
 
 # 🃏 Identificação
 
-Informe:
+Informe, quando possível:
 
 - Nome exato
 - Jogo
@@ -270,36 +231,31 @@ Informe:
 - Número da carta
 - Raridade
 - Variante
-- Ano, quando identificável
+- Ano
 
-# 💰 Mercado Atual
+# 📊 Informações Gerais
 
-Pesquise valores atuais.
+Explique brevemente:
 
-Apresente quando possível:
+- importância da carta;
+- características conhecidas;
+- possíveis versões;
+- fatores que podem influenciar o valor.
 
-| Mercado | Condição | Moeda | Preço aproximado |
-|---|---|---|---|
+# 💰 Mercado
 
-Inclua quando houver informação confiável:
+Como a pesquisa web está desativada neste teste,
+não invente preços.
 
-- BRL
-- USD
+Informe que os preços atuais deverão ser
+consultados posteriormente em mercados como:
 
-Dê preferência a anúncios e informações recentes.
-
-Não converta um preço anunciado automaticamente
-em valor real de venda.
-
-# 📊 Faixa de Valor
-
-Forneça uma conclusão objetiva:
-
-- Valor baixo estimado
-- Valor médio estimado
-- Valor alto estimado
-
-Explique brevemente como chegou à faixa.
+- Liga Pokémon
+- Mercado Livre
+- eBay
+- TCGplayer
+- Cardmarket
+- PriceCharting
 
 # 🔎 Condição Aparente
 
@@ -314,27 +270,29 @@ Se houver fotografia, avalie visualmente:
 - marcas;
 - desgaste.
 
-Use termos como:
+Use apenas como estimativa visual:
 
 - Near Mint
 - Lightly Played
 - Moderately Played
 - Heavily Played
 
-somente como estimativa visual.
+Não atribua nota definitiva de:
 
-Não atribua nota PSA, BGS ou CGC definitiva.
+- PSA
+- BGS
+- CGC
 
 # ⚠️ Autenticidade
 
 Informe sinais visuais relevantes.
 
-Não declare que uma carta é definitivamente autêntica
-apenas com base em fotografia.
+Nunca declare uma carta como definitivamente
+autêntica apenas com base em uma fotografia.
 
 # 🛡️ Conservação
 
-Dê recomendações curtas para:
+Dê recomendações sobre:
 
 - sleeve;
 - top loader;
@@ -344,17 +302,13 @@ Dê recomendações curtas para:
 
 # 📝 Anúncio para Venda
 
-Crie um texto curto e profissional pronto para marketplace.
-
-# 🔗 Pesquisa Recomendada
-
-Informe quais mercados foram encontrados
-e quais devem ser consultados para comparação final.
+Crie um texto curto e profissional
+que possa servir como base para marketplace.
 """
 
     if nome_carta_info:
         prompt_final = f"""
-Analise esta carta com base nas informações fornecidas:
+Analise esta carta com base nestas informações:
 
 {nome_carta_info}
 
@@ -363,10 +317,8 @@ Analise esta carta com base nas informações fornecidas:
 
     else:
         prompt_final = f"""
-Identifique cuidadosamente a carta presente na imagem.
-
-Depois da identificação,
-pesquise o mercado atual dessa carta na web.
+Identifique cuidadosamente a carta
+presente na imagem.
 
 {prompt_base}
 """
@@ -391,46 +343,33 @@ pesquise o mercado atual dessa carta na web.
     else:
         entrada = prompt_final
 
-    for nome_modelo in modelos_disponiveis:
-        try:
-            interaction = client.interactions.create(
-                model=nome_modelo,
-                input=entrada,
-                tools=[
-                    {
-                        "type": "google_search",
-                    }
-                ],
+    try:
+        interaction = client.interactions.create(
+            model=modelo,
+            input=entrada,
+        )
+
+        resultado = interaction.output_text
+
+        if not resultado:
+            raise RuntimeError(
+                "O Gemini respondeu sem conteúdo."
             )
 
-            resultado = interaction.output_text
+        return resultado
 
-            if resultado:
-                fontes = extrair_fontes(
-                    interaction
-                )
-
-                return resultado, fontes
-
-        except Exception as erro:
-            ultimo_erro = str(erro)
-            continue
-
-    raise RuntimeError(
-        "Não foi possível concluir a análise com os "
-        "modelos disponíveis.\n\n"
-        f"Último erro: {ultimo_erro}"
-    )
+    except Exception as erro:
+        raise RuntimeError(
+            "Falha no teste do Gemini 3.6 Flash.\n\n"
+            f"Detalhes: {erro}"
+        )
 
 
 # ============================================================
 # EXIBIÇÃO DO RESULTADO
 # ============================================================
 
-def mostrar_resultado(
-    resultado,
-    fontes,
-):
+def mostrar_resultado(resultado):
     st.markdown("---")
 
     st.markdown(
@@ -439,28 +378,17 @@ def mostrar_resultado(
 
     st.markdown(resultado)
 
-    if fontes:
-        st.markdown("---")
+    st.markdown("---")
 
-        st.markdown(
-            "### 🌐 Fontes consultadas"
-        )
-
-        for numero, fonte in enumerate(
-            fontes,
-            start=1,
-        ):
-            titulo = fonte["titulo"]
-            url = fonte["url"]
-
-            st.markdown(
-                f"{numero}. [{titulo}]({url})"
-            )
+    st.info(
+        "🧪 Modo de teste ativo: "
+        "a pesquisa Google está temporariamente desativada."
+    )
 
     st.caption(
-        "⚠️ Valores de mercado podem mudar rapidamente. "
-        "Confirme preço, condição, edição e autenticidade "
-        "antes de comprar ou vender."
+        "⚠️ Não utilize valores mencionados pela IA "
+        "como cotação atual enquanto o módulo de pesquisa "
+        "web estiver desativado."
     )
 
 
@@ -528,17 +456,15 @@ if pagina == "📸 Análise por Foto":
                     use_container_width=True,
                 ):
                     with st.spinner(
-                        "🔎 Identificando a carta e "
-                        "pesquisando preços atuais..."
+                        "🧪 Testando Gemini 3.6 Flash..."
                     ):
                         try:
-                            resultado, fontes = analisar_carta(
+                            resultado = analisar_carta(
                                 imagem_pil=image
                             )
 
                             mostrar_resultado(
-                                resultado,
-                                fontes,
+                                resultado
                             )
 
                         except Exception as erro:
@@ -565,7 +491,12 @@ if pagina == "📸 Análise por Foto":
 
 elif pagina == "🔍 Buscar Carta por Nome":
     st.markdown(
-        "### 🔍 Busca de Carta e Preço Atual"
+        "### 🔍 Busca de Carta"
+    )
+
+    st.info(
+        "🧪 Modo de teste: "
+        "pesquisa de preços na web temporariamente desativada."
     )
 
     col1, col2 = st.columns(
@@ -585,7 +516,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
         )
 
     if st.button(
-        "🔍 Buscar e Analisar",
+        "🔍 Testar Análise",
         use_container_width=True,
     ):
         termo_busca = termo_busca.strip()
@@ -610,22 +541,20 @@ elif pagina == "🔍 Buscar Carta por Nome":
                 )
 
             with st.spinner(
-                "🌐 Pesquisando informações "
-                "atuais de mercado..."
+                "🧪 Testando Gemini 3.6 Flash..."
             ):
                 try:
-                    resultado, fontes = analisar_carta(
+                    resultado = analisar_carta(
                         nome_carta_info=info_texto
                     )
 
                     mostrar_resultado(
-                        resultado,
-                        fontes,
+                        resultado
                     )
 
                 except Exception as erro:
                     st.error(
-                        f"Erro na pesquisa: {erro}"
+                        f"Erro no teste: {erro}"
                     )
 
 
@@ -648,7 +577,9 @@ elif pagina == "💳 Planos e Créditos":
             """
             <div class="card-metric">
                 <h3>🎒 Pacote Colecionador</h3>
-                <h2 style="color: #818cf8;">R$ 29,90</h2>
+                <h2 style="color: #818cf8;">
+                    R$ 29,90
+                </h2>
                 <p>
                     Para colecionadores que desejam
                     analisar suas cartas.
@@ -669,9 +600,14 @@ elif pagina == "💳 Planos e Créditos":
     with col2:
         st.markdown(
             """
-            <div class="card-metric" style="border: 2px solid #818cf8;">
+            <div
+                class="card-metric"
+                style="border: 2px solid #818cf8;"
+            >
                 <h3>🏢 Plano Lojista B2B</h3>
-                <h2 style="color: #c084fc;">R$ 149,90/mês</h2>
+                <h2 style="color: #c084fc;">
+                    R$ 149,90/mês
+                </h2>
                 <p>
                     Para lojas e vendedores
                     profissionais de TCG.
