@@ -26,46 +26,21 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-
-    .hero-box {
-        background: linear-gradient(
-            135deg,
-            #1e1b4b 0%,
-            #311042 100%
-        );
-        border: 1px solid #4c1d95;
-        padding: 2.5rem;
-        border-radius: 16px;
-        text-align: center;
-        margin-bottom: 2rem;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+    .block-container {
+        max-width: 1200px;
+        padding-top: 2rem;
     }
 
-    .card-box {
-        border: 1px solid #334155;
-        padding: 1.2rem;
+    div[data-testid="stMetric"] {
+        border: 1px solid rgba(120, 120, 120, 0.25);
+        padding: 16px;
         border-radius: 12px;
-        margin-bottom: 1rem;
-    }
-
-    .credit-box {
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid #6366f1;
-        margin-bottom: 1rem;
-    }
-
-    .footer-cardcraft {
-        text-align: center;
-        color: #64748b;
-        font-size: 0.9rem;
     }
 
     .stButton > button {
         border-radius: 8px;
         font-weight: 600;
     }
-
     </style>
     """,
     unsafe_allow_html=True,
@@ -84,7 +59,10 @@ try:
 except Exception:
     st.error(
         "⚠️ Faltam configurações nos Secrets do Streamlit.\n\n"
-        "Verifique GEMINI_API_KEY, SUPABASE_URL e SUPABASE_KEY."
+        "Verifique:\n"
+        "- GEMINI_API_KEY\n"
+        "- SUPABASE_URL\n"
+        "- SUPABASE_KEY"
     )
     st.stop()
 
@@ -140,14 +118,12 @@ def criar_cliente_supabase():
     if access_token and refresh_token:
 
         try:
-
             resposta = cliente.auth.set_session(
                 access_token,
                 refresh_token,
             )
 
             if resposta.session:
-
                 st.session_state.access_token = (
                     resposta.session.access_token
                 )
@@ -156,18 +132,16 @@ def criar_cliente_supabase():
                     resposta.session.refresh_token
                 )
 
-                if resposta.user:
+            if resposta.user:
+                st.session_state.user_id = (
+                    resposta.user.id
+                )
 
-                    st.session_state.user_id = (
-                        resposta.user.id
-                    )
-
-                    st.session_state.user_email = (
-                        resposta.user.email
-                    )
+                st.session_state.user_email = (
+                    resposta.user.email
+                )
 
         except Exception:
-
             st.session_state.access_token = None
             st.session_state.refresh_token = None
             st.session_state.user_id = None
@@ -180,7 +154,7 @@ supabase = criar_cliente_supabase()
 
 
 # ============================================================
-# FUNÇÕES DE AUTENTICAÇÃO
+# AUTENTICAÇÃO
 # ============================================================
 
 def salvar_sessao(resposta):
@@ -200,7 +174,6 @@ def salvar_sessao(resposta):
     )
 
     if resposta.user:
-
         st.session_state.user_id = (
             resposta.user.id
         )
@@ -231,7 +204,7 @@ def usuario_logado():
 
 
 # ============================================================
-# CRÉDITOS
+# PERFIL E CRÉDITOS
 # ============================================================
 
 def buscar_perfil():
@@ -240,7 +213,6 @@ def buscar_perfil():
         return None
 
     try:
-
         resposta = (
             supabase
             .table("profiles")
@@ -281,7 +253,6 @@ def consumir_credito(
 ):
 
     try:
-
         resposta = (
             supabase
             .rpc(
@@ -296,7 +267,6 @@ def consumir_credito(
         return resposta.data
 
     except Exception as erro:
-
         raise RuntimeError(
             f"Não foi possível descontar o crédito: {erro}"
         )
@@ -328,7 +298,7 @@ def imagem_para_base64(
 
 
 # ============================================================
-# GEMINI - ANÁLISE
+# GEMINI
 # ============================================================
 
 def analisar_carta(
@@ -340,24 +310,24 @@ def analisar_carta(
     modelo = "gemini-3.6-flash"
 
     prompt_base = f"""
-Você é um especialista profissional em Trading Card Games,
-colecionismo e avaliação de cartas.
+Você é um especialista profissional em Trading Card Games (TCG),
+colecionismo, identificação e avaliação de cartas.
 
 Responda obrigatoriamente em {idioma}.
 
 IMPORTANTE:
 
-Neste momento a pesquisa web está desativada.
+A pesquisa web está temporariamente desativada.
 
 Não invente preços atuais.
+Não diga que consultou sites.
+Não invente vendas recentes.
+Não invente anúncios existentes.
 
-Não diga que consultou sites ou marketplaces.
+Se algum dado não puder ser confirmado,
+informe claramente que precisa ser verificado.
 
-Se um preço atual depender de pesquisa de mercado,
-informe claramente que será necessário realizar
-uma pesquisa web posteriormente.
-
-Organize sua resposta exatamente com as seguintes seções:
+Organize a resposta da seguinte maneira:
 
 # 🃏 Identificação
 
@@ -371,28 +341,23 @@ Informe, quando possível:
 - Variante
 - Ano
 
-Caso não seja possível determinar algo,
-informe que precisa ser confirmado.
-
 # 📊 Informações Gerais
 
 Explique:
 
 - importância da carta;
-- características;
+- características conhecidas;
 - versões possíveis;
-- fatores que influenciam seu valor.
+- fatores que podem influenciar o valor.
 
 # 💰 Mercado
 
-Como a pesquisa web está desativada:
+A pesquisa web está desativada nesta versão.
 
-- não invente preços;
-- não invente vendas recentes;
-- não invente anúncios.
+Não invente preços.
 
-Informe que os preços atuais poderão ser
-consultados posteriormente em:
+Informe que os valores atuais deverão ser
+consultados posteriormente em plataformas como:
 
 - Liga Pokémon
 - Mercado Livre
@@ -403,7 +368,7 @@ consultados posteriormente em:
 
 # 🔎 Condição Aparente
 
-Caso exista fotografia, avalie:
+Se houver fotografia, avalie visualmente:
 
 - cantos;
 - bordas;
@@ -411,23 +376,28 @@ Caso exista fotografia, avalie:
 - centralização;
 - riscos;
 - amassados;
+- marcas;
 - desgaste.
 
-Utilize somente como estimativa visual:
+Utilize somente como estimativa:
 
 - Near Mint
 - Lightly Played
 - Moderately Played
 - Heavily Played
 
-Não atribua nota definitiva PSA, BGS ou CGC.
+Não atribua nota definitiva de:
+
+- PSA
+- BGS
+- CGC
 
 # ⚠️ Autenticidade
 
 Informe sinais visuais relevantes.
 
-Nunca confirme definitivamente a autenticidade
-apenas com base em uma fotografia.
+Nunca declare uma carta como definitivamente
+autêntica apenas com base em uma fotografia.
 
 # 🛡️ Conservação
 
@@ -444,7 +414,8 @@ Dê recomendações sobre:
 Crie um texto curto e profissional
 para servir como base de anúncio.
 
-Não invente características que não tenham sido confirmadas.
+Não invente características que
+não tenham sido confirmadas.
 """
 
     if nome_carta_info:
@@ -485,11 +456,9 @@ presente na imagem.
         ]
 
     else:
-
         entrada = prompt_final
 
     try:
-
         interaction = (
             gemini_client
             .interactions
@@ -502,7 +471,6 @@ presente na imagem.
         resultado = interaction.output_text
 
         if not resultado:
-
             raise RuntimeError(
                 "O Gemini respondeu sem conteúdo."
             )
@@ -510,7 +478,6 @@ presente na imagem.
         return resultado
 
     except Exception as erro:
-
         raise RuntimeError(
             "Falha na análise com Gemini 3.6 Flash.\n\n"
             f"Detalhes: {erro}"
@@ -518,38 +485,59 @@ presente na imagem.
 
 
 # ============================================================
-# TELA DE LOGIN
+# EXECUTAR ANÁLISE + CRÉDITO
+# ============================================================
+
+def executar_analise_com_credito(
+    idioma,
+    imagem_pil=None,
+    nome_carta_info=None,
+    tipo_acao="analise",
+):
+
+    saldo_atual = buscar_creditos()
+
+    if saldo_atual <= 0:
+        raise RuntimeError(
+            "Você não possui créditos disponíveis."
+        )
+
+    # Primeiro executa o Gemini.
+    # Se a IA falhar, o usuário não perde crédito.
+
+    resultado = analisar_carta(
+        idioma=idioma,
+        imagem_pil=imagem_pil,
+        nome_carta_info=nome_carta_info,
+    )
+
+    # Somente depois de resposta bem-sucedida
+    # desconta 1 crédito.
+
+    consumir_credito(
+        tipo_acao
+    )
+
+    return resultado
+
+
+# ============================================================
+# TELA DE LOGIN / CADASTRO
 # ============================================================
 
 def tela_login():
 
-    st.markdown(
-        """
-        <div class="hero-box">
+    st.title("🃏 CardCraftAI")
 
-            <h1 style="
-                font-size: 3rem;
-                margin-bottom: 0.5rem;
-                color: #c084fc;
-            ">
-                🃏 CardCraftAI
-            </h1>
-
-            <p style="
-                font-size: 1.2rem;
-                color: #cbd5e1;
-            ">
-                Inteligência artificial para
-                identificação e avaliação de cartas TCG.
-            </p>
-
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.subheader(
+        "Inteligência artificial para "
+        "identificação e avaliação de cartas TCG"
     )
 
-    st.markdown(
-        "## 🔐 Acesse sua conta"
+    st.divider()
+
+    st.header(
+        "🔐 Acesse sua conta"
     )
 
     aba_login, aba_cadastro = st.tabs(
@@ -565,9 +553,14 @@ def tela_login():
 
     with aba_login:
 
+        st.write(
+            "Entre com seu e-mail e senha."
+        )
+
         email_login = st.text_input(
             "E-mail",
             key="email_login",
+            placeholder="seuemail@exemplo.com",
         )
 
         senha_login = st.text_input(
@@ -589,13 +582,12 @@ def tela_login():
             ):
 
                 st.warning(
-                    "Preencha e-mail e senha."
+                    "Preencha o e-mail e a senha."
                 )
 
             else:
 
                 try:
-
                     resposta = (
                         supabase
                         .auth
@@ -624,16 +616,18 @@ def tela_login():
                     else:
 
                         st.error(
-                            "Não foi possível iniciar "
-                            "a sessão."
+                            "Não foi possível iniciar a sessão."
                         )
 
                 except Exception as erro:
 
                     st.error(
-                        "Não foi possível entrar.\n\n"
+                        "Não foi possível entrar."
+                    )
+
+                    st.info(
                         "Verifique o e-mail, a senha "
-                        "e se o e-mail já foi confirmado."
+                        "e se a conta já foi confirmada."
                     )
 
                     st.caption(
@@ -646,9 +640,18 @@ def tela_login():
 
     with aba_cadastro:
 
+        st.write(
+            "Crie sua conta CardCraftAI."
+        )
+
+        st.success(
+            "🎁 Novas contas recebem 5 créditos gratuitos."
+        )
+
         email_cadastro = st.text_input(
             "Seu e-mail",
             key="email_cadastro",
+            placeholder="seuemail@exemplo.com",
         )
 
         senha_cadastro = st.text_input(
@@ -658,14 +661,9 @@ def tela_login():
         )
 
         senha_confirmar = st.text_input(
-            "Confirme a senha",
+            "Confirme sua senha",
             type="password",
             key="senha_confirmar",
-        )
-
-        st.caption(
-            "🎁 Novas contas começam "
-            "com 5 créditos gratuitos."
         )
 
         if st.button(
@@ -702,13 +700,12 @@ def tela_login():
             ):
 
                 st.warning(
-                    "As senhas não são iguais."
+                    "As duas senhas não são iguais."
                 )
 
             else:
 
                 try:
-
                     resposta = (
                         supabase
                         .auth
@@ -739,20 +736,19 @@ def tela_login():
                     else:
 
                         st.success(
-                            "Conta criada! ✅"
+                            "Conta criada com sucesso! ✅"
                         )
 
                         st.info(
-                            "📧 Verifique sua caixa "
-                            "de e-mail e confirme "
-                            "o cadastro antes de entrar."
+                            "📧 Verifique sua caixa de e-mail. "
+                            "O Supabase pode exigir a confirmação "
+                            "do endereço antes do primeiro login."
                         )
 
                 except Exception as erro:
 
                     st.error(
-                        "Não foi possível criar "
-                        "a conta."
+                        "Não foi possível criar a conta."
                     )
 
                     st.caption(
@@ -761,7 +757,7 @@ def tela_login():
 
 
 # ============================================================
-# BLOQUEIO PARA NÃO LOGADOS
+# BLOQUEAR APP PARA NÃO LOGADOS
 # ============================================================
 
 if not usuario_logado():
@@ -780,16 +776,28 @@ perfil = buscar_perfil()
 if not perfil:
 
     st.error(
-        "Seu usuário está autenticado, "
-        "mas o perfil de créditos não foi encontrado."
+        "Seu login funcionou, mas o perfil de créditos "
+        "não foi encontrado no Supabase."
     )
 
     st.info(
-        "Saia da conta e entre novamente. "
-        "Se continuar acontecendo, "
-        "precisaremos verificar o trigger "
-        "do Supabase."
+        "Se isso acontecer no primeiro teste, "
+        "vamos verificar a tabela profiles e o trigger."
     )
+
+    if st.button(
+        "🚪 Sair e tentar novamente"
+    ):
+
+        try:
+            supabase.auth.sign_out()
+
+        except Exception:
+            pass
+
+        limpar_sessao()
+
+        st.rerun()
 
     st.stop()
 
@@ -811,31 +819,25 @@ plano = perfil.get(
 # SIDEBAR
 # ============================================================
 
-st.sidebar.markdown(
-    "## ⚙️ Painel de Controle"
+st.sidebar.title(
+    "⚙️ Painel de Controle"
+)
+
+st.sidebar.write(
+    "👤 Conta"
 )
 
 st.sidebar.success(
-    f"👤 {st.session_state.user_email}"
+    st.session_state.user_email
 )
 
-st.sidebar.markdown(
-    f"""
-    <div class="credit-box">
+st.sidebar.metric(
+    "💎 Créditos",
+    creditos,
+)
 
-        <strong>💎 Seus créditos</strong>
-
-        <h2 style="margin-bottom:0;">
-            {creditos}
-        </h2>
-
-        <small>
-            Plano: {plano}
-        </small>
-
-    </div>
-    """,
-    unsafe_allow_html=True,
+st.sidebar.caption(
+    f"Plano atual: {plano}"
 )
 
 if creditos == 0:
@@ -843,6 +845,35 @@ if creditos == 0:
     st.sidebar.warning(
         "Você não possui créditos disponíveis."
     )
+
+st.sidebar.divider()
+
+
+idioma = st.sidebar.selectbox(
+    "🌐 Idioma / Language",
+    [
+        "Português (BR)",
+        "English",
+        "Español",
+    ],
+)
+
+
+st.sidebar.divider()
+
+
+pagina = st.sidebar.radio(
+    "Navegação",
+    [
+        "📸 Análise por Foto",
+        "🔍 Buscar Carta por Nome",
+        "💳 Planos e Créditos",
+    ],
+)
+
+
+st.sidebar.divider()
+
 
 if st.sidebar.button(
     "🚪 Sair da conta",
@@ -860,101 +891,20 @@ if st.sidebar.button(
     st.rerun()
 
 
-st.sidebar.markdown("---")
+# ============================================================
+# CABEÇALHO PRINCIPAL
+# ============================================================
 
-
-idioma = st.sidebar.selectbox(
-    "🌐 Idioma / Language",
-    [
-        "Português (BR)",
-        "English",
-        "Español",
-    ],
+st.title(
+    "🃏 CardCraftAI"
 )
 
-
-st.sidebar.markdown("---")
-
-
-pagina = st.sidebar.radio(
-    "Navegação",
-    [
-        "📸 Análise por Foto",
-        "🔍 Buscar Carta por Nome",
-        "💳 Planos e Créditos",
-    ],
+st.caption(
+    "Inteligência artificial para identificação, "
+    "avaliação e pesquisa de cartas TCG."
 )
 
-
-# ============================================================
-# CABEÇALHO
-# ============================================================
-
-st.markdown(
-    """
-    <div class="hero-box">
-
-        <h1 style="
-            font-size: 2.8rem;
-            font-weight: 800;
-            color: #c084fc;
-            margin-bottom: 0.5rem;
-        ">
-            🃏 CardCraftAI
-        </h1>
-
-        <p style="
-            font-size: 1.2rem;
-            color: #cbd5e1;
-            margin: 0;
-        ">
-            Inteligência artificial para identificação,
-            avaliação e pesquisa de cartas TCG.
-        </p>
-
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# ============================================================
-# FUNÇÃO PARA PROCESSAR ANÁLISE + CRÉDITO
-# ============================================================
-
-def executar_analise_com_credito(
-    idioma,
-    imagem_pil=None,
-    nome_carta_info=None,
-    tipo_acao="analise",
-):
-
-    saldo_atual = buscar_creditos()
-
-    if saldo_atual <= 0:
-
-        raise RuntimeError(
-            "Você não possui créditos disponíveis."
-        )
-
-    # Primeiro executamos o Gemini.
-    #
-    # Se o Gemini falhar, nenhum crédito é descontado.
-
-    resultado = analisar_carta(
-        idioma=idioma,
-        imagem_pil=imagem_pil,
-        nome_carta_info=nome_carta_info,
-    )
-
-    # Somente após resposta bem-sucedida
-    # descontamos 1 crédito no Supabase.
-
-    consumir_credito(
-        tipo_acao
-    )
-
-    return resultado
+st.divider()
 
 
 # ============================================================
@@ -965,43 +915,44 @@ def mostrar_resultado(
     resultado
 ):
 
-    st.markdown("---")
+    st.divider()
 
-    st.markdown(
-        "## 📊 Resultado da Análise"
+    st.header(
+        "📊 Resultado da Análise"
     )
 
     st.markdown(
         resultado
     )
 
-    st.markdown("---")
+    st.divider()
 
     st.info(
-        "🧪 Nesta versão, a pesquisa web "
-        "ainda está temporariamente desativada."
+        "🧪 A pesquisa web está "
+        "temporariamente desativada nesta versão."
     )
 
     st.caption(
-        "💎 Esta análise consumiu "
-        "1 crédito."
+        "💎 A análise concluída consumiu 1 crédito."
     )
 
 
 # ============================================================
-# PÁGINA 1
-# ANÁLISE POR FOTO
+# PÁGINA 1 - ANÁLISE POR FOTO
 # ============================================================
 
 if pagina == "📸 Análise por Foto":
 
-    st.markdown(
-        "## 📸 Envie ou Tire uma Foto"
+    st.header(
+        "📸 Análise por Foto"
     )
 
-    st.caption(
-        "Cada análise concluída "
-        "consome 1 crédito."
+    st.write(
+        "Envie ou tire uma foto da sua carta."
+    )
+
+    st.info(
+        "💎 Cada análise concluída consome 1 crédito."
     )
 
     col1, col2 = st.columns(
@@ -1051,7 +1002,6 @@ if pagina == "📸 Análise por Foto":
         if uploaded_file is not None:
 
             try:
-
                 imagem = Image.open(
                     uploaded_file
                 )
@@ -1083,14 +1033,11 @@ if pagina == "📸 Análise por Foto":
                         ):
 
                             try:
-
                                 resultado = (
                                     executar_analise_com_credito(
                                         idioma=idioma,
                                         imagem_pil=imagem,
-                                        tipo_acao=(
-                                            "analise_foto"
-                                        ),
+                                        tipo_acao="analise_foto",
                                     )
                                 )
 
@@ -1128,19 +1075,17 @@ if pagina == "📸 Análise por Foto":
 
 
 # ============================================================
-# PÁGINA 2
-# BUSCAR CARTA POR NOME
+# PÁGINA 2 - BUSCAR POR NOME
 # ============================================================
 
 elif pagina == "🔍 Buscar Carta por Nome":
 
-    st.markdown(
-        "## 🔍 Buscar Carta por Nome"
+    st.header(
+        "🔍 Buscar Carta por Nome"
     )
 
-    st.caption(
-        "Cada análise concluída "
-        "consome 1 crédito."
+    st.info(
+        "💎 Cada análise concluída consome 1 crédito."
     )
 
     col1, col2 = st.columns(
@@ -1151,9 +1096,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
 
         termo_busca = st.text_input(
             "Nome da carta",
-            placeholder=(
-                "Ex.: Charizard ex"
-            ),
+            placeholder="Ex.: Charizard ex",
         )
 
     with col2:
@@ -1201,16 +1144,14 @@ elif pagina == "🔍 Buscar Carta por Nome":
 
                     info_texto = (
                         f"Nome: {termo_busca}\n"
-                        f"Coleção/Set: "
-                        f"{colecao_busca}"
+                        f"Coleção/Set: {colecao_busca}"
                     )
 
                 else:
 
                     info_texto = (
                         f"Nome: {termo_busca}\n"
-                        "Coleção/Set: "
-                        "não informada"
+                        "Coleção/Set: não informada"
                     )
 
                 with st.spinner(
@@ -1218,16 +1159,11 @@ elif pagina == "🔍 Buscar Carta por Nome":
                 ):
 
                     try:
-
                         resultado = (
                             executar_analise_com_credito(
                                 idioma=idioma,
-                                nome_carta_info=(
-                                    info_texto
-                                ),
-                                tipo_acao=(
-                                    "analise_nome"
-                                ),
+                                nome_carta_info=info_texto,
+                                tipo_acao="analise_nome",
                             )
                         )
 
@@ -1251,14 +1187,13 @@ elif pagina == "🔍 Buscar Carta por Nome":
 
 
 # ============================================================
-# PÁGINA 3
-# PLANOS
+# PÁGINA 3 - PLANOS
 # ============================================================
 
 elif pagina == "💳 Planos e Créditos":
 
-    st.markdown(
-        "## 💳 Planos e Créditos"
+    st.header(
+        "💳 Planos e Créditos"
     )
 
     st.metric(
@@ -1266,12 +1201,12 @@ elif pagina == "💳 Planos e Créditos":
         f"{creditos} créditos",
     )
 
-    st.info(
+    st.success(
         "🎁 Novas contas recebem "
         "5 créditos gratuitos."
     )
 
-    st.markdown("---")
+    st.divider()
 
     col1, col2 = st.columns(
         2,
@@ -1280,26 +1215,18 @@ elif pagina == "💳 Planos e Créditos":
 
     with col1:
 
-        st.markdown(
-            """
-            <div class="card-box">
+        st.subheader(
+            "🎒 Pacote Colecionador"
+        )
 
-                <h3>
-                    🎒 Pacote Colecionador
-                </h3>
+        st.metric(
+            "Preço",
+            "R$ 29,90",
+        )
 
-                <h2>
-                    R$ 29,90
-                </h2>
-
-                <p>
-                    Pacote de créditos para
-                    colecionadores.
-                </p>
-
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.write(
+            "Pacote de créditos para "
+            "colecionadores."
         )
 
         if st.button(
@@ -1308,32 +1235,24 @@ elif pagina == "💳 Planos e Créditos":
         ):
 
             st.info(
-                "💳 O checkout será "
-                "configurado em uma próxima etapa."
+                "💳 O checkout será configurado "
+                "em uma próxima etapa."
             )
 
     with col2:
 
-        st.markdown(
-            """
-            <div class="card-box">
+        st.subheader(
+            "🏢 Plano Lojista B2B"
+        )
 
-                <h3>
-                    🏢 Plano Lojista B2B
-                </h3>
+        st.metric(
+            "Preço",
+            "R$ 149,90/mês",
+        )
 
-                <h2>
-                    R$ 149,90/mês
-                </h2>
-
-                <p>
-                    Para lojas e vendedores
-                    profissionais de TCG.
-                </p>
-
-            </div>
-            """,
-            unsafe_allow_html=True,
+        st.write(
+            "Para lojas e vendedores "
+            "profissionais de TCG."
         )
 
         if st.button(
@@ -1342,8 +1261,8 @@ elif pagina == "💳 Planos e Créditos":
         ):
 
             st.info(
-                "💳 O checkout será "
-                "configurado em uma próxima etapa."
+                "💳 O checkout será configurado "
+                "em uma próxima etapa."
             )
 
 
@@ -1351,13 +1270,8 @@ elif pagina == "💳 Planos e Créditos":
 # RODAPÉ
 # ============================================================
 
-st.markdown("---")
+st.divider()
 
-st.markdown(
-    """
-    <p class="footer-cardcraft">
-        CardCraftAI © 2026
-    </p>
-    """,
-    unsafe_allow_html=True,
+st.caption(
+    "CardCraftAI © 2026"
 )
