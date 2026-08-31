@@ -59,12 +59,16 @@ idioma = st.sidebar.selectbox("🌐 Idioma / Language", ["Português (BR)", "Eng
 st.sidebar.markdown("---")
 pagina = st.sidebar.radio("Navegação", ["📸 Análise por Foto", "🔍 Buscar Carta por Nome", "💳 Planos e Créditos"])
 
-# Função de Análise com Sistema de Fallback e suporte flexível a imagem/texto
+# Função de Análise com Sistema de Fallback blindado contra o erro 404
 def analisar_carta(imagem_pil=None, nome_carta_info=None):
-    # Lista de modelos ordenada do mais rápido/econômico ao mais robusto
+    # Lista atualizada com identificadores exatos e sufixos 'latest'
     modelos_disponiveis = [
-        'gemini-1.5-flash',
-        'gemini-1.5-pro'
+        'gemini-1.5-flash-002',
+        'gemini-1.5-flash-001',
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-pro-002',
+        'gemini-1.5-pro-001',
+        'gemini-1.5-pro-latest'
     ]
     ultimo_erro = None
     
@@ -100,7 +104,7 @@ def analisar_carta(imagem_pil=None, nome_carta_info=None):
             ultimo_erro = str(e)
             continue
             
-    raise Exception(f"Falha de comunicação com a API do Google. Detalhes: {ultimo_erro}")
+    raise Exception(f"Falha de comunicação com a API do Google após tentar todos os modelos disponíveis. Detalhe final: {ultimo_erro}")
 
 # PÁGINA 1: ANÁLISE POR FOTO
 if pagina == "📸 Análise por Foto":
@@ -176,4 +180,3 @@ elif pagina == "💳 Planos e Créditos":
 
 st.markdown("---")
 st.markdown("<p style='text-align: center; color: #64748b; font-size: 0.9rem;'>CardCraftAI © 2026</p>", unsafe_allow_html=True)
-
