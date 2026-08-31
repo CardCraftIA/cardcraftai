@@ -1,4 +1,5 @@
 import base64
+import uuid
 from io import BytesIO
 
 import streamlit as st
@@ -100,6 +101,9 @@ if "resultado_tipo" not in st.session_state:
 
 if "resultado_novo" not in st.session_state:
     st.session_state.resultado_novo = False
+
+if "aviso_credito" not in st.session_state:
+    st.session_state.aviso_credito = None
 
 
 # ============================================================
@@ -205,6 +209,7 @@ def limpar_sessao():
     st.session_state.resultado_analise = None
     st.session_state.resultado_tipo = None
     st.session_state.resultado_novo = False
+    st.session_state.aviso_credito = None
 
 
 def usuario_logado():
@@ -263,8 +268,13 @@ def buscar_creditos():
     )
 
 
-def consumir_credito(
-    acao="analise"
+# ============================================================
+# NOVO SISTEMA ATÔMICO DE CRÉDITOS
+# ============================================================
+
+def reservar_credito(
+    acao,
+    request_id,
 ):
 
     try:
@@ -272,9 +282,48 @@ def consumir_credito(
         resposta = (
             supabase
             .rpc(
-                "consume_credit",
+                "reserve_credit",
                 {
-                    "p_action": acao
+                    "p_action": acao,
+                    "p_request_id": str(request_id),
+                }
+            )
+            .execute()
+        )
+
+        return resposta.data
+
+    except Exception as erro:
+
+        texto_erro = str(erro)
+
+        if (
+            "Créditos insuficientes" in texto_erro
+            or
+            "creditos insuficientes" in texto_erro.lower()
+        ):
+            raise RuntimeError(
+                "💎 Você não possui créditos suficientes."
+            )
+
+        raise RuntimeError(
+            "Não foi possível reservar o crédito.\n\n"
+            f"Detalhes: {erro}"
+        )
+
+
+def concluir_uso_credito(
+    request_id,
+):
+
+    try:
+
+        resposta = (
+            supabase
+            .rpc(
+                "complete_credit_usage",
+                {
+                    "p_request_id": str(request_id),
                 }
             )
             .execute()
@@ -285,7 +334,35 @@ def consumir_credito(
     except Exception as erro:
 
         raise RuntimeError(
-            f"Não foi possível descontar o crédito: {erro}"
+            "Não foi possível finalizar o registro "
+            f"do crédito: {erro}"
+        )
+
+
+def devolver_credito(
+    request_id,
+):
+
+    try:
+
+        resposta = (
+            supabase
+            .rpc(
+                "refund_credit",
+                {
+                    "p_request_id": str(request_id),
+                }
+            )
+            .execute()
+        )
+
+        return resposta.data
+
+    except Exception as erro:
+
+        raise RuntimeError(
+            "Não foi possível devolver automaticamente "
+            f"o crédito: {erro}"
         )
 
 
@@ -506,7 +583,7 @@ presente na imagem.
 
 
 # ============================================================
-# EXECUTAR ANÁLISE + CRÉDITO
+# EXECUTAR ANÁLISE COM RESERVA ATÔMICA
 # ============================================================
 
 def executar_analise_com_credito(
@@ -516,33 +593,91 @@ def executar_analise_com_credito(
     tipo_acao="analise",
 ):
 
-    saldo_atual = buscar_creditos()
+    # Cada análise recebe um identificador único.
 
-    if saldo_atual <= 0:
+    request_id = uuid.uuid4()
 
-        raise RuntimeError(
-            "Você não possui créditos disponíveis."
+    st.session_state.aviso_credito = None
+
+    # ========================================================
+    # 1. RESERVAR O CRÉDITO ANTES DO GEMINI
+    # ========================================================
+
+    reservar_credito(
+        tipo_acao,
+        request_id,
+    )
+
+    # ========================================================
+    # 2. CHAMAR O GEMINI
+    # ========================================================
+
+    try:
+
+        resultado = analisar_carta(
+            idioma=idioma,
+            imagem_pil=imagem_pil,
+            nome_carta_info=nome_carta_info,
         )
 
-    # --------------------------------------------------------
-    # PRIMEIRO EXECUTA O GEMINI
-    # --------------------------------------------------------
-    #
-    # Se o Gemini falhar, não descontamos crédito.
+    except Exception as erro_gemini:
 
-    resultado = analisar_carta(
-        idioma=idioma,
-        imagem_pil=imagem_pil,
-        nome_carta_info=nome_carta_info,
-    )
+        # ====================================================
+        # 3. GEMINI FALHOU -> DEVOLVER CRÉDITO
+        # ====================================================
 
-    # --------------------------------------------------------
-    # SOMENTE DEPOIS DA RESPOSTA, DESCONTA 1 CRÉDITO
-    # --------------------------------------------------------
+        try:
 
-    consumir_credito(
-        tipo_acao
-    )
+            devolver_credito(
+                request_id
+            )
+
+        except Exception as erro_estorno:
+
+            raise RuntimeError(
+                "A análise falhou e houve um problema "
+                "ao devolver automaticamente o crédito.\n\n"
+                "Não faça outra análise agora.\n\n"
+                f"Erro da análise: {erro_gemini}\n\n"
+                f"Erro do estorno: {erro_estorno}"
+            )
+
+        raise RuntimeError(
+            "A análise não pôde ser concluída.\n\n"
+            "✅ O crédito reservado foi devolvido "
+            "automaticamente.\n\n"
+            f"Detalhes: {erro_gemini}"
+        )
+
+    # ========================================================
+    # 4. GEMINI FUNCIONOU -> CONFIRMAR CONSUMO
+    # ========================================================
+
+    try:
+
+        confirmado = concluir_uso_credito(
+            request_id
+        )
+
+        if confirmado is False:
+
+            st.session_state.aviso_credito = (
+                "A análise foi concluída, mas o registro "
+                "de consumo ficou pendente. "
+                "Não repita esta análise."
+            )
+
+    except Exception as erro_confirmacao:
+
+        # NÃO fazemos estorno aqui:
+        # o Gemini já executou e a análise foi entregue.
+
+        st.session_state.aviso_credito = (
+            "A análise foi concluída, porém houve "
+            "uma falha ao marcar o consumo como concluído. "
+            "O crédito permanece reservado. "
+            f"Detalhe técnico: {erro_confirmacao}"
+        )
 
     return resultado
 
@@ -957,6 +1092,12 @@ def mostrar_resultado(
         resultado
     )
 
+    if st.session_state.aviso_credito:
+
+        st.warning(
+            st.session_state.aviso_credito
+        )
+
     st.divider()
 
     st.info(
@@ -1076,9 +1217,6 @@ if pagina == "📸 Análise por Foto":
                                     )
                                 )
 
-                                # Guarda o resultado para sobreviver
-                                # ao st.rerun()
-
                                 st.session_state.resultado_analise = (
                                     resultado
                                 )
@@ -1090,14 +1228,6 @@ if pagina == "📸 Análise por Foto":
                                 st.session_state.resultado_novo = (
                                     True
                                 )
-
-                                # =================================================
-                                # CORREÇÃO DO SALDO
-                                # =================================================
-                                #
-                                # Recarrega o aplicativo.
-                                # Na nova execução, o perfil é buscado novamente
-                                # no Supabase e a sidebar mostrará o saldo atualizado.
 
                                 st.rerun()
 
@@ -1123,7 +1253,7 @@ if pagina == "📸 Análise por Foto":
 
 
     # --------------------------------------------------------
-    # MOSTRAR RESULTADO APÓS O RERUN
+    # MOSTRAR RESULTADO APÓS RERUN
     # --------------------------------------------------------
 
     if (
@@ -1243,8 +1373,6 @@ elif pagina == "🔍 Buscar Carta por Nome":
                             )
                         )
 
-                        # Guarda o resultado antes do rerun
-
                         st.session_state.resultado_analise = (
                             resultado
                         )
@@ -1257,14 +1385,6 @@ elif pagina == "🔍 Buscar Carta por Nome":
                             True
                         )
 
-                        # =================================================
-                        # CORREÇÃO DO SALDO
-                        # =================================================
-                        #
-                        # A página reinicia.
-                        # O perfil será buscado novamente no Supabase.
-                        # Assim 5 vira 4 imediatamente na sidebar.
-
                         st.rerun()
 
                     except Exception as erro:
@@ -1275,7 +1395,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
 
 
     # --------------------------------------------------------
-    # MOSTRAR O RESULTADO MESMO DEPOIS DO RERUN
+    # MOSTRAR RESULTADO APÓS RERUN
     # --------------------------------------------------------
 
     if (
