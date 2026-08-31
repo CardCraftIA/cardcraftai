@@ -64,9 +64,7 @@ def analisar_carta(imagem_pil=None, nome_carta_info=None):
     # Lista atualizada com identificadores exatos e sufixos 'latest'
     ultimo_erro = None
     modelos_disponiveis = [
-        'gemini-1.5-flash-latest',
-        'gemini-1.5-pro-latest',
-        'gemini-2.0-flash'
+        'gemini-3.6-flash'
     ]
   
     prompt_base = f"""
