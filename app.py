@@ -1,8 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
 from PIL import Image
-import io
-import requests
 
 # Configuração da página com tema moderno
 st.set_page_config(
@@ -33,7 +31,7 @@ st.markdown("""
         padding: 1.2rem; border-radius: 12px; text-align: center;
     }
     </style>
-""", unsafe_allow_html=True)
+""", unsafe_unsafe_html=True if hasattr(st, 'unsafe_html') else True)
 
 # Recuperar chaves de segurança
 try:
@@ -61,10 +59,13 @@ idioma = st.sidebar.selectbox("🌐 Idioma / Language", ["Português (BR)", "Eng
 st.sidebar.markdown("---")
 pagina = st.sidebar.radio("Navegação", ["📸 Análise por Foto", "🔍 Buscar Carta por Nome", "💳 Planos e Créditos"])
 
-# Função de Análise com Sistema de Fallback (Prevenção de Erro 404)
-def analisar_carta(imagem_pil, nome_carta_info=None):
-    # Lista de modelos do mais eficiente para o legado
-    modelos_disponiveis = ['gemini-1.5-flash', 'gemini-1.5-pro']
+# Função de Análise com Sistema de Fallback e suporte flexível a imagem/texto
+def analisar_carta(imagem_pil=None, nome_carta_info=None):
+    # Lista de modelos ordenada do mais rápido/econômico ao mais robusto
+    modelos_disponiveis = [
+        'gemini-1.5-flash',
+        'gemini-1.5-pro'
+    ]
     ultimo_erro = None
     
     prompt_base = f"""
@@ -79,23 +80,26 @@ def analisar_carta(imagem_pil, nome_carta_info=None):
        - eBay (Busca: https://www.ebay.com/sch/i.html?_nkw=NOME_DA_CARTA&mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid=SEU_CAMPAIGN_ID_AQUI&customid=cardcraftai&toolid=10001&mkevt=1)
     """
     
-    prompt_final = prompt_base
     if nome_carta_info:
         prompt_final = f"Analise a carta de TCG com base nestas informações: {nome_carta_info}. " + prompt_base
     else:
         prompt_final = "Analise esta carta de TCG enviada por imagem. " + prompt_base
 
-    # Tenta rodar os modelos em ordem. Se um der erro 404, pula para o próximo automaticamente.
+    # Prepara o conteúdo a ser enviado (Apenas texto ou Texto + Imagem)
+    conteudo_payload = [prompt_final]
+    if imagem_pil is not None:
+        conteudo_payload.append(imagem_pil)
+
+    # Tenta rodar os modelos na ordem estipulada
     for nome_modelo in modelos_disponiveis:
         try:
             model = genai.GenerativeModel(nome_modelo)
-            response = model.generate_content([prompt_final, imagem_pil])
+            response = model.generate_content(conteudo_payload)
             return response.text
         except Exception as e:
             ultimo_erro = str(e)
-            continue # Vai para a próxima iteração do loop (tenta o próximo modelo)
+            continue
             
-    # Se todos os modelos falharem, exibe o erro
     raise Exception(f"Falha de comunicação com a API do Google. Detalhes: {ultimo_erro}")
 
 # PÁGINA 1: ANÁLISE POR FOTO
@@ -120,10 +124,11 @@ if pagina == "📸 Análise por Foto":
             if st.button("🚀 Analisar Carta Agora", use_container_width=True):
                 with st.spinner("✨ Inteligência Artificial analisando..."):
                     try:
-                        resultado = analisar_carta(image)
+                        resultado = analisar_carta(imagem_pil=image)
                         st.markdown("---")
                         st.markdown("### 📊 Resultado da Análise")
                         st.markdown(resultado)
+                        st.caption("⚠️ Os preços exibidos são estimativas baseadas em dados de mercado.")
                     except Exception as e:
                         st.error(f"Erro ao processar: {e}")
         else:
@@ -142,14 +147,17 @@ elif pagina == "🔍 Buscar Carta por Nome":
     if st.button("🔍 Buscar e Analisar"):
         if termo_busca:
             with st.spinner(f"Buscando dados para '{termo_busca}'..."):
-                blank_img = Image.new('RGB', (300, 400), color=(30, 41, 59))
-                info_texto = f"Carta pesquisada por texto: {termo_busca} {colecao_busca}"
+                info_texto = f"Nome: {termo_busca} | Coleção/Set: {colecao_busca if colecao_busca else 'Não informada'}"
                 try:
-                    resultado_busca = analisar_carta(blank_img, nome_carta_info=info_texto)
+                    resultado_busca = analisar_carta(imagem_pil=None, nome_carta_info=info_texto)
                     st.markdown("---")
+                    st.markdown("### 📊 Resultado da Busca")
                     st.markdown(resultado_busca)
+                    st.caption("⚠️ Os preços exibidos são estimativas baseadas em dados de mercado.")
                 except Exception as e:
                     st.error(f"Erro na busca: {e}")
+        else:
+            st.warning("Por favor, digite o nome de uma carta para pesquisar.")
 
 # PÁGINA 3: PLANOS E CRÉDITOS
 elif pagina == "💳 Planos e Créditos":
