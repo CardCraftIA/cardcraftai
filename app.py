@@ -217,13 +217,9 @@ def analisar_carta(
     nome_carta_info=None,
 ):
     ultimo_erro = None
-
-    modelos_disponiveis = [
-        "gemini-3.7-flash",
-        "gemini-3.6-flash",
-        "gemini-2.5-flash",
-    ]
-
+modelos_disponiveis = [
+    "gemini-3.6-flash",
+]
     prompt_base = f"""
 Você é um especialista profissional em Trading Card Games (TCG),
 colecionismo, identificação de cartas e pesquisa de mercado.
