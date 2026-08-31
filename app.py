@@ -31,7 +31,7 @@ st.markdown("""
         padding: 1.2rem; border-radius: 12px; text-align: center;
     }
     </style>
-""", unsafe_unsafe_html=True if hasattr(st, 'unsafe_html') else True)
+""", unsafe_allow_html=True)
 
 # Recuperar chaves de segurança
 try:
@@ -176,3 +176,4 @@ elif pagina == "💳 Planos e Créditos":
 
 st.markdown("---")
 st.markdown("<p style='text-align: center; color: #64748b; font-size: 0.9rem;'>CardCraftAI © 2026</p>", unsafe_allow_html=True)
+
