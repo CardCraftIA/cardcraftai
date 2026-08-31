@@ -64,7 +64,7 @@ pagina = st.sidebar.radio("Navegação", ["📸 Análise por Foto", "🔍 Buscar
 # Função de Análise com Sistema de Fallback (Prevenção de Erro 404)
 def analisar_carta(imagem_pil, nome_carta_info=None):
     # Lista de modelos do mais eficiente para o legado
-    modelos_disponiveis = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro-vision']
+    modelos_disponiveis = ['gemini-1.5-flash', 'gemini-1.5-pro']
     ultimo_erro = None
     
     prompt_base = f"""
