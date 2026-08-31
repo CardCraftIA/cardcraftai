@@ -63,6 +63,12 @@ st.markdown(
         border-radius: 12px;
         text-align: center;
     }
+
+    .footer-cardcraft {
+        text-align: center;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -70,7 +76,7 @@ st.markdown(
 
 
 # ============================================================
-# GEMINI
+# CONFIGURAÇÃO DO GEMINI
 # ============================================================
 
 try:
@@ -91,30 +97,11 @@ except Exception:
 st.markdown(
     """
     <div class="hero-box">
-        <h1 style="
-            font-size: 2.8rem;
-            font-weight: 800;
-            background: linear-gradient(
-                90deg,
-                #818cf8,
-                #c084fc,
-                #f472b6
-            );
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-        ">
+        <h1 style="font-size: 2.8rem; font-weight: 800; background: linear-gradient(90deg, #818cf8, #c084fc, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">
             🃏 CardCraftAI
         </h1>
-
-        <p style="
-            font-size: 1.25rem;
-            color: #cbd5e1;
-            max-width: 700px;
-            margin: 0 auto;
-        ">
-            Inteligência artificial para identificação,
-            avaliação e pesquisa de mercado de cartas TCG.
+        <p style="font-size: 1.25rem; color: #cbd5e1; max-width: 700px; margin: 0 auto;">
+            Inteligência artificial para identificação, avaliação e pesquisa de mercado de cartas TCG.
         </p>
     </div>
     """,
@@ -222,7 +209,7 @@ def extrair_fontes(interaction):
 
 
 # ============================================================
-# FUNÇÃO PRINCIPAL
+# FUNÇÃO PRINCIPAL DE ANÁLISE
 # ============================================================
 
 def analisar_carta(
@@ -234,11 +221,11 @@ def analisar_carta(
     modelos_disponiveis = [
         "gemini-3.7-flash",
         "gemini-3.6-flash",
-        "gemini-3.5-flash",
+        "gemini-2.5-flash",
     ]
 
     prompt_base = f"""
-Você é um especialista profissional em Trading Card Games,
+Você é um especialista profissional em Trading Card Games (TCG),
 colecionismo, identificação de cartas e pesquisa de mercado.
 
 Responda obrigatoriamente em {idioma}.
@@ -250,7 +237,7 @@ Sua tarefa possui duas partes:
 
 IMPORTANTE:
 
-Use a pesquisa do Google para buscar informações atuais.
+Use a Pesquisa Google para procurar informações atuais.
 
 Ao pesquisar preços, priorize quando disponíveis:
 
@@ -296,7 +283,7 @@ Apresente quando possível:
 | Mercado | Condição | Moeda | Preço aproximado |
 |---|---|---|---|
 
-Inclua:
+Inclua quando houver informação confiável:
 
 - BRL
 - USD
@@ -428,6 +415,7 @@ pesquise o mercado atual dessa carta na web.
 
         except Exception as erro:
             ultimo_erro = str(erro)
+            continue
 
     raise RuntimeError(
         "Não foi possível concluir a análise com os "
@@ -477,7 +465,7 @@ def mostrar_resultado(
 
 
 # ============================================================
-# PÁGINA 1
+# PÁGINA 1: ANÁLISE POR FOTO
 # ============================================================
 
 if pagina == "📸 Análise por Foto":
@@ -544,10 +532,8 @@ if pagina == "📸 Análise por Foto":
                         "pesquisando preços atuais..."
                     ):
                         try:
-                            resultado, fontes = (
-                                analisar_carta(
-                                    imagem_pil=image
-                                )
+                            resultado, fontes = analisar_carta(
+                                imagem_pil=image
                             )
 
                             mostrar_resultado(
@@ -574,7 +560,7 @@ if pagina == "📸 Análise por Foto":
 
 
 # ============================================================
-# PÁGINA 2
+# PÁGINA 2: BUSCAR CARTA POR NOME
 # ============================================================
 
 elif pagina == "🔍 Buscar Carta por Nome":
@@ -616,6 +602,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
                     f"Nome: {termo_busca}\n"
                     f"Coleção/Set: {colecao_busca}"
                 )
+
             else:
                 info_texto = (
                     f"Nome: {termo_busca}\n"
@@ -643,7 +630,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
 
 
 # ============================================================
-# PÁGINA 3
+# PÁGINA 3: PLANOS E CRÉDITOS
 # ============================================================
 
 elif pagina == "💳 Planos e Créditos":
@@ -661,13 +648,8 @@ elif pagina == "💳 Planos e Créditos":
             """
             <div class="card-metric">
                 <h3>🎒 Pacote Colecionador</h3>
-                <h2 style="color: #818cf8;">
-                    R$ 29,90
-                </h2>
-                <p>
-                    Para colecionadores que desejam
-                    analisar suas cartas.
-                </p>
+                <h2 style="color: #818cf8;">R$ 29,90</h2>
+                <p>Para colecionadores que desejam analisar suas cartas.</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -684,18 +666,10 @@ elif pagina == "💳 Planos e Créditos":
     with col2:
         st.markdown(
             """
-            <div
-                class="card-metric"
-                style="border: 2px solid #818cf8;"
-            >
+            <div class="card-metric" style="border: 2px solid #818cf8;">
                 <h3>🏢 Plano Lojista B2B</h3>
-                <h2 style="color: #c084fc;">
-                    R$ 149,90/mês
-                </h2>
-                <p>
-                    Para lojas e vendedores
-                    profissionais de TCG.
-                </p>
+                <h2 style="color: #c084fc;">R$ 149,90/mês</h2>
+                <p>Para lojas e vendedores profissionais de TCG.</p>
             </div>
             """,
             unsafe_allow_html=True,
@@ -717,14 +691,6 @@ elif pagina == "💳 Planos e Créditos":
 st.markdown("---")
 
 st.markdown(
-    """
-    <p style="
-        text-align: center;
-        color: #64748b;
-        font-size: 0.9rem;
-    ">
-        CardCraftAI © 2026
-    </p>
-    """,
+    '<p class="footer-cardcraft">CardCraftAI © 2026</p>',
     unsafe_allow_html=True,
 )
