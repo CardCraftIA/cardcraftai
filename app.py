@@ -268,6 +268,56 @@ def buscar_creditos():
     )
 
 
+def buscar_pacotes_ativos():
+
+    try:
+
+        resposta = (
+            supabase
+            .table("credit_packages")
+            .select(
+                "id,code,name,description,credits,"
+                "price_cents,currency,package_type,active"
+            )
+            .eq(
+                "active",
+                True
+            )
+            .order(
+                "price_cents"
+            )
+            .execute()
+        )
+
+        return resposta.data or []
+
+    except Exception as erro:
+
+        raise RuntimeError(
+            "Não foi possível carregar os planos e pacotes.\n\n"
+            f"Detalhes: {erro}"
+        )
+
+
+def formatar_preco_brl(
+    price_cents
+):
+
+    valor = (
+        int(price_cents or 0)
+        / 100
+    )
+
+    texto = (
+        f"{valor:,.2f}"
+        .replace(",", "X")
+        .replace(".", ",")
+        .replace("X", ".")
+    )
+
+    return f"R$ {texto}"
+
+
 # ============================================================
 # NOVO SISTEMA ATÔMICO DE CRÉDITOS
 # ============================================================
@@ -1437,66 +1487,215 @@ elif pagina == "💳 Planos e Créditos":
         "5 créditos gratuitos."
     )
 
-    st.divider()
-
-    col1, col2 = st.columns(
-        2,
-        gap="large",
+    st.caption(
+        "Os pacotes abaixo são carregados diretamente "
+        "do Supabase."
     )
 
+    st.divider()
 
-    with col1:
+    try:
 
-        st.subheader(
-            "🎒 Pacote Colecionador"
+        pacotes = buscar_pacotes_ativos()
+
+    except Exception as erro:
+
+        st.error(
+            str(erro)
         )
 
-        st.metric(
-            "Preço",
-            "R$ 29,90",
+        pacotes = []
+
+
+    if not pacotes:
+
+        st.warning(
+            "Nenhum pacote ativo está disponível no momento."
         )
 
-        st.write(
-            "Pacote de créditos para "
-            "colecionadores."
-        )
+    else:
 
-        if st.button(
-            "Comprar Pacote Colecionador",
-            use_container_width=True,
-        ):
+        pacotes_avulsos = [
+            pacote
+            for pacote in pacotes
+            if pacote.get("package_type") == "one_time"
+        ]
 
-            st.info(
-                "💳 O checkout será configurado "
-                "em uma próxima etapa."
+        assinaturas = [
+            pacote
+            for pacote in pacotes
+            if pacote.get("package_type") == "subscription"
+        ]
+
+
+        if pacotes_avulsos:
+
+            st.subheader(
+                "🎒 Pacotes de Créditos"
             )
 
-
-    with col2:
-
-        st.subheader(
-            "🏢 Plano Lojista B2B"
-        )
-
-        st.metric(
-            "Preço",
-            "R$ 149,90/mês",
-        )
-
-        st.write(
-            "Para lojas e vendedores "
-            "profissionais de TCG."
-        )
-
-        if st.button(
-            "Assinar Plano Lojista",
-            use_container_width=True,
-        ):
-
-            st.info(
-                "💳 O checkout será configurado "
-                "em uma próxima etapa."
+            colunas = st.columns(
+                len(pacotes_avulsos),
+                gap="large",
             )
+
+            for coluna, pacote in zip(
+                colunas,
+                pacotes_avulsos,
+            ):
+
+                with coluna:
+
+                    nome = pacote.get(
+                        "name",
+                        "Pacote"
+                    )
+
+                    descricao = pacote.get(
+                        "description",
+                        ""
+                    )
+
+                    qtd_creditos = int(
+                        pacote.get(
+                            "credits",
+                            0
+                        )
+                    )
+
+                    preco = formatar_preco_brl(
+                        pacote.get(
+                            "price_cents",
+                            0
+                        )
+                    )
+
+                    codigo = pacote.get(
+                        "code",
+                        str(
+                            pacote.get(
+                                "id",
+                                "pacote"
+                            )
+                        )
+                    )
+
+                    st.subheader(
+                        f"💎 {nome}"
+                    )
+
+                    st.metric(
+                        "Créditos",
+                        qtd_creditos,
+                    )
+
+                    st.metric(
+                        "Preço",
+                        preco,
+                    )
+
+                    if descricao:
+
+                        st.write(
+                            descricao
+                        )
+
+                    if st.button(
+                        f"Comprar {nome}",
+                        use_container_width=True,
+                        key=f"comprar_{codigo}",
+                    ):
+
+                        st.info(
+                            "💳 O checkout ainda não está conectado. "
+                            "Na próxima etapa vamos vincular este botão "
+                            "a um provedor de pagamento."
+                        )
+
+
+        if assinaturas:
+
+            st.divider()
+
+            st.subheader(
+                "🏢 Assinaturas"
+            )
+
+            for pacote in assinaturas:
+
+                nome = pacote.get(
+                    "name",
+                    "Plano"
+                )
+
+                descricao = pacote.get(
+                    "description",
+                    ""
+                )
+
+                qtd_creditos = int(
+                    pacote.get(
+                        "credits",
+                        0
+                    )
+                )
+
+                preco = formatar_preco_brl(
+                    pacote.get(
+                        "price_cents",
+                        0
+                    )
+                )
+
+                codigo = pacote.get(
+                    "code",
+                    str(
+                        pacote.get(
+                            "id",
+                            "assinatura"
+                        )
+                    )
+                )
+
+                col1, col2 = st.columns(
+                    [2, 1],
+                    gap="large",
+                )
+
+                with col1:
+
+                    st.subheader(
+                        f"🏪 {nome}"
+                    )
+
+                    if descricao:
+
+                        st.write(
+                            descricao
+                        )
+
+                    st.write(
+                        f"**{qtd_creditos} créditos por ciclo**"
+                    )
+
+                with col2:
+
+                    st.metric(
+                        "Mensalidade",
+                        preco,
+                    )
+
+                    if st.button(
+                        f"Assinar {nome}",
+                        use_container_width=True,
+                        key=f"assinar_{codigo}",
+                    ):
+
+                        st.info(
+                            "💳 A assinatura ainda não está conectada "
+                            "ao checkout. Faremos essa integração "
+                            "na próxima etapa."
+                        )
 
 
 # ============================================================
