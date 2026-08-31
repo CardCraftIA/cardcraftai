@@ -95,6 +95,12 @@ if "user_email" not in st.session_state:
 if "resultado_analise" not in st.session_state:
     st.session_state.resultado_analise = None
 
+if "resultado_tipo" not in st.session_state:
+    st.session_state.resultado_tipo = None
+
+if "resultado_novo" not in st.session_state:
+    st.session_state.resultado_novo = False
+
 
 # ============================================================
 # SUPABASE
@@ -124,6 +130,7 @@ def criar_cliente_supabase():
             )
 
             if resposta.session:
+
                 st.session_state.access_token = (
                     resposta.session.access_token
                 )
@@ -133,6 +140,7 @@ def criar_cliente_supabase():
                 )
 
             if resposta.user:
+
                 st.session_state.user_id = (
                     resposta.user.id
                 )
@@ -142,6 +150,7 @@ def criar_cliente_supabase():
                 )
 
         except Exception:
+
             st.session_state.access_token = None
             st.session_state.refresh_token = None
             st.session_state.user_id = None
@@ -174,6 +183,7 @@ def salvar_sessao(resposta):
     )
 
     if resposta.user:
+
         st.session_state.user_id = (
             resposta.user.id
         )
@@ -191,7 +201,10 @@ def limpar_sessao():
     st.session_state.refresh_token = None
     st.session_state.user_id = None
     st.session_state.user_email = None
+
     st.session_state.resultado_analise = None
+    st.session_state.resultado_tipo = None
+    st.session_state.resultado_novo = False
 
 
 def usuario_logado():
@@ -213,6 +226,7 @@ def buscar_perfil():
         return None
 
     try:
+
         resposta = (
             supabase
             .table("profiles")
@@ -230,6 +244,7 @@ def buscar_perfil():
         return resposta.data
 
     except Exception:
+
         return None
 
 
@@ -253,6 +268,7 @@ def consumir_credito(
 ):
 
     try:
+
         resposta = (
             supabase
             .rpc(
@@ -267,6 +283,7 @@ def consumir_credito(
         return resposta.data
 
     except Exception as erro:
+
         raise RuntimeError(
             f"Não foi possível descontar o crédito: {erro}"
         )
@@ -456,9 +473,11 @@ presente na imagem.
         ]
 
     else:
+
         entrada = prompt_final
 
     try:
+
         interaction = (
             gemini_client
             .interactions
@@ -471,6 +490,7 @@ presente na imagem.
         resultado = interaction.output_text
 
         if not resultado:
+
             raise RuntimeError(
                 "O Gemini respondeu sem conteúdo."
             )
@@ -478,6 +498,7 @@ presente na imagem.
         return resultado
 
     except Exception as erro:
+
         raise RuntimeError(
             "Falha na análise com Gemini 3.6 Flash.\n\n"
             f"Detalhes: {erro}"
@@ -498,12 +519,16 @@ def executar_analise_com_credito(
     saldo_atual = buscar_creditos()
 
     if saldo_atual <= 0:
+
         raise RuntimeError(
             "Você não possui créditos disponíveis."
         )
 
-    # Primeiro executa o Gemini.
-    # Se a IA falhar, o usuário não perde crédito.
+    # --------------------------------------------------------
+    # PRIMEIRO EXECUTA O GEMINI
+    # --------------------------------------------------------
+    #
+    # Se o Gemini falhar, não descontamos crédito.
 
     resultado = analisar_carta(
         idioma=idioma,
@@ -511,8 +536,9 @@ def executar_analise_com_credito(
         nome_carta_info=nome_carta_info,
     )
 
-    # Somente depois de resposta bem-sucedida
-    # desconta 1 crédito.
+    # --------------------------------------------------------
+    # SOMENTE DEPOIS DA RESPOSTA, DESCONTA 1 CRÉDITO
+    # --------------------------------------------------------
 
     consumir_credito(
         tipo_acao
@@ -527,7 +553,9 @@ def executar_analise_com_credito(
 
 def tela_login():
 
-    st.title("🃏 CardCraftAI")
+    st.title(
+        "🃏 CardCraftAI"
+    )
 
     st.subheader(
         "Inteligência artificial para "
@@ -588,6 +616,7 @@ def tela_login():
             else:
 
                 try:
+
                     resposta = (
                         supabase
                         .auth
@@ -706,17 +735,14 @@ def tela_login():
             else:
 
                 try:
+
                     resposta = (
                         supabase
                         .auth
                         .sign_up(
                             {
-                                "email": (
-                                    email_cadastro
-                                ),
-                                "password": (
-                                    senha_cadastro
-                                ),
+                                "email": email_cadastro,
+                                "password": senha_cadastro,
                             }
                         )
                     )
@@ -742,7 +768,7 @@ def tela_login():
                         st.info(
                             "📧 Verifique sua caixa de e-mail. "
                             "O Supabase pode exigir a confirmação "
-                            "do endereço antes do primeiro login."
+                            "antes do primeiro login."
                         )
 
                 except Exception as erro:
@@ -781,8 +807,9 @@ if not perfil:
     )
 
     st.info(
-        "Se isso acontecer no primeiro teste, "
-        "vamos verificar a tabela profiles e o trigger."
+        "Saia da conta e entre novamente. "
+        "Se continuar acontecendo, "
+        "precisaremos verificar o trigger."
     )
 
     if st.button(
@@ -790,9 +817,11 @@ if not perfil:
     ):
 
         try:
+
             supabase.auth.sign_out()
 
         except Exception:
+
             pass
 
         limpar_sessao()
@@ -846,6 +875,7 @@ if creditos == 0:
         "Você não possui créditos disponíveis."
     )
 
+
 st.sidebar.divider()
 
 
@@ -881,9 +911,11 @@ if st.sidebar.button(
 ):
 
     try:
+
         supabase.auth.sign_out()
 
     except Exception:
+
         pass
 
     limpar_sessao()
@@ -892,7 +924,7 @@ if st.sidebar.button(
 
 
 # ============================================================
-# CABEÇALHO PRINCIPAL
+# CABEÇALHO
 # ============================================================
 
 st.title(
@@ -1002,6 +1034,7 @@ if pagina == "📸 Análise por Foto":
         if uploaded_file is not None:
 
             try:
+
                 imagem = Image.open(
                     uploaded_file
                 )
@@ -1026,6 +1059,7 @@ if pagina == "📸 Análise por Foto":
                     if st.button(
                         "🚀 Analisar Carta — 1 crédito",
                         use_container_width=True,
+                        key="btn_analise_foto",
                     ):
 
                         with st.spinner(
@@ -1033,6 +1067,7 @@ if pagina == "📸 Análise por Foto":
                         ):
 
                             try:
+
                                 resultado = (
                                     executar_analise_com_credito(
                                         idioma=idioma,
@@ -1041,17 +1076,30 @@ if pagina == "📸 Análise por Foto":
                                     )
                                 )
 
-                                st.session_state[
-                                    "resultado_analise"
-                                ] = resultado
+                                # Guarda o resultado para sobreviver
+                                # ao st.rerun()
 
-                                st.success(
-                                    "✅ Análise concluída."
-                                )
-
-                                mostrar_resultado(
+                                st.session_state.resultado_analise = (
                                     resultado
                                 )
+
+                                st.session_state.resultado_tipo = (
+                                    "foto"
+                                )
+
+                                st.session_state.resultado_novo = (
+                                    True
+                                )
+
+                                # =================================================
+                                # CORREÇÃO DO SALDO
+                                # =================================================
+                                #
+                                # Recarrega o aplicativo.
+                                # Na nova execução, o perfil é buscado novamente
+                                # no Supabase e a sidebar mostrará o saldo atualizado.
+
+                                st.rerun()
 
                             except Exception as erro:
 
@@ -1072,6 +1120,29 @@ if pagina == "📸 Análise por Foto":
                 "👈 Envie ou tire uma foto "
                 "para começar."
             )
+
+
+    # --------------------------------------------------------
+    # MOSTRAR RESULTADO APÓS O RERUN
+    # --------------------------------------------------------
+
+    if (
+        st.session_state.resultado_analise
+        and
+        st.session_state.resultado_tipo == "foto"
+    ):
+
+        if st.session_state.resultado_novo:
+
+            st.success(
+                "✅ Análise concluída."
+            )
+
+            st.session_state.resultado_novo = False
+
+        mostrar_resultado(
+            st.session_state.resultado_analise
+        )
 
 
 # ============================================================
@@ -1097,6 +1168,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
         termo_busca = st.text_input(
             "Nome da carta",
             placeholder="Ex.: Charizard ex",
+            key="termo_busca",
         )
 
     with col2:
@@ -1104,7 +1176,9 @@ elif pagina == "🔍 Buscar Carta por Nome":
         colecao_busca = st.text_input(
             "Coleção / Set",
             placeholder="Ex.: 151",
+            key="colecao_busca",
         )
+
 
     if creditos <= 0:
 
@@ -1122,17 +1196,18 @@ elif pagina == "🔍 Buscar Carta por Nome":
         if st.button(
             "🔍 Analisar — 1 crédito",
             use_container_width=True,
+            key="btn_analise_nome",
         ):
 
-            termo_busca = (
+            termo = (
                 termo_busca.strip()
             )
 
-            colecao_busca = (
+            colecao = (
                 colecao_busca.strip()
             )
 
-            if not termo_busca:
+            if not termo:
 
                 st.warning(
                     "Digite o nome da carta."
@@ -1140,17 +1215,17 @@ elif pagina == "🔍 Buscar Carta por Nome":
 
             else:
 
-                if colecao_busca:
+                if colecao:
 
                     info_texto = (
-                        f"Nome: {termo_busca}\n"
-                        f"Coleção/Set: {colecao_busca}"
+                        f"Nome: {termo}\n"
+                        f"Coleção/Set: {colecao}"
                     )
 
                 else:
 
                     info_texto = (
-                        f"Nome: {termo_busca}\n"
+                        f"Nome: {termo}\n"
                         "Coleção/Set: não informada"
                     )
 
@@ -1159,6 +1234,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
                 ):
 
                     try:
+
                         resultado = (
                             executar_analise_com_credito(
                                 idioma=idioma,
@@ -1167,23 +1243,58 @@ elif pagina == "🔍 Buscar Carta por Nome":
                             )
                         )
 
-                        st.session_state[
-                            "resultado_analise"
-                        ] = resultado
+                        # Guarda o resultado antes do rerun
 
-                        st.success(
-                            "✅ Análise concluída."
-                        )
-
-                        mostrar_resultado(
+                        st.session_state.resultado_analise = (
                             resultado
                         )
+
+                        st.session_state.resultado_tipo = (
+                            "nome"
+                        )
+
+                        st.session_state.resultado_novo = (
+                            True
+                        )
+
+                        # =================================================
+                        # CORREÇÃO DO SALDO
+                        # =================================================
+                        #
+                        # A página reinicia.
+                        # O perfil será buscado novamente no Supabase.
+                        # Assim 5 vira 4 imediatamente na sidebar.
+
+                        st.rerun()
 
                     except Exception as erro:
 
                         st.error(
                             f"Erro: {erro}"
                         )
+
+
+    # --------------------------------------------------------
+    # MOSTRAR O RESULTADO MESMO DEPOIS DO RERUN
+    # --------------------------------------------------------
+
+    if (
+        st.session_state.resultado_analise
+        and
+        st.session_state.resultado_tipo == "nome"
+    ):
+
+        if st.session_state.resultado_novo:
+
+            st.success(
+                "✅ Análise concluída."
+            )
+
+            st.session_state.resultado_novo = False
+
+        mostrar_resultado(
+            st.session_state.resultado_analise
+        )
 
 
 # ============================================================
@@ -1213,6 +1324,7 @@ elif pagina == "💳 Planos e Créditos":
         gap="large",
     )
 
+
     with col1:
 
         st.subheader(
@@ -1238,6 +1350,7 @@ elif pagina == "💳 Planos e Créditos":
                 "💳 O checkout será configurado "
                 "em uma próxima etapa."
             )
+
 
     with col2:
 
