@@ -62,13 +62,13 @@ pagina = st.sidebar.radio("Navegação", ["📸 Análise por Foto", "🔍 Buscar
 # Função de Análise com Sistema de Fallback blindado contra o erro 404
 def analisar_carta(imagem_pil=None, nome_carta_info=None):
     # Lista atualizada com identificadores exatos e sufixos 'latest'
-    
     ultimo_erro = None
-   modelos_disponiveis = [
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-pro-latest',
-    'gemini-2.0-flash'
-]
+    modelos_disponiveis = [
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-pro-latest',
+        'gemini-2.0-flash'
+    ]
+  
     prompt_base = f"""
     Por favor, forneça em {idioma}:
     1. Nome exato da carta, Jogo (Pokémon, Magic, etc.) e Número/Set.
