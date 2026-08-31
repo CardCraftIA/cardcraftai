@@ -65,9 +65,10 @@ def analisar_carta(imagem_pil=None, nome_carta_info=None):
     
     ultimo_erro = None
     modelos_disponiveis = [
-     'gemini-1.5-flash',
-     'gemini-1.5-pro'
- ]
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro-latest',
+    'gemini-pro-vision'
+]
     prompt_base = f"""
     Por favor, forneça em {idioma}:
     1. Nome exato da carta, Jogo (Pokémon, Magic, etc.) e Número/Set.
