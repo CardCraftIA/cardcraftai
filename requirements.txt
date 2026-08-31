@@ -1,9 +1,6 @@
 streamlit
-google-genai
-pillow
-python-dotenv
-supabase
-streamlit
 google-generativeai>=0.7.0
 Pillow
 requests
+python-dotenv
+supabase
