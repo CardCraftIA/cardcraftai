@@ -1,4 +1,8 @@
+# CARDCRAFTAI RELIABILITY 1.0
+# Identificacao estruturada, incerteza explicita e validacao de resposta
+
 import base64
+import json
 import uuid
 from io import BytesIO
 
@@ -66,6 +70,275 @@ except Exception:
         "- SUPABASE_KEY"
     )
     st.stop()
+
+
+# ============================================================
+# RELIABILITY 1.0 - CONTRATO ESTRUTURADO DA IA
+# ============================================================
+
+ANALISE_CARTA_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "status_identificacao": {
+            "type": "string",
+            "enum": ["confirmada", "provavel", "incerta"],
+            "description": (
+                "Grau preliminar de identificacao segundo o modelo. "
+                "Nao representa validacao por catalogo externo."
+            ),
+        },
+        "jogo": {"type": ["string", "null"]},
+        "nome_carta": {"type": ["string", "null"]},
+        "colecao_set": {"type": ["string", "null"]},
+        "numero_carta": {"type": ["string", "null"]},
+        "raridade": {"type": ["string", "null"]},
+        "variante": {"type": ["string", "null"]},
+        "idioma_carta": {"type": ["string", "null"]},
+        "ano": {"type": ["integer", "null"]},
+        "qualidade_imagem": {
+            "type": "string",
+            "enum": ["boa", "aceitavel", "ruim", "nao_aplicavel"],
+        },
+        "motivo_qualidade_imagem": {"type": ["string", "null"]},
+        "evidencias_visuais": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "campos_incertos": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "informacoes_gerais": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "condicao_aparente": {
+            "type": "object",
+            "properties": {
+                "estimativa": {
+                    "type": "string",
+                    "enum": [
+                        "Near Mint",
+                        "Lightly Played",
+                        "Moderately Played",
+                        "Heavily Played",
+                        "indeterminada",
+                        "nao_aplicavel",
+                    ],
+                },
+                "observacoes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+            },
+            "required": ["estimativa", "observacoes"],
+        },
+        "autenticidade_visual": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "sem_sinais_obvios",
+                        "requer_verificacao",
+                        "indeterminada",
+                        "nao_aplicavel",
+                    ],
+                },
+                "observacoes": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+            },
+            "required": ["status", "observacoes"],
+        },
+        "conservacao": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "anuncio_venda": {"type": ["string", "null"]},
+        "mercado": {
+            "type": "object",
+            "properties": {
+                "dados_atualizados_disponiveis": {"type": "boolean"},
+                "observacao": {"type": "string"},
+            },
+            "required": ["dados_atualizados_disponiveis", "observacao"],
+        },
+    },
+    "required": [
+        "status_identificacao",
+        "jogo",
+        "nome_carta",
+        "colecao_set",
+        "numero_carta",
+        "raridade",
+        "variante",
+        "idioma_carta",
+        "ano",
+        "qualidade_imagem",
+        "motivo_qualidade_imagem",
+        "evidencias_visuais",
+        "campos_incertos",
+        "informacoes_gerais",
+        "condicao_aparente",
+        "autenticidade_visual",
+        "conservacao",
+        "anuncio_venda",
+        "mercado",
+    ],
+}
+
+
+def validar_analise_estruturada(dados):
+    if not isinstance(dados, dict):
+        raise RuntimeError("A IA nao retornou um objeto JSON valido.")
+
+    obrigatorios = ANALISE_CARTA_SCHEMA["required"]
+    ausentes = [campo for campo in obrigatorios if campo not in dados]
+    if ausentes:
+        raise RuntimeError(
+            "A resposta estruturada veio incompleta. "
+            f"Campos ausentes: {', '.join(ausentes)}"
+        )
+
+    status_validos = {"confirmada", "provavel", "incerta"}
+    if dados.get("status_identificacao") not in status_validos:
+        raise RuntimeError("Status de identificacao invalido.")
+
+    qualidade_valida = {"boa", "aceitavel", "ruim", "nao_aplicavel"}
+    if dados.get("qualidade_imagem") not in qualidade_valida:
+        raise RuntimeError("Classificacao de qualidade da imagem invalida.")
+
+    for campo_lista in [
+        "evidencias_visuais",
+        "campos_incertos",
+        "informacoes_gerais",
+        "conservacao",
+    ]:
+        if not isinstance(dados.get(campo_lista), list):
+            raise RuntimeError(f"Campo {campo_lista} deveria ser uma lista.")
+
+    for bloco in ["condicao_aparente", "autenticidade_visual", "mercado"]:
+        if not isinstance(dados.get(bloco), dict):
+            raise RuntimeError(f"Bloco {bloco} veio em formato invalido.")
+
+    # Nesta versao a pesquisa de mercado permanece desativada.
+    dados["mercado"]["dados_atualizados_disponiveis"] = False
+
+    return dados
+
+
+def texto_ou_nao_confirmado(valor):
+    if valor is None:
+        return "Nao confirmado"
+    texto = str(valor).strip()
+    return texto if texto else "Nao confirmado"
+
+
+def formatar_resultado_estruturado(dados):
+    status = dados.get("status_identificacao", "incerta")
+    rotulos_status = {
+        "confirmada": "🟢 Identificacao preliminar forte",
+        "provavel": "🟡 Identificacao provavel",
+        "incerta": "🔴 Identificacao incerta",
+    }
+
+    qualidade = dados.get("qualidade_imagem", "nao_aplicavel")
+    rotulos_qualidade = {
+        "boa": "Boa",
+        "aceitavel": "Aceitavel",
+        "ruim": "Ruim",
+        "nao_aplicavel": "Nao aplicavel",
+    }
+
+    linhas = [
+        "## 🃏 Identificacao",
+        f"**Status:** {rotulos_status.get(status, '🔴 Identificacao incerta')}",
+        "",
+        f"- **Jogo:** {texto_ou_nao_confirmado(dados.get('jogo'))}",
+        f"- **Nome:** {texto_ou_nao_confirmado(dados.get('nome_carta'))}",
+        f"- **Colecao / Set:** {texto_ou_nao_confirmado(dados.get('colecao_set'))}",
+        f"- **Numero:** {texto_ou_nao_confirmado(dados.get('numero_carta'))}",
+        f"- **Raridade:** {texto_ou_nao_confirmado(dados.get('raridade'))}",
+        f"- **Variante:** {texto_ou_nao_confirmado(dados.get('variante'))}",
+        f"- **Idioma:** {texto_ou_nao_confirmado(dados.get('idioma_carta'))}",
+        f"- **Ano:** {texto_ou_nao_confirmado(dados.get('ano'))}",
+        "",
+        "### 📸 Qualidade da entrada",
+        f"**Imagem:** {rotulos_qualidade.get(qualidade, 'Nao aplicavel')}",
+    ]
+
+    motivo = dados.get("motivo_qualidade_imagem")
+    if motivo:
+        linhas.append(f"\n{motivo}")
+
+    evidencias = dados.get("evidencias_visuais") or []
+    if evidencias:
+        linhas.extend(["", "### 🔎 Evidencias usadas"])
+        linhas.extend([f"- {item}" for item in evidencias])
+
+    incertos = dados.get("campos_incertos") or []
+    if incertos:
+        linhas.extend(["", "### ⚠️ Dados que precisam de confirmacao"])
+        linhas.extend([f"- {item}" for item in incertos])
+
+    gerais = dados.get("informacoes_gerais") or []
+    if gerais:
+        linhas.extend(["", "## 📊 Informacoes gerais"])
+        linhas.extend([f"- {item}" for item in gerais])
+
+    condicao = dados.get("condicao_aparente") or {}
+    linhas.extend([
+        "",
+        "## 🔎 Condicao aparente",
+        f"**Estimativa visual:** {condicao.get('estimativa', 'indeterminada')}",
+    ])
+    for item in condicao.get("observacoes") or []:
+        linhas.append(f"- {item}")
+
+    autenticidade = dados.get("autenticidade_visual") or {}
+    rotulos_autenticidade = {
+        "sem_sinais_obvios": "Sem sinais obvios na imagem, mas nao certificada",
+        "requer_verificacao": "Ha sinais que merecem verificacao adicional",
+        "indeterminada": "Nao foi possivel avaliar pela imagem",
+        "nao_aplicavel": "Nao aplicavel",
+    }
+    linhas.extend([
+        "",
+        "## ⚠️ Autenticidade visual",
+        f"**Status:** {rotulos_autenticidade.get(autenticidade.get('status'), 'Indeterminada')}",
+    ])
+    for item in autenticidade.get("observacoes") or []:
+        linhas.append(f"- {item}")
+    linhas.append(
+        "\nEsta avaliacao visual nao substitui autenticacao profissional presencial."
+    )
+
+    linhas.extend([
+        "",
+        "## 💰 Mercado",
+        "Dados de preco atualizados ainda nao estao conectados nesta versao. "
+        "O CardCraftAI nao inventa valores de mercado.",
+    ])
+
+    conservacao = dados.get("conservacao") or []
+    if conservacao:
+        linhas.extend(["", "## 🛡️ Conservacao"])
+        linhas.extend([f"- {item}" for item in conservacao])
+
+    anuncio = dados.get("anuncio_venda")
+    if anuncio:
+        linhas.extend(["", "## 📝 Base para anuncio", anuncio])
+
+    linhas.extend([
+        "",
+        "---",
+        "*Reliability 1.0: a identificacao acima ainda nao foi validada contra um catalogo TCG externo. "
+        "Essa validacao sera adicionada na proxima fase.*",
+    ])
+
+    return "\n".join(linhas)
 
 
 # ============================================================
@@ -454,139 +727,52 @@ def analisar_carta(
     modelo = "gemini-3.6-flash"
 
     prompt_base = f"""
-Você é um especialista profissional em Trading Card Games (TCG),
-colecionismo, identificação e avaliação de cartas.
+Voce atua como especialista em Trading Card Games (TCG), mas deve priorizar
+precisao e incerteza explicita acima de completar campos.
 
-Responda obrigatoriamente em {idioma}.
+Responda em {idioma} nos campos descritivos.
 
-IMPORTANTE:
-
-A pesquisa web está temporariamente desativada.
-
-Não invente preços atuais.
-Não diga que consultou sites.
-Não invente vendas recentes.
-Não invente anúncios existentes.
-
-Se algum dado não puder ser confirmado,
-informe claramente que precisa ser verificado.
-
-Organize a resposta da seguinte maneira:
-
-# 🃏 Identificação
-
-Informe, quando possível:
-
-- Nome exato
-- Jogo
-- Coleção / Set
-- Número da carta
-- Raridade
-- Variante
-- Ano
-
-# 📊 Informações Gerais
-
-Explique:
-
-- importância da carta;
-- características conhecidas;
-- versões possíveis;
-- fatores que podem influenciar o valor.
-
-# 💰 Mercado
-
-A pesquisa web está desativada nesta versão.
-
-Não invente preços.
-
-Informe que os valores atuais deverão ser
-consultados posteriormente em plataformas como:
-
-- Liga Pokémon
-- Mercado Livre
-- eBay
-- TCGplayer
-- Cardmarket
-- PriceCharting
-
-# 🔎 Condição Aparente
-
-Se houver fotografia, avalie visualmente:
-
-- cantos;
-- bordas;
-- superfície;
-- centralização;
-- riscos;
-- amassados;
-- marcas;
-- desgaste.
-
-Utilize somente como estimativa:
-
-- Near Mint
-- Lightly Played
-- Moderately Played
-- Heavily Played
-
-Não atribua nota definitiva de:
-
-- PSA
-- BGS
-- CGC
-
-# ⚠️ Autenticidade
-
-Informe sinais visuais relevantes.
-
-Nunca declare uma carta como definitivamente
-autêntica apenas com base em uma fotografia.
-
-# 🛡️ Conservação
-
-Dê recomendações sobre:
-
-- sleeve;
-- top loader;
-- armazenamento;
-- umidade;
-- luz solar.
-
-# 📝 Anúncio para Venda
-
-Crie um texto curto e profissional
-para servir como base de anúncio.
-
-Não invente características que
-não tenham sido confirmadas.
+REGRAS OBRIGATORIAS:
+- Retorne somente dados compativeis com o schema solicitado.
+- Quando um dado nao puder ser confirmado, use null e inclua o nome do campo
+  em campos_incertos.
+- Nao invente colecao, numero, raridade, variante, idioma ou ano.
+- Nao invente precos, vendas recentes, anuncios ou consultas a sites.
+- A pesquisa web esta desativada nesta versao.
+- status_identificacao e apenas a avaliacao preliminar do modelo; nao significa
+  validacao contra catalogo externo.
+- Use status "confirmada" somente se nome e varios identificadores relevantes
+  estiverem claramente legiveis ou explicitamente fornecidos.
+- Se houver fotografia, avalie a qualidade da imagem e cite evidencias visuais.
+- Se a imagem estiver ruim, prefira status "incerta" e explique o motivo.
+- Condicao e apenas estimativa visual; nunca atribua nota PSA, BGS ou CGC.
+- Nunca declare autenticidade definitiva apenas por fotografia.
+- Em autenticidade_visual, "sem_sinais_obvios" significa apenas que nada
+  evidente foi observado na imagem, nao que a carta seja autentica.
+- mercado.dados_atualizados_disponiveis deve ser false.
+- O anuncio de venda deve evitar qualquer caracteristica nao confirmada.
 """
 
     if nome_carta_info:
-
         prompt_final = f"""
-Analise esta carta com base nestas informações:
+Analise a carta a partir das informacoes fornecidas pelo usuario:
 
 {nome_carta_info}
 
+Nao trate o texto do usuario como prova de campos que ele nao informou.
+
 {prompt_base}
 """
-
     else:
-
         prompt_final = f"""
-Identifique cuidadosamente a carta
-presente na imagem.
+Identifique cuidadosamente a carta presente na imagem.
+Leia, quando realmente visiveis, nome, numero, set, idioma e outros marcadores.
 
 {prompt_base}
 """
 
     if imagem_pil is not None:
-
-        imagem_base64 = imagem_para_base64(
-            imagem_pil
-        )
-
+        imagem_base64 = imagem_para_base64(imagem_pil)
         entrada = [
             {
                 "type": "text",
@@ -598,36 +784,37 @@ presente na imagem.
                 "mime_type": "image/jpeg",
             },
         ]
-
     else:
-
         entrada = prompt_final
 
     try:
-
-        interaction = (
-            gemini_client
-            .interactions
-            .create(
-                model=modelo,
-                input=entrada,
-            )
+        interaction = gemini_client.interactions.create(
+            model=modelo,
+            input=entrada,
+            response_format={
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": ANALISE_CARTA_SCHEMA,
+            },
         )
 
-        resultado = interaction.output_text
+        texto_json = interaction.output_text
+        if not texto_json:
+            raise RuntimeError("O Gemini respondeu sem conteudo.")
 
-        if not resultado:
-
+        try:
+            dados = json.loads(texto_json)
+        except json.JSONDecodeError as erro_json:
             raise RuntimeError(
-                "O Gemini respondeu sem conteúdo."
+                "O Gemini nao retornou JSON valido. "
+                f"Detalhes: {erro_json}"
             )
 
-        return resultado
+        return validar_analise_estruturada(dados)
 
     except Exception as erro:
-
         raise RuntimeError(
-            "Falha na análise com Gemini 3.6 Flash.\n\n"
+            "Falha na analise estruturada com Gemini 3.6 Flash.\n\n"
             f"Detalhes: {erro}"
         )
 
@@ -1135,15 +1322,20 @@ def mostrar_resultado(
     st.divider()
 
     st.header(
-        "📊 Resultado da Análise"
+        "📊 Resultado da Analise"
     )
 
+    if isinstance(resultado, dict):
+        conteudo = formatar_resultado_estruturado(resultado)
+    else:
+        # Compatibilidade defensiva com resultados de sessoes antigas.
+        conteudo = str(resultado)
+
     st.markdown(
-        resultado
+        conteudo
     )
 
     if st.session_state.aviso_credito:
-
         st.warning(
             st.session_state.aviso_credito
         )
@@ -1151,12 +1343,11 @@ def mostrar_resultado(
     st.divider()
 
     st.info(
-        "🧪 A pesquisa web está "
-        "temporariamente desativada nesta versão."
+        "🧪 A pesquisa web esta temporariamente desativada nesta versao."
     )
 
     st.caption(
-        "💎 A análise concluída consumiu 1 crédito."
+        "💎 A analise concluida consumiu 1 credito."
     )
 
 
