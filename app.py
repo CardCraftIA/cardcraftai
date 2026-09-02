@@ -1,11 +1,12 @@
-# CARDCRAFTAI RELIABILITY 2.1.3
-# Catalogo visual Pokemon + links de mercado resilientes + Reliability 1.0
+# CARDCRAFTAI RELIABILITY 2.1.4
+# Market Freshness + catalogo visual Pokemon + Reliability 1.0
 
 import base64
 import json
 import time
 import unicodedata
 import uuid
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from html import escape
 from io import BytesIO
@@ -889,6 +890,174 @@ def _resumo_carta_catalogo(
 
 
 
+
+FRESCOR_MERCADO_ATUAL_DIAS = 7
+FRESCOR_MERCADO_ATENCAO_DIAS = 30
+
+
+def _parse_data_catalogo(
+    valor,
+):
+    """
+    Converte datas vindas do catálogo para date.
+
+    O catálogo costuma usar YYYY/MM/DD, mas aceitamos
+    algumas variações para evitar quebrar a interface
+    se o formato mudar.
+    """
+    if not valor:
+        return None
+
+    texto = str(valor).strip()
+
+    formatos = [
+        "%Y/%m/%d",
+        "%Y-%m-%d",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+    ]
+
+    for formato in formatos:
+        try:
+            return datetime.strptime(
+                texto,
+                formato,
+            ).date()
+        except ValueError:
+            pass
+
+    try:
+        return datetime.fromisoformat(
+            texto.replace(
+                "Z",
+                "+00:00",
+            )
+        ).date()
+    except ValueError:
+        return None
+
+
+def _avaliar_frescor_catalogo(
+    atualizado,
+):
+    """
+    Classifica a idade da fonte de preço.
+
+    - até 7 dias: atualizado
+    - 8 a 30 dias: atenção
+    - acima de 30 dias: desatualizado
+    """
+    data_fonte = _parse_data_catalogo(
+        atualizado
+    )
+
+    if data_fonte is None:
+        return {
+            "nivel": "desconhecido",
+            "emoji": "⚪",
+            "rotulo": "Data não disponível",
+            "dias": None,
+            "data": None,
+        }
+
+    hoje = datetime.now(
+        timezone.utc
+    ).date()
+
+    dias = (
+        hoje - data_fonte
+    ).days
+
+    if dias < 0:
+        return {
+            "nivel": "desconhecido",
+            "emoji": "⚪",
+            "rotulo": "Data futura a verificar",
+            "dias": dias,
+            "data": data_fonte,
+        }
+
+    if dias <= FRESCOR_MERCADO_ATUAL_DIAS:
+        nivel = "atualizado"
+        emoji = "🟢"
+        rotulo = "Atualizado"
+    elif dias <= FRESCOR_MERCADO_ATENCAO_DIAS:
+        nivel = "atencao"
+        emoji = "🟡"
+        rotulo = "Atenção"
+    else:
+        nivel = "desatualizado"
+        emoji = "🔴"
+        rotulo = "Desatualizado"
+
+    return {
+        "nivel": nivel,
+        "emoji": emoji,
+        "rotulo": rotulo,
+        "dias": dias,
+        "data": data_fonte,
+    }
+
+
+def _texto_idade_fonte(
+    dias,
+):
+    if dias is None:
+        return "idade desconhecida"
+
+    if dias < 0:
+        return "data futura informada pela fonte"
+
+    if dias == 0:
+        return "atualizado hoje"
+
+    if dias == 1:
+        return "atualizado há 1 dia"
+
+    return f"atualizado há {dias} dias"
+
+
+def _mostrar_frescor_fonte(
+    nome_fonte,
+    atualizado,
+):
+    frescor = _avaliar_frescor_catalogo(
+        atualizado
+    )
+
+    texto = (
+        f"{frescor['emoji']} "
+        f"{frescor['rotulo']} — "
+        f"{_texto_idade_fonte(frescor['dias'])}"
+    )
+
+    if atualizado:
+        texto += (
+            " • data informada: "
+            + str(atualizado)
+        )
+
+    if frescor["nivel"] == "atualizado":
+        st.success(texto)
+    elif frescor["nivel"] == "atencao":
+        st.warning(
+            texto
+            + ". Confirme nas ofertas atuais antes de negociar."
+        )
+    elif frescor["nivel"] == "desatualizado":
+        st.error(
+            texto
+            + ". Trate estes valores apenas como referência histórica."
+        )
+    else:
+        st.info(
+            texto
+            + ". Não é possível medir a atualidade desta fonte."
+        )
+
+    return frescor
+
+
 def _formatar_valor_moeda_catalogo(
     valor,
     simbolo,
@@ -960,11 +1129,16 @@ def _mostrar_precos_referencia_catalogo(
     carta,
 ):
     """
-    Mostra apenas preços que já vieram no objeto da API.
+    Mostra preços recebidos do catálogo com uma classificação
+    explícita de atualidade.
 
-    Não chama o redirecionador de preços e não afirma que
-    os valores são tempo real. A data exibida é a data de
-    atualização informada pelo próprio catálogo.
+    O CardCraftAI diferencia:
+    - preço de mercado calculado;
+    - menor preço catalogado;
+    - ofertas atuais abertas no marketplace.
+
+    Assim, uma referência antiga não é apresentada como se
+    fosse um preço atual de compra ou venda.
     """
     tcgplayer = carta.get(
         "tcgplayer"
@@ -988,13 +1162,19 @@ def _mostrar_precos_referencia_catalogo(
         return
 
     with st.expander(
-        "💰 Referências de mercado do catálogo",
+        "💰 Mercado e atualidade das fontes",
         expanded=False,
     ):
         st.caption(
-            "Valores fornecidos pelo catálogo Pokémon TCG. "
-            "Eles podem estar desatualizados e não garantem "
-            "estoque, condição, idioma ou preço final."
+            "Os valores abaixo são referências fornecidas pelo "
+            "catálogo Pokémon TCG. Eles não garantem estoque, "
+            "condição, idioma, frete ou preço final."
+        )
+
+        st.info(
+            "Preço de mercado e menor anúncio são métricas diferentes. "
+            "Para saber o que está realmente disponível agora, use "
+            "o botão de ofertas atuais do marketplace."
         )
 
         if tcg_prices:
@@ -1006,10 +1186,16 @@ def _mostrar_precos_referencia_catalogo(
                 "updatedAt"
             )
 
-            if atualizado:
+            frescor_tcg = _mostrar_frescor_fonte(
+                "TCGplayer",
+                atualizado,
+            )
+
+            if frescor_tcg["nivel"] == "desatualizado":
                 st.caption(
-                    "Última atualização informada pelo catálogo: "
-                    + str(atualizado)
+                    "Os números abaixo ficam visíveis para contexto "
+                    "histórico, mas não devem ser tratados como preço "
+                    "atual da carta."
                 )
 
             prioridade = [
@@ -1051,12 +1237,12 @@ def _mostrar_precos_referencia_catalogo(
 
                 if mercado:
                     partes.append(
-                        f"mercado {mercado}"
+                        f"preço de mercado {mercado}"
                     )
 
                 if minimo:
                     partes.append(
-                        f"mínimo {minimo}"
+                        f"menor referência {minimo}"
                     )
 
                 if partes:
@@ -1080,6 +1266,8 @@ def _mostrar_precos_referencia_catalogo(
                 )
 
         if cm_prices:
+            st.divider()
+
             st.markdown(
                 "#### Cardmarket — EUR"
             )
@@ -1088,10 +1276,16 @@ def _mostrar_precos_referencia_catalogo(
                 "updatedAt"
             )
 
-            if atualizado:
+            frescor_cm = _mostrar_frescor_fonte(
+                "Cardmarket",
+                atualizado,
+            )
+
+            if frescor_cm["nivel"] == "desatualizado":
                 st.caption(
-                    "Última atualização informada pelo catálogo: "
-                    + str(atualizado)
+                    "Esta fonte está antiga demais para ser usada como "
+                    "referência principal. Os valores abaixo são exibidos "
+                    "somente como contexto histórico."
                 )
 
             campos = [
@@ -1210,13 +1404,13 @@ def mostrar_carta_catalogo_selecionada(
 
         if url_tcgplayer:
             st.caption(
-                "Busca externa direta no TCGplayer. "
-                "O CardCraftAI não depende do redirecionador "
-                "de preços do catálogo para abrir este link."
+                "Busca externa direta no TCGplayer para consultar anúncios "
+                "disponíveis agora. Os valores dessas ofertas podem "
+                "diferir das referências de mercado do catálogo."
             )
 
             st.link_button(
-                "🛒 Buscar esta carta no TCGplayer",
+                "🛒 Ver ofertas atuais no TCGplayer",
                 url_tcgplayer,
                 use_container_width=True,
             )
