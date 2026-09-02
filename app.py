@@ -1,11 +1,15 @@
-# CARDCRAFTAI RELIABILITY 1.0
-# Identificacao estruturada, incerteza explicita e validacao de resposta
+# CARDCRAFTAI RELIABILITY 2.1
+# Catalogo visual Pokemon + Reliability 1.0 + creditos atomicos
 
 import base64
 import json
+import unicodedata
 import uuid
+from difflib import SequenceMatcher
+from html import escape
 from io import BytesIO
 
+import requests
 import streamlit as st
 from google import genai
 from PIL import Image
@@ -70,6 +74,14 @@ except Exception:
         "- SUPABASE_KEY"
     )
     st.stop()
+
+# O catálogo visual é um recurso adicional. Se a chave estiver ausente,
+# login, créditos e análise por IA continuam funcionando.
+POKEMON_TCG_API_KEY = st.secrets.get(
+    "POKEMON_TCG_API_KEY",
+    "",
+)
+POKEMON_TCG_API_URL = "https://api.pokemontcg.io/v2/cards"
 
 
 # ============================================================
@@ -341,6 +353,652 @@ def formatar_resultado_estruturado(dados):
     return "\n".join(linhas)
 
 
+
+# ============================================================
+# RELIABILITY 2.1 - CATALOGO VISUAL POKEMON
+# ============================================================
+
+def _normalizar_texto_catalogo(valor):
+    if valor is None:
+        return ""
+
+    texto = unicodedata.normalize(
+        "NFKD",
+        str(valor),
+    )
+    texto = "".join(
+        caractere
+        for caractere in texto
+        if not unicodedata.combining(caractere)
+    )
+    texto = texto.lower().strip()
+
+    return " ".join(
+        parte
+        for parte in texto.replace("-", " ").split()
+        if parte
+    )
+
+
+def _similaridade_catalogo(a, b):
+    a_norm = _normalizar_texto_catalogo(a)
+    b_norm = _normalizar_texto_catalogo(b)
+
+    if not a_norm or not b_norm:
+        return 0.0
+
+    if a_norm == b_norm:
+        return 1.0
+
+    if a_norm in b_norm or b_norm in a_norm:
+        return 0.92
+
+    return SequenceMatcher(
+        None,
+        a_norm,
+        b_norm,
+    ).ratio()
+
+
+def _frase_lucene_segura(valor):
+    texto = str(valor or "").strip()
+    texto = texto.replace("\\", "\\\\")
+    texto = texto.replace('"', '\\"')
+    return texto
+
+
+@st.cache_data(
+    ttl=3600,
+    show_spinner=False,
+)
+def consultar_catalogo_pokemon(
+    nome_carta,
+):
+    nome = str(nome_carta or "").strip()
+
+    if not nome:
+        return []
+
+    if not POKEMON_TCG_API_KEY:
+        raise RuntimeError(
+            "A chave POKEMON_TCG_API_KEY ainda não está "
+            "configurada nos Secrets do Streamlit."
+        )
+
+    consulta = (
+        f'name:"{_frase_lucene_segura(nome)}"'
+    )
+
+    try:
+        resposta = requests.get(
+            POKEMON_TCG_API_URL,
+            headers={
+                "X-Api-Key": POKEMON_TCG_API_KEY,
+            },
+            params={
+                "q": consulta,
+                "page": 1,
+                "pageSize": 100,
+                "orderBy": "-set.releaseDate",
+            },
+            timeout=15,
+        )
+    except requests.RequestException as erro:
+        raise RuntimeError(
+            "Não foi possível conectar ao catálogo Pokémon TCG."
+        ) from erro
+
+    if resposta.status_code == 401:
+        raise RuntimeError(
+            "A Pokémon TCG API recusou a chave configurada. "
+            "Verifique POKEMON_TCG_API_KEY nos Secrets."
+        )
+
+    if resposta.status_code == 429:
+        raise RuntimeError(
+            "O catálogo Pokémon TCG atingiu temporariamente "
+            "o limite de consultas. Tente novamente em alguns minutos."
+        )
+
+    try:
+        resposta.raise_for_status()
+    except requests.RequestException as erro:
+        raise RuntimeError(
+            "O catálogo Pokémon TCG respondeu com erro "
+            f"HTTP {resposta.status_code}."
+        ) from erro
+
+    try:
+        payload = resposta.json()
+    except ValueError as erro:
+        raise RuntimeError(
+            "O catálogo Pokémon TCG respondeu em formato inválido."
+        ) from erro
+
+    cartas = payload.get("data", [])
+
+    if not isinstance(cartas, list):
+        raise RuntimeError(
+            "O catálogo Pokémon TCG retornou uma estrutura inesperada."
+        )
+
+    return cartas
+
+
+def ranquear_cartas_catalogo(
+    cartas,
+    nome="",
+    colecao="",
+    numero="",
+    limite=12,
+):
+    nome = str(nome or "").strip()
+    colecao = str(colecao or "").strip()
+    numero = str(numero or "").strip()
+
+    pontuadas = []
+
+    for carta in cartas or []:
+        if not isinstance(carta, dict):
+            continue
+
+        score = 0.0
+
+        nome_carta = carta.get("name", "")
+        set_nome = (
+            (carta.get("set") or {})
+            .get("name", "")
+        )
+        numero_carta = carta.get("number", "")
+
+        if nome:
+            score += (
+                _similaridade_catalogo(
+                    nome,
+                    nome_carta,
+                )
+                * 60
+            )
+
+        if colecao:
+            score += (
+                _similaridade_catalogo(
+                    colecao,
+                    set_nome,
+                )
+                * 30
+            )
+
+        if numero:
+            numero_norm = _normalizar_texto_catalogo(numero)
+            numero_carta_norm = _normalizar_texto_catalogo(
+                numero_carta
+            )
+
+            if (
+                numero_norm
+                and
+                numero_norm == numero_carta_norm
+            ):
+                score += 60
+            else:
+                score += (
+                    _similaridade_catalogo(
+                        numero,
+                        numero_carta,
+                    )
+                    * 15
+                )
+
+        pontuadas.append(
+            (
+                score,
+                carta,
+            )
+        )
+
+    pontuadas.sort(
+        key=lambda item: item[0],
+        reverse=True,
+    )
+
+    return [
+        carta
+        for _, carta in pontuadas[:limite]
+    ]
+
+
+def buscar_cartas_catalogo_pokemon(
+    nome,
+    colecao="",
+    numero="",
+    limite=12,
+):
+    cartas = consultar_catalogo_pokemon(
+        nome
+    )
+
+    return ranquear_cartas_catalogo(
+        cartas,
+        nome=nome,
+        colecao=colecao,
+        numero=numero,
+        limite=limite,
+    )
+
+
+def _url_imagem_carta(
+    carta,
+    tamanho="large",
+):
+    imagens = carta.get("images") or {}
+
+    return (
+        imagens.get(tamanho)
+        or
+        imagens.get("large")
+        or
+        imagens.get("small")
+        or
+        ""
+    )
+
+
+def _renderizar_imagem_clicavel(
+    carta,
+):
+    url_grande = _url_imagem_carta(
+        carta,
+        "large",
+    )
+    url_pequena = _url_imagem_carta(
+        carta,
+        "small",
+    )
+
+    if not url_pequena:
+        st.info(
+            "Imagem não disponível no catálogo."
+        )
+        return
+
+    destino = url_grande or url_pequena
+    nome = carta.get(
+        "name",
+        "Carta Pokémon",
+    )
+
+    st.markdown(
+        (
+            '<a href="'
+            + escape(
+                destino,
+                quote=True,
+            )
+            + '" target="_blank" rel="noopener noreferrer">'
+            + '<img src="'
+            + escape(
+                url_pequena,
+                quote=True,
+            )
+            + '" alt="'
+            + escape(
+                nome,
+                quote=True,
+            )
+            + '" style="width:100%;'
+              'max-width:260px;'
+              'border-radius:10px;'
+              'display:block;'
+              'margin:0 auto 8px auto;" />'
+            + "</a>"
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def _resumo_carta_catalogo(
+    carta,
+):
+    set_dados = carta.get("set") or {}
+
+    return {
+        "id": carta.get("id"),
+        "nome": carta.get("name"),
+        "set": set_dados.get("name"),
+        "numero": carta.get("number"),
+        "raridade": carta.get("rarity"),
+        "artista": carta.get("artist"),
+        "ano": (
+            str(
+                set_dados.get(
+                    "releaseDate",
+                    "",
+                )
+            )[:4]
+            or None
+        ),
+    }
+
+
+def mostrar_carta_catalogo_selecionada(
+    carta,
+    titulo=(
+        "✅ Carta selecionada no catálogo"
+    ),
+):
+    if not carta:
+        return
+
+    resumo = _resumo_carta_catalogo(
+        carta
+    )
+
+    st.success(
+        titulo
+    )
+
+    col_img, col_info = st.columns(
+        [1, 2],
+        gap="large",
+    )
+
+    with col_img:
+        _renderizar_imagem_clicavel(
+            carta
+        )
+        st.caption(
+            "Clique na imagem para abrir "
+            "a versão maior."
+        )
+
+    with col_info:
+        st.markdown(
+            f"### {texto_ou_nao_confirmado(resumo.get('nome'))}"
+        )
+        st.write(
+            "**Coleção / Set:** "
+            + texto_ou_nao_confirmado(
+                resumo.get("set")
+            )
+        )
+        st.write(
+            "**Número:** "
+            + texto_ou_nao_confirmado(
+                resumo.get("numero")
+            )
+        )
+        st.write(
+            "**Raridade:** "
+            + texto_ou_nao_confirmado(
+                resumo.get("raridade")
+            )
+        )
+        st.write(
+            "**Artista:** "
+            + texto_ou_nao_confirmado(
+                resumo.get("artista")
+            )
+        )
+        st.write(
+            "**ID do catálogo:** "
+            + texto_ou_nao_confirmado(
+                resumo.get("id")
+            )
+        )
+
+        links = []
+
+        tcgplayer = carta.get(
+            "tcgplayer"
+        ) or {}
+        cardmarket = carta.get(
+            "cardmarket"
+        ) or {}
+
+        if tcgplayer.get("url"):
+            links.append(
+                (
+                    "🔗 Referência TCGplayer",
+                    tcgplayer["url"],
+                )
+            )
+
+        if cardmarket.get("url"):
+            links.append(
+                (
+                    "🔗 Referência Cardmarket",
+                    cardmarket["url"],
+                )
+            )
+
+        if links:
+            st.caption(
+                "Links externos fornecidos pelo catálogo. "
+                "Eles são referências e não garantem "
+                "estoque ou preço atual."
+            )
+
+            for rotulo, url in links:
+                st.link_button(
+                    rotulo,
+                    url,
+                    use_container_width=True,
+                )
+
+
+def mostrar_galeria_catalogo(
+    cartas,
+    contexto,
+):
+    if not cartas:
+        st.warning(
+            "Nenhuma correspondência visual foi encontrada "
+            "no catálogo Pokémon."
+        )
+        return
+
+    st.caption(
+        "Clique em uma imagem para ampliá-la. "
+        "Use “Selecionar esta carta” para indicar "
+        "a correspondência correta."
+    )
+
+    colunas_por_linha = 4
+
+    for inicio in range(
+        0,
+        len(cartas),
+        colunas_por_linha,
+    ):
+        bloco = cartas[
+            inicio:
+            inicio + colunas_por_linha
+        ]
+        colunas = st.columns(
+            colunas_por_linha,
+            gap="medium",
+        )
+
+        for coluna, carta in zip(
+            colunas,
+            bloco,
+        ):
+            with coluna:
+                _renderizar_imagem_clicavel(
+                    carta
+                )
+
+                set_nome = (
+                    (carta.get("set") or {})
+                    .get("name")
+                )
+                numero = carta.get(
+                    "number"
+                )
+                raridade = carta.get(
+                    "rarity"
+                )
+
+                st.markdown(
+                    "**"
+                    + escape(
+                        str(
+                            carta.get(
+                                "name",
+                                "Carta Pokémon",
+                            )
+                        )
+                    )
+                    + "**"
+                )
+
+                st.caption(
+                    (
+                        texto_ou_nao_confirmado(
+                            set_nome
+                        )
+                        + " • #"
+                        + texto_ou_nao_confirmado(
+                            numero
+                        )
+                    )
+                )
+
+                if raridade:
+                    st.caption(
+                        str(raridade)
+                    )
+
+                carta_id = str(
+                    carta.get(
+                        "id",
+                        inicio,
+                    )
+                )
+
+                if st.button(
+                    "✅ Selecionar esta carta",
+                    key=(
+                        f"catalogo_selecionar_"
+                        f"{contexto}_{carta_id}"
+                    ),
+                    use_container_width=True,
+                ):
+                    st.session_state[
+                        f"catalogo_selecionada_{contexto}"
+                    ] = carta
+                    st.rerun()
+
+
+def info_catalogo_para_analise(
+    carta,
+):
+    if not carta:
+        return ""
+
+    resumo = _resumo_carta_catalogo(
+        carta
+    )
+
+    return (
+        "Fonte: entrada selecionada pelo usuário "
+        "no catálogo Pokémon TCG API.\n"
+        f"ID do catálogo: {resumo.get('id')}\n"
+        f"Nome: {resumo.get('nome')}\n"
+        f"Coleção/Set: {resumo.get('set')}\n"
+        f"Número: {resumo.get('numero')}\n"
+        f"Raridade: {resumo.get('raridade')}\n"
+        f"Artista: {resumo.get('artista')}\n"
+        f"Ano do set: {resumo.get('ano')}"
+    )
+
+
+def mostrar_catalogo_para_analise_foto(
+    resultado,
+):
+    if not isinstance(
+        resultado,
+        dict,
+    ):
+        return
+
+    jogo = _normalizar_texto_catalogo(
+        resultado.get(
+            "jogo",
+            "",
+        )
+    )
+
+    if (
+        jogo
+        and
+        "pokemon" not in jogo
+    ):
+        return
+
+    nome = resultado.get(
+        "nome_carta"
+    )
+
+    if not nome:
+        return
+
+    st.divider()
+    st.subheader(
+        "🖼️ Correspondências no catálogo Pokémon"
+    )
+    st.caption(
+        "Esta consulta ao catálogo não consome "
+        "um novo crédito."
+    )
+
+    try:
+        cartas = buscar_cartas_catalogo_pokemon(
+            nome=nome,
+            colecao=(
+                resultado.get(
+                    "colecao_set"
+                )
+                or ""
+            ),
+            numero=(
+                resultado.get(
+                    "numero_carta"
+                )
+                or ""
+            ),
+            limite=8,
+        )
+    except Exception as erro:
+        st.warning(
+            "A análise foi concluída, mas o catálogo "
+            "visual não pôde ser consultado."
+        )
+        st.caption(
+            str(erro)
+        )
+        return
+
+    selecionada = st.session_state.get(
+        "catalogo_selecionada_foto"
+    )
+
+    if selecionada:
+        mostrar_carta_catalogo_selecionada(
+            selecionada,
+            titulo=(
+                "✅ Correspondência escolhida "
+                "para esta análise"
+            ),
+        )
+
+    mostrar_galeria_catalogo(
+        cartas,
+        contexto="foto",
+    )
+
+
 # ============================================================
 # GEMINI
 # ============================================================
@@ -377,6 +1035,18 @@ if "resultado_novo" not in st.session_state:
 
 if "aviso_credito" not in st.session_state:
     st.session_state.aviso_credito = None
+
+if "catalogo_resultados_nome" not in st.session_state:
+    st.session_state.catalogo_resultados_nome = []
+
+if "catalogo_consulta_nome" not in st.session_state:
+    st.session_state.catalogo_consulta_nome = None
+
+if "catalogo_selecionada_nome" not in st.session_state:
+    st.session_state.catalogo_selecionada_nome = None
+
+if "catalogo_selecionada_foto" not in st.session_state:
+    st.session_state.catalogo_selecionada_foto = None
 
 
 # ============================================================
@@ -483,6 +1153,11 @@ def limpar_sessao():
     st.session_state.resultado_tipo = None
     st.session_state.resultado_novo = False
     st.session_state.aviso_credito = None
+
+    st.session_state.catalogo_resultados_nome = []
+    st.session_state.catalogo_consulta_nome = None
+    st.session_state.catalogo_selecionada_nome = None
+    st.session_state.catalogo_selecionada_foto = None
 
 
 def usuario_logado():
@@ -755,11 +1430,16 @@ REGRAS OBRIGATORIAS:
 
     if nome_carta_info:
         prompt_final = f"""
-Analise a carta a partir das informacoes fornecidas pelo usuario:
+Analise a carta a partir das informacoes textuais abaixo.
+
+Elas podem ter sido digitadas pelo usuario ou podem vir de uma entrada
+explicitamente selecionada por ele no catalogo Pokemon TCG API.
 
 {nome_carta_info}
 
-Nao trate o texto do usuario como prova de campos que ele nao informou.
+Quando o texto identificar claramente que um campo veio do catalogo,
+trate esse campo como referencia estruturada do catalogo, e nao como
+uma inferencia do modelo. Nao invente campos ausentes.
 
 {prompt_base}
 """
@@ -1305,7 +1985,7 @@ st.title(
 
 st.caption(
     "Inteligência artificial para identificação, "
-    "avaliação e pesquisa de cartas TCG."
+    "análise e catálogo visual de cartas TCG."
 )
 
 st.divider()
@@ -1444,6 +2124,8 @@ if pagina == "📸 Análise por Foto":
                         key="btn_analise_foto",
                     ):
 
+                        st.session_state.catalogo_selecionada_foto = None
+
                         with st.spinner(
                             "🤖 Analisando a carta..."
                         ):
@@ -1515,6 +2197,10 @@ if pagina == "📸 Análise por Foto":
             st.session_state.resultado_analise
         )
 
+        mostrar_catalogo_para_analise_foto(
+            st.session_state.resultado_analise
+        )
+
 
 # ============================================================
 # PÁGINA 2 - BUSCAR POR NOME
@@ -1527,7 +2213,8 @@ elif pagina == "🔍 Buscar Carta por Nome":
     )
 
     st.info(
-        "💎 Cada análise concluída consome 1 crédito."
+        "🖼️ Buscar e comparar imagens no catálogo Pokémon "
+        "é grátis. A análise especializada consome 1 crédito."
     )
 
     col1, col2 = st.columns(
@@ -1535,105 +2222,205 @@ elif pagina == "🔍 Buscar Carta por Nome":
     )
 
     with col1:
-
         termo_busca = st.text_input(
             "Nome da carta",
-            placeholder="Ex.: Charizard ex",
+            placeholder="Ex.: Charizard GX",
             key="termo_busca",
         )
 
     with col2:
-
         colecao_busca = st.text_input(
             "Coleção / Set",
-            placeholder="Ex.: 151",
+            placeholder="Ex.: SM Black Star Promos",
             key="colecao_busca",
         )
 
+    if st.button(
+        "🖼️ Buscar no catálogo — grátis",
+        use_container_width=True,
+        key="btn_buscar_catalogo_nome",
+    ):
+        termo = termo_busca.strip()
+        colecao = colecao_busca.strip()
+
+        if not termo:
+            st.warning(
+                "Digite o nome da carta para pesquisar "
+                "no catálogo."
+            )
+        else:
+            with st.spinner(
+                "📚 Procurando cartas no catálogo Pokémon..."
+            ):
+                try:
+                    resultados_catalogo = (
+                        buscar_cartas_catalogo_pokemon(
+                            nome=termo,
+                            colecao=colecao,
+                            limite=12,
+                        )
+                    )
+
+                    st.session_state.catalogo_resultados_nome = (
+                        resultados_catalogo
+                    )
+                    st.session_state.catalogo_consulta_nome = {
+                        "nome": termo,
+                        "colecao": colecao,
+                    }
+                    st.session_state.catalogo_selecionada_nome = None
+
+                except Exception as erro:
+                    st.session_state.catalogo_resultados_nome = []
+                    st.session_state.catalogo_consulta_nome = None
+                    st.session_state.catalogo_selecionada_nome = None
+
+                    st.error(
+                        "Não foi possível consultar "
+                        "o catálogo Pokémon."
+                    )
+                    st.caption(
+                        str(erro)
+                    )
+
+    resultados_catalogo = (
+        st.session_state.catalogo_resultados_nome
+        or []
+    )
+
+    consulta_catalogo = (
+        st.session_state.catalogo_consulta_nome
+    )
+
+    if consulta_catalogo:
+        st.divider()
+
+        st.subheader(
+            "🖼️ Resultados visuais do catálogo"
+        )
+
+        st.caption(
+            "Busca realizada por: "
+            f"{consulta_catalogo.get('nome', '')}"
+            + (
+                " • "
+                + consulta_catalogo.get(
+                    "colecao",
+                    ""
+                )
+                if consulta_catalogo.get(
+                    "colecao"
+                )
+                else ""
+            )
+        )
+
+        if resultados_catalogo:
+            mostrar_galeria_catalogo(
+                resultados_catalogo,
+                contexto="nome",
+            )
+        else:
+            st.warning(
+                "Nenhuma carta correspondente foi encontrada."
+            )
+
+    carta_selecionada = st.session_state.get(
+        "catalogo_selecionada_nome"
+    )
+
+    if carta_selecionada:
+        st.divider()
+
+        mostrar_carta_catalogo_selecionada(
+            carta_selecionada
+        )
+
+    st.divider()
+
+    st.subheader(
+        "🤖 Análise especializada"
+    )
+
+    if carta_selecionada:
+        st.caption(
+            "A análise usará a entrada que você "
+            "selecionou no catálogo."
+        )
+    else:
+        st.caption(
+            "Sem uma carta selecionada, a análise usará "
+            "somente o nome e a coleção digitados."
+        )
 
     if creditos <= 0:
-
-        st.error(
-            "💎 Você não possui créditos disponíveis."
+        st.warning(
+            "💎 Você não possui créditos disponíveis "
+            "para gerar uma nova análise."
         )
-
         st.info(
-            "Vá até Planos e Créditos "
-            "para adquirir mais créditos."
+            "A busca visual acima continua gratuita."
         )
 
-    else:
+    if st.button(
+        "🤖 Analisar — 1 crédito",
+        use_container_width=True,
+        key="btn_analise_nome",
+        disabled=(creditos <= 0),
+    ):
+        termo = termo_busca.strip()
+        colecao = colecao_busca.strip()
 
-        if st.button(
-            "🔍 Analisar — 1 crédito",
-            use_container_width=True,
-            key="btn_analise_nome",
-        ):
-
-            termo = (
-                termo_busca.strip()
+        if carta_selecionada:
+            info_texto = info_catalogo_para_analise(
+                carta_selecionada
             )
-
-            colecao = (
-                colecao_busca.strip()
-            )
-
+        else:
             if not termo:
-
                 st.warning(
                     "Digite o nome da carta."
                 )
+                st.stop()
 
+            if colecao:
+                info_texto = (
+                    f"Nome: {termo}\n"
+                    f"Coleção/Set: {colecao}"
+                )
             else:
+                info_texto = (
+                    f"Nome: {termo}\n"
+                    "Coleção/Set: não informada"
+                )
 
-                if colecao:
-
-                    info_texto = (
-                        f"Nome: {termo}\n"
-                        f"Coleção/Set: {colecao}"
+        with st.spinner(
+            "🤖 Analisando..."
+        ):
+            try:
+                resultado = (
+                    executar_analise_com_credito(
+                        idioma=idioma,
+                        nome_carta_info=info_texto,
+                        tipo_acao="analise_nome",
                     )
+                )
 
-                else:
+                st.session_state.resultado_analise = (
+                    resultado
+                )
+                st.session_state.resultado_tipo = (
+                    "nome"
+                )
+                st.session_state.resultado_novo = (
+                    True
+                )
 
-                    info_texto = (
-                        f"Nome: {termo}\n"
-                        "Coleção/Set: não informada"
-                    )
+                st.rerun()
 
-                with st.spinner(
-                    "🤖 Analisando..."
-                ):
-
-                    try:
-
-                        resultado = (
-                            executar_analise_com_credito(
-                                idioma=idioma,
-                                nome_carta_info=info_texto,
-                                tipo_acao="analise_nome",
-                            )
-                        )
-
-                        st.session_state.resultado_analise = (
-                            resultado
-                        )
-
-                        st.session_state.resultado_tipo = (
-                            "nome"
-                        )
-
-                        st.session_state.resultado_novo = (
-                            True
-                        )
-
-                        st.rerun()
-
-                    except Exception as erro:
-
-                        st.error(
-                            f"Erro: {erro}"
-                        )
-
+            except Exception as erro:
+                st.error(
+                    f"Erro: {erro}"
+                )
 
     # --------------------------------------------------------
     # MOSTRAR RESULTADO APÓS RERUN
@@ -1644,13 +2431,10 @@ elif pagina == "🔍 Buscar Carta por Nome":
         and
         st.session_state.resultado_tipo == "nome"
     ):
-
         if st.session_state.resultado_novo:
-
             st.success(
                 "✅ Análise concluída."
             )
-
             st.session_state.resultado_novo = False
 
         mostrar_resultado(
