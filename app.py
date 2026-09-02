@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.1.2
-# Catalogo visual Pokemon resiliente + selecao confiavel + Reliability 1.0
+# CARDCRAFTAI RELIABILITY 2.1.3
+# Catalogo visual Pokemon + links de mercado resilientes + Reliability 1.0
 
 import base64
 import json
@@ -9,6 +9,7 @@ import uuid
 from difflib import SequenceMatcher
 from html import escape
 from io import BytesIO
+from urllib.parse import quote_plus
 
 import requests
 import streamlit as st
@@ -887,6 +888,254 @@ def _resumo_carta_catalogo(
     }
 
 
+
+def _formatar_valor_moeda_catalogo(
+    valor,
+    simbolo,
+):
+    try:
+        numero = float(valor)
+    except (
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+    texto = (
+        f"{numero:,.2f}"
+        .replace(",", "X")
+        .replace(".", ",")
+        .replace("X", ".")
+    )
+
+    return f"{simbolo} {texto}"
+
+
+def _url_busca_tcgplayer(
+    carta,
+):
+    """
+    Gera uma busca direta no domínio do TCGplayer.
+
+    Evita depender do redirecionador prices.pokemontcg.io,
+    que pode ficar indisponível mesmo quando o marketplace
+    principal continua funcionando.
+    """
+    nome = str(
+        carta.get("name") or ""
+    ).strip()
+    numero = str(
+        carta.get("number") or ""
+    ).strip()
+    set_nome = str(
+        ((carta.get("set") or {}).get("name"))
+        or ""
+    ).strip()
+
+    partes = [
+        valor
+        for valor in (
+            nome,
+            numero,
+            set_nome,
+        )
+        if valor
+    ]
+
+    if not partes:
+        return None
+
+    consulta = quote_plus(
+        " ".join(partes)
+    )
+
+    return (
+        "https://www.tcgplayer.com/"
+        "search/pokemon/product"
+        f"?q={consulta}"
+    )
+
+
+def _mostrar_precos_referencia_catalogo(
+    carta,
+):
+    """
+    Mostra apenas preços que já vieram no objeto da API.
+
+    Não chama o redirecionador de preços e não afirma que
+    os valores são tempo real. A data exibida é a data de
+    atualização informada pelo próprio catálogo.
+    """
+    tcgplayer = carta.get(
+        "tcgplayer"
+    ) or {}
+    cardmarket = carta.get(
+        "cardmarket"
+    ) or {}
+
+    tcg_prices = tcgplayer.get(
+        "prices"
+    ) or {}
+    cm_prices = cardmarket.get(
+        "prices"
+    ) or {}
+
+    if (
+        not tcg_prices
+        and
+        not cm_prices
+    ):
+        return
+
+    with st.expander(
+        "💰 Referências de mercado do catálogo",
+        expanded=False,
+    ):
+        st.caption(
+            "Valores fornecidos pelo catálogo Pokémon TCG. "
+            "Eles podem estar desatualizados e não garantem "
+            "estoque, condição, idioma ou preço final."
+        )
+
+        if tcg_prices:
+            st.markdown(
+                "#### TCGplayer — USD"
+            )
+
+            atualizado = tcgplayer.get(
+                "updatedAt"
+            )
+
+            if atualizado:
+                st.caption(
+                    "Última atualização informada pelo catálogo: "
+                    + str(atualizado)
+                )
+
+            prioridade = [
+                "holofoil",
+                "normal",
+                "reverseHolofoil",
+                "1stEditionHolofoil",
+                "1stEditionNormal",
+            ]
+
+            rotulos = {
+                "holofoil": "Holofoil",
+                "normal": "Normal",
+                "reverseHolofoil": "Reverse Holofoil",
+                "1stEditionHolofoil": "1st Edition Holofoil",
+                "1stEditionNormal": "1st Edition Normal",
+            }
+
+            mostrou_tcg = False
+
+            for tipo in prioridade:
+                valores = tcg_prices.get(
+                    tipo
+                ) or {}
+
+                if not valores:
+                    continue
+
+                mercado = _formatar_valor_moeda_catalogo(
+                    valores.get("market"),
+                    "US$",
+                )
+                minimo = _formatar_valor_moeda_catalogo(
+                    valores.get("low"),
+                    "US$",
+                )
+
+                partes = []
+
+                if mercado:
+                    partes.append(
+                        f"mercado {mercado}"
+                    )
+
+                if minimo:
+                    partes.append(
+                        f"mínimo {minimo}"
+                    )
+
+                if partes:
+                    st.write(
+                        "**"
+                        + rotulos.get(
+                            tipo,
+                            tipo,
+                        )
+                        + ":** "
+                        + " • ".join(
+                            partes
+                        )
+                    )
+                    mostrou_tcg = True
+
+            if not mostrou_tcg:
+                st.caption(
+                    "O catálogo não trouxe valores TCGplayer "
+                    "utilizáveis para esta carta."
+                )
+
+        if cm_prices:
+            st.markdown(
+                "#### Cardmarket — EUR"
+            )
+
+            atualizado = cardmarket.get(
+                "updatedAt"
+            )
+
+            if atualizado:
+                st.caption(
+                    "Última atualização informada pelo catálogo: "
+                    + str(atualizado)
+                )
+
+            campos = [
+                (
+                    "Menor preço",
+                    "lowPrice",
+                ),
+                (
+                    "Tendência",
+                    "trendPrice",
+                ),
+                (
+                    "Média 7 dias",
+                    "avg7",
+                ),
+                (
+                    "Média 30 dias",
+                    "avg30",
+                ),
+            ]
+
+            mostrou_cm = False
+
+            for rotulo, campo in campos:
+                valor = _formatar_valor_moeda_catalogo(
+                    cm_prices.get(
+                        campo
+                    ),
+                    "€",
+                )
+
+                if valor:
+                    st.write(
+                        f"**{rotulo}:** {valor}"
+                    )
+                    mostrou_cm = True
+
+            if not mostrou_cm:
+                st.caption(
+                    "O catálogo não trouxe valores Cardmarket "
+                    "utilizáveis para esta carta."
+                )
+
+
 def mostrar_carta_catalogo_selecionada(
     carta,
     titulo=(
@@ -953,44 +1202,28 @@ def mostrar_carta_catalogo_selecionada(
             )
         )
 
-        links = []
-
-        tcgplayer = carta.get(
-            "tcgplayer"
-        ) or {}
-        cardmarket = carta.get(
-            "cardmarket"
-        ) or {}
-
-        if tcgplayer.get("url"):
-            links.append(
-                (
-                    "🔗 Referência TCGplayer",
-                    tcgplayer["url"],
-                )
+        url_tcgplayer = (
+            _url_busca_tcgplayer(
+                carta
             )
+        )
 
-        if cardmarket.get("url"):
-            links.append(
-                (
-                    "🔗 Referência Cardmarket",
-                    cardmarket["url"],
-                )
-            )
-
-        if links:
+        if url_tcgplayer:
             st.caption(
-                "Links externos fornecidos pelo catálogo. "
-                "Eles são referências e não garantem "
-                "estoque ou preço atual."
+                "Busca externa direta no TCGplayer. "
+                "O CardCraftAI não depende do redirecionador "
+                "de preços do catálogo para abrir este link."
             )
 
-            for rotulo, url in links:
-                st.link_button(
-                    rotulo,
-                    url,
-                    use_container_width=True,
-                )
+            st.link_button(
+                "🛒 Buscar esta carta no TCGplayer",
+                url_tcgplayer,
+                use_container_width=True,
+            )
+
+        _mostrar_precos_referencia_catalogo(
+            carta
+        )
 
 
 def selecionar_carta_catalogo(
