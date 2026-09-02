@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.1.1
-# Catalogo visual Pokemon resiliente + Reliability 1.0 + creditos atomicos
+# CARDCRAFTAI RELIABILITY 2.1.2
+# Catalogo visual Pokemon resiliente + selecao confiavel + Reliability 1.0
 
 import base64
 import json
@@ -993,6 +993,21 @@ def mostrar_carta_catalogo_selecionada(
                 )
 
 
+def selecionar_carta_catalogo(
+    contexto,
+    carta,
+):
+    """
+    Callback executado antes do rerun do Streamlit.
+
+    Mantém a carta escolhida no session_state sem depender
+    de um st.rerun() manual dentro da grade de resultados.
+    """
+    st.session_state[
+        f"catalogo_selecionada_{contexto}"
+    ] = carta
+
+
 def mostrar_galeria_catalogo(
     cartas,
     contexto,
@@ -1083,18 +1098,19 @@ def mostrar_galeria_catalogo(
                     )
                 )
 
-                if st.button(
+                st.button(
                     "✅ Selecionar esta carta",
                     key=(
                         f"catalogo_selecionar_"
                         f"{contexto}_{carta_id}"
                     ),
                     use_container_width=True,
-                ):
-                    st.session_state[
-                        f"catalogo_selecionada_{contexto}"
-                    ] = carta
-                    st.rerun()
+                    on_click=selecionar_carta_catalogo,
+                    args=(
+                        contexto,
+                        carta,
+                    ),
+                )
 
 
 def info_catalogo_para_analise(
@@ -2498,6 +2514,26 @@ elif pagina == "🔍 Buscar Carta por Nome":
         st.session_state.catalogo_consulta_nome
     )
 
+    carta_selecionada = st.session_state.get(
+        "catalogo_selecionada_nome"
+    )
+
+    if carta_selecionada:
+        st.divider()
+
+        mostrar_carta_catalogo_selecionada(
+            carta_selecionada,
+            titulo=(
+                "✅ Carta escolhida para esta análise"
+            ),
+        )
+
+        st.info(
+            "A seleção foi registrada. "
+            "Você pode continuar comparando outras versões "
+            "ou usar esta carta na análise especializada."
+        )
+
     if consulta_catalogo:
         st.divider()
 
@@ -2530,17 +2566,6 @@ elif pagina == "🔍 Buscar Carta por Nome":
             st.warning(
                 "Nenhuma carta correspondente foi encontrada."
             )
-
-    carta_selecionada = st.session_state.get(
-        "catalogo_selecionada_nome"
-    )
-
-    if carta_selecionada:
-        st.divider()
-
-        mostrar_carta_catalogo_selecionada(
-            carta_selecionada
-        )
 
     st.divider()
 
