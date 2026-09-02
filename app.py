@@ -1,8 +1,9 @@
-# CARDCRAFTAI RELIABILITY 2.1
-# Catalogo visual Pokemon + Reliability 1.0 + creditos atomicos
+# CARDCRAFTAI RELIABILITY 2.1.1
+# Catalogo visual Pokemon resiliente + Reliability 1.0 + creditos atomicos
 
 import base64
 import json
+import time
 import unicodedata
 import uuid
 from difflib import SequenceMatcher
@@ -407,6 +408,158 @@ def _frase_lucene_segura(valor):
     return texto
 
 
+def _token_fallback_catalogo(nome):
+    partes = [
+        parte
+        for parte in _normalizar_texto_catalogo(nome).split()
+        if len(parte) >= 3
+    ]
+
+    if not partes:
+        return ""
+
+    # Preferimos a palavra mais informativa do nome.
+    return max(
+        partes,
+        key=len,
+    )
+
+
+def _executar_requisicao_catalogo(
+    params,
+    tentativas=2,
+):
+    """
+    Executa uma consulta curta e tolerante a falhas transitórias.
+
+    - 401: chave inválida / recusada.
+    - 429: limite temporário.
+    - 500/502/503/504: tenta novamente com pequeno backoff.
+    - outros erros HTTP: retorna erro controlado.
+    """
+
+    codigos_transitorios = {
+        500,
+        502,
+        503,
+        504,
+    }
+
+    ultimo_status = None
+    ultimo_erro = None
+
+    for tentativa in range(
+        1,
+        tentativas + 1,
+    ):
+        try:
+            resposta = requests.get(
+                POKEMON_TCG_API_URL,
+                headers={
+                    "X-Api-Key": POKEMON_TCG_API_KEY,
+                    "Accept": "application/json",
+                },
+                params=params,
+                timeout=12,
+            )
+
+        except requests.RequestException as erro:
+            ultimo_erro = erro
+
+            if tentativa < tentativas:
+                time.sleep(
+                    0.8 * tentativa
+                )
+                continue
+
+            raise RuntimeError(
+                "Não foi possível conectar ao catálogo "
+                "Pokémon TCG após novas tentativas."
+            ) from erro
+
+        ultimo_status = resposta.status_code
+
+        if resposta.status_code == 401:
+            raise RuntimeError(
+                "A Pokémon TCG API recusou a chave configurada. "
+                "Verifique POKEMON_TCG_API_KEY nos Secrets."
+            )
+
+        if resposta.status_code == 429:
+            raise RuntimeError(
+                "O catálogo Pokémon TCG atingiu temporariamente "
+                "o limite de consultas. Tente novamente em alguns minutos."
+            )
+
+        if resposta.status_code in codigos_transitorios:
+            if tentativa < tentativas:
+                time.sleep(
+                    0.8 * tentativa
+                )
+                continue
+
+            return {
+                "ok": False,
+                "status": resposta.status_code,
+                "transitorio": True,
+                "data": [],
+            }
+
+        try:
+            resposta.raise_for_status()
+        except requests.RequestException as erro:
+            raise RuntimeError(
+                "O catálogo Pokémon TCG respondeu com erro "
+                f"HTTP {resposta.status_code}."
+            ) from erro
+
+        try:
+            payload = resposta.json()
+        except ValueError as erro:
+            raise RuntimeError(
+                "O catálogo Pokémon TCG respondeu em formato inválido."
+            ) from erro
+
+        cartas = payload.get(
+            "data",
+            [],
+        )
+
+        if not isinstance(
+            cartas,
+            list,
+        ):
+            raise RuntimeError(
+                "O catálogo Pokémon TCG retornou "
+                "uma estrutura inesperada."
+            )
+
+        return {
+            "ok": True,
+            "status": resposta.status_code,
+            "transitorio": False,
+            "data": cartas,
+        }
+
+    return {
+        "ok": False,
+        "status": ultimo_status,
+        "transitorio": bool(
+            ultimo_status
+            in {
+                500,
+                502,
+                503,
+                504,
+            }
+        ),
+        "data": [],
+        "erro": str(
+            ultimo_erro or ""
+        ),
+    }
+
+
 @st.cache_data(
     ttl=3600,
     show_spinner=False,
@@ -414,7 +567,20 @@ def _frase_lucene_segura(valor):
 def consultar_catalogo_pokemon(
     nome_carta,
 ):
-    nome = str(nome_carta or "").strip()
+    """
+    Reliability 2.1.1
+
+    Estratégia:
+    1. procura pela frase completa do nome;
+    2. em falha transitória ou ausência de resultados,
+       tenta uma consulta mais simples;
+    3. limita o volume retornado porque o ranking final
+       é feito localmente pelo CardCraftAI.
+    """
+
+    nome = str(
+        nome_carta or ""
+    ).strip()
 
     if not nome:
         return []
@@ -425,64 +591,104 @@ def consultar_catalogo_pokemon(
             "configurada nos Secrets do Streamlit."
         )
 
-    consulta = (
-        f'name:"{_frase_lucene_segura(nome)}"'
+    nome_seguro = _frase_lucene_segura(
+        nome
     )
 
-    try:
-        resposta = requests.get(
-            POKEMON_TCG_API_URL,
-            headers={
-                "X-Api-Key": POKEMON_TCG_API_KEY,
-            },
+    # Estratégia principal: frase completa.
+    consulta_principal = (
+        f'name:"{nome_seguro}"'
+    )
+
+    resultado_principal = (
+        _executar_requisicao_catalogo(
             params={
-                "q": consulta,
+                "q": consulta_principal,
                 "page": 1,
-                "pageSize": 100,
-                "orderBy": "-set.releaseDate",
+                "pageSize": 50,
             },
-            timeout=15,
+            tentativas=2,
         )
-    except requests.RequestException as erro:
-        raise RuntimeError(
-            "Não foi possível conectar ao catálogo Pokémon TCG."
-        ) from erro
+    )
 
-    if resposta.status_code == 401:
-        raise RuntimeError(
-            "A Pokémon TCG API recusou a chave configurada. "
-            "Verifique POKEMON_TCG_API_KEY nos Secrets."
-        )
+    if (
+        resultado_principal.get("ok")
+        and
+        resultado_principal.get("data")
+    ):
+        return resultado_principal[
+            "data"
+        ]
 
-    if resposta.status_code == 429:
-        raise RuntimeError(
-            "O catálogo Pokémon TCG atingiu temporariamente "
-            "o limite de consultas. Tente novamente em alguns minutos."
-        )
+    # Fallback: uma palavra representativa do nome
+    # com wildcard, sintaxe suportada pelo catálogo.
+    token = _token_fallback_catalogo(
+        nome
+    )
 
-    try:
-        resposta.raise_for_status()
-    except requests.RequestException as erro:
-        raise RuntimeError(
-            "O catálogo Pokémon TCG respondeu com erro "
-            f"HTTP {resposta.status_code}."
-        ) from erro
-
-    try:
-        payload = resposta.json()
-    except ValueError as erro:
-        raise RuntimeError(
-            "O catálogo Pokémon TCG respondeu em formato inválido."
-        ) from erro
-
-    cartas = payload.get("data", [])
-
-    if not isinstance(cartas, list):
-        raise RuntimeError(
-            "O catálogo Pokémon TCG retornou uma estrutura inesperada."
+    if token:
+        consulta_fallback = (
+            f"name:{token}*"
         )
 
-    return cartas
+        resultado_fallback = (
+            _executar_requisicao_catalogo(
+                params={
+                    "q": consulta_fallback,
+                    "page": 1,
+                    "pageSize": 50,
+                },
+                tentativas=2,
+            )
+        )
+
+        if resultado_fallback.get(
+            "ok"
+        ):
+            return resultado_fallback.get(
+                "data",
+                [],
+            )
+
+        status_fallback = (
+            resultado_fallback.get(
+                "status"
+            )
+        )
+
+    else:
+        resultado_fallback = None
+        status_fallback = None
+
+    status_principal = (
+        resultado_principal.get(
+            "status"
+        )
+    )
+
+    status_final = (
+        status_fallback
+        or
+        status_principal
+    )
+
+    if status_final in {
+        500,
+        502,
+        503,
+        504,
+    }:
+        raise RuntimeError(
+            "O catálogo Pokémon TCG está temporariamente "
+            f"indisponível (HTTP {status_final}). "
+            "O CardCraftAI tentou novamente e também usou "
+            "uma busca simplificada. Nenhum crédito foi consumido."
+        )
+
+    # Se a API respondeu normalmente mas não encontrou cartas,
+    # retornamos lista vazia em vez de tratar como erro.
+    return []
+
 
 
 def ranquear_cartas_catalogo(
@@ -2277,7 +2483,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
 
                     st.error(
                         "Não foi possível consultar "
-                        "o catálogo Pokémon."
+                        "o catálogo Pokémon agora."
                     )
                     st.caption(
                         str(erro)
