@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.2.1
-# Validacao automatica da analise por foto contra catalogo Pokemon + Reliability 2.1.5
+# CARDCRAFTAI RELIABILITY 2.2.2
+# Retry gratuito do catalogo + estado resiliente da validacao por foto + Reliability 2.2.1
 
 import base64
 import json
@@ -333,8 +333,8 @@ def formatar_resultado_estruturado(dados):
     linhas.extend([
         "",
         "## 💰 Mercado",
-        "Dados de preco atualizados ainda nao estao conectados nesta versao. "
-        "O CardCraftAI nao inventa valores de mercado.",
+        "A IA nao inventa valores de mercado. Quando o catalogo Pokemon estiver disponivel, "
+        "as referencias de mercado e a atualidade da fonte aparecem na validacao abaixo.",
     ])
 
     conservacao = dados.get("conservacao") or []
@@ -349,8 +349,8 @@ def formatar_resultado_estruturado(dados):
     linhas.extend([
         "",
         "---",
-        "*Reliability 1.0: a identificacao acima ainda nao foi validada contra um catalogo TCG externo. "
-        "Essa validacao sera adicionada na proxima fase.*",
+        "*A identificacao da IA e preliminar. Quando o catalogo Pokemon estiver disponivel, "
+        "a validacao externa aparece logo abaixo sem consumir outro credito.*",
     ])
 
     return "\n".join(linhas)
@@ -568,6 +568,7 @@ def _executar_requisicao_catalogo(
 )
 def consultar_catalogo_pokemon(
     nome_carta,
+    cache_buster=0,
 ):
     """
     Reliability 2.1.1
@@ -579,6 +580,11 @@ def consultar_catalogo_pokemon(
     3. limita o volume retornado porque o ranking final
        é feito localmente pelo CardCraftAI.
     """
+
+    # cache_buster participa apenas da chave do st.cache_data.
+    # Em uma nova tentativa manual, ele muda e força uma consulta fresca
+    # sem limpar o cache global de outros usuários/consultas.
+    _ = cache_buster
 
     nome = str(
         nome_carta or ""
@@ -781,9 +787,11 @@ def buscar_cartas_catalogo_pokemon(
     colecao="",
     numero="",
     limite=12,
+    cache_buster=0,
 ):
     cartas = consultar_catalogo_pokemon(
-        nome
+        nome,
+        cache_buster=cache_buster,
     )
 
     return ranquear_cartas_catalogo(
@@ -1844,6 +1852,112 @@ def info_catalogo_para_analise(
     )
 
 
+def _chave_validacao_foto_catalogo(resultado):
+    """Cria uma chave estável para reutilizar a validação da mesma análise."""
+    identificacao = _extrair_identificacao_foto(
+        resultado
+    )
+
+    partes = [
+        _normalizar_texto_catalogo(
+            identificacao.get("nome")
+        ),
+        _normalizar_texto_catalogo(
+            identificacao.get("colecao")
+        ),
+        _normalizar_texto_catalogo(
+            identificacao.get("numero")
+        ),
+    ]
+
+    return "|".join(partes)
+
+
+def _preparar_estado_validacao_foto(resultado):
+    """
+    Mantém a validação do catálogo separada da chamada ao Gemini.
+
+    Isso permite tentar o catálogo novamente sem repetir a análise da foto
+    e sem reservar/consumir um novo crédito.
+    """
+    chave = _chave_validacao_foto_catalogo(
+        resultado
+    )
+
+    chave_anterior = st.session_state.get(
+        "catalogo_validacao_foto_chave"
+    )
+
+    if chave != chave_anterior:
+        st.session_state.catalogo_validacao_foto_chave = chave
+        st.session_state.catalogo_validacao_foto_estado = "novo"
+        st.session_state.catalogo_validacao_foto_cartas = []
+        st.session_state.catalogo_validacao_foto_resultado = None
+        st.session_state.catalogo_validacao_foto_erro = None
+        st.session_state.catalogo_validacao_foto_retry = 0
+        st.session_state.catalogo_selecionada_foto = None
+
+    return chave
+
+
+def _status_http_catalogo_erro(erro):
+    """Extrai códigos HTTP transitórios conhecidos da mensagem de erro."""
+    texto = str(
+        erro or ""
+    )
+
+    for status in (
+        500,
+        502,
+        503,
+        504,
+        429,
+    ):
+        if f"HTTP {status}" in texto:
+            return status
+
+    return None
+
+
+def _mostrar_falha_validacao_catalogo_foto(erro):
+    """Explica a falha externa sem invalidar a análise da IA."""
+    status = _status_http_catalogo_erro(
+        erro
+    )
+
+    if status in {
+        500,
+        502,
+        503,
+        504,
+    }:
+        st.warning(
+            "O catálogo Pokémon está temporariamente indisponível. "
+            "A análise da foto foi preservada e nenhum novo crédito "
+            "será necessário para tentar a validação novamente."
+        )
+        st.caption(
+            f"Serviço externo respondeu com HTTP {status}. "
+            "Isso não altera a identificação já produzida pela IA."
+        )
+    elif status == 429:
+        st.warning(
+            "O catálogo Pokémon limitou temporariamente novas consultas. "
+            "A análise da foto continua salva e pode ser validada novamente "
+            "sem consumir outro crédito."
+        )
+    else:
+        st.warning(
+            "A análise foi concluída, mas o catálogo visual não pôde ser "
+            "consultado agora. A identificação da IA continua disponível, "
+            "mas ainda não foi validada externamente."
+        )
+        if erro:
+            st.caption(
+                str(erro)
+            )
+
+
 def mostrar_catalogo_para_analise_foto(
     resultado,
 ):
@@ -1890,41 +2004,127 @@ def mostrar_catalogo_para_analise_foto(
     )
     st.caption(
         "O CardCraftAI compara a identificação da foto com cartas reais do "
-        "catálogo Pokémon. Esta validação não consome um novo crédito."
+        "catálogo Pokémon. Esta validação e as novas tentativas são gratuitas."
     )
 
-    try:
-        cartas = buscar_cartas_catalogo_pokemon(
-            nome=nome,
-            colecao=(
-                resultado.get(
-                    "colecao_set"
-                )
-                or ""
-            ),
-            numero=(
-                resultado.get(
-                    "numero_carta"
-                )
-                or ""
-            ),
-            limite=8,
+    _preparar_estado_validacao_foto(
+        resultado
+    )
+
+    estado = st.session_state.get(
+        "catalogo_validacao_foto_estado",
+        "novo",
+    )
+
+    tentar_novamente = False
+
+    if estado == "erro":
+        _mostrar_falha_validacao_catalogo_foto(
+            st.session_state.get(
+                "catalogo_validacao_foto_erro"
+            )
         )
-    except Exception as erro:
-        st.warning(
-            "A análise foi concluída, mas o catálogo visual não pôde ser "
-            "consultado agora. A identificação da IA continua disponível, "
-            "mas não foi validada externamente."
+
+        st.info(
+            "A identificação feita pela IA continua salva. O botão abaixo "
+            "consulta somente o catálogo e não executa o Gemini novamente."
         )
-        st.caption(
-            str(erro)
+
+        tentar_novamente = st.button(
+            "🔄 Tentar validar novamente — grátis",
+            key="retry_validacao_catalogo_foto",
+            use_container_width=True,
+        )
+
+        if not tentar_novamente:
+            return
+
+        st.session_state.catalogo_validacao_foto_retry = (
+            int(
+                st.session_state.get(
+                    "catalogo_validacao_foto_retry",
+                    0,
+                )
+            )
+            + 1
+        )
+        estado = "novo"
+
+    if estado == "sucesso":
+        cartas = st.session_state.get(
+            "catalogo_validacao_foto_cartas",
+            [],
+        )
+        validacao = st.session_state.get(
+            "catalogo_validacao_foto_resultado"
+        )
+    else:
+        try:
+            with st.spinner(
+                "Consultando o catálogo Pokémon para validar a identificação..."
+            ):
+                cartas = buscar_cartas_catalogo_pokemon(
+                    nome=nome,
+                    colecao=(
+                        resultado.get(
+                            "colecao_set"
+                        )
+                        or ""
+                    ),
+                    numero=(
+                        resultado.get(
+                            "numero_carta"
+                        )
+                        or ""
+                    ),
+                    limite=8,
+                    cache_buster=st.session_state.get(
+                        "catalogo_validacao_foto_retry",
+                        0,
+                    ),
+                )
+        except Exception as erro:
+            st.session_state.catalogo_validacao_foto_estado = "erro"
+            st.session_state.catalogo_validacao_foto_erro = str(
+                erro
+            )
+            st.session_state.catalogo_validacao_foto_cartas = []
+            st.session_state.catalogo_validacao_foto_resultado = None
+
+            _mostrar_falha_validacao_catalogo_foto(
+                erro
+            )
+
+            st.info(
+                "A identificação feita pela IA foi mantida. Você pode tentar "
+                "somente a validação do catálogo novamente quando quiser."
+            )
+
+            st.button(
+                "🔄 Tentar validar novamente — grátis",
+                key="retry_validacao_catalogo_foto",
+                use_container_width=True,
+            )
+            return
+
+        validacao = validar_identificacao_foto_catalogo(
+            resultado,
+            cartas,
+        )
+
+        st.session_state.catalogo_validacao_foto_estado = "sucesso"
+        st.session_state.catalogo_validacao_foto_erro = None
+        st.session_state.catalogo_validacao_foto_cartas = cartas
+        st.session_state.catalogo_validacao_foto_resultado = validacao
+
+    if not isinstance(
+        validacao,
+        dict,
+    ):
+        st.info(
+            "⚪ A validação do catálogo ainda não possui um resultado utilizável."
         )
         return
-
-    validacao = validar_identificacao_foto_catalogo(
-        resultado,
-        cartas,
-    )
 
     mostrar_validacao_foto_catalogo(
         validacao
@@ -1960,13 +2160,14 @@ def mostrar_catalogo_para_analise_foto(
                 ),
             )
 
-    st.subheader(
-        "🖼️ Outras correspondências para comparação"
-    )
-    mostrar_galeria_catalogo(
-        cartas,
-        contexto="foto",
-    )
+    if cartas:
+        st.subheader(
+            "🖼️ Outras correspondências para comparação"
+        )
+        mostrar_galeria_catalogo(
+            cartas,
+            contexto="foto",
+        )
 
 
 # ============================================================
@@ -2017,6 +2218,24 @@ if "catalogo_selecionada_nome" not in st.session_state:
 
 if "catalogo_selecionada_foto" not in st.session_state:
     st.session_state.catalogo_selecionada_foto = None
+
+if "catalogo_validacao_foto_chave" not in st.session_state:
+    st.session_state.catalogo_validacao_foto_chave = None
+
+if "catalogo_validacao_foto_estado" not in st.session_state:
+    st.session_state.catalogo_validacao_foto_estado = "novo"
+
+if "catalogo_validacao_foto_cartas" not in st.session_state:
+    st.session_state.catalogo_validacao_foto_cartas = []
+
+if "catalogo_validacao_foto_resultado" not in st.session_state:
+    st.session_state.catalogo_validacao_foto_resultado = None
+
+if "catalogo_validacao_foto_erro" not in st.session_state:
+    st.session_state.catalogo_validacao_foto_erro = None
+
+if "catalogo_validacao_foto_retry" not in st.session_state:
+    st.session_state.catalogo_validacao_foto_retry = 0
 
 
 # ============================================================
