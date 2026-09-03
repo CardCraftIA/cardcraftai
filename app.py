@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.1.5
-# Market Freshness + correcao visual de moeda + Reliability 1.0
+# CARDCRAFTAI RELIABILITY 2.2.1
+# Validacao automatica da analise por foto contra catalogo Pokemon + Reliability 2.1.5
 
 import base64
 import json
@@ -793,6 +793,274 @@ def buscar_cartas_catalogo_pokemon(
         numero=numero,
         limite=limite,
     )
+
+
+# ============================================================
+# RELIABILITY 2.2 - VALIDACAO DA IDENTIFICACAO POR FOTO
+# ============================================================
+
+def _extrair_identificacao_foto(resultado):
+    """Extrai os campos da IA usados na validação com o catálogo."""
+    if not isinstance(resultado, dict):
+        return {
+            "nome": "",
+            "colecao": "",
+            "numero": "",
+            "qualidade_imagem": "",
+            "status_modelo": "",
+        }
+
+    return {
+        "nome": str(resultado.get("nome_carta") or "").strip(),
+        "colecao": str(resultado.get("colecao_set") or "").strip(),
+        "numero": str(resultado.get("numero_carta") or "").strip(),
+        "qualidade_imagem": str(resultado.get("qualidade_imagem") or "").strip(),
+        "status_modelo": str(resultado.get("status_identificacao") or "").strip(),
+    }
+
+
+def _comparar_identificacao_com_carta(identificacao, carta):
+    """Compara nome, coleção e número da IA com uma carta real do catálogo."""
+    if not isinstance(carta, dict):
+        return None
+
+    set_dados = carta.get("set") or {}
+
+    nome_ia = identificacao.get("nome", "")
+    colecao_ia = identificacao.get("colecao", "")
+    numero_ia = identificacao.get("numero", "")
+
+    nome_catalogo = carta.get("name", "")
+    colecao_catalogo = set_dados.get("name", "")
+    numero_catalogo = carta.get("number", "")
+
+    similaridade_nome = _similaridade_catalogo(nome_ia, nome_catalogo)
+    similaridade_colecao = _similaridade_catalogo(colecao_ia, colecao_catalogo)
+
+    numero_ia_norm = _normalizar_texto_catalogo(numero_ia)
+    numero_catalogo_norm = _normalizar_texto_catalogo(numero_catalogo)
+
+    numero_exato = bool(
+        numero_ia_norm
+        and numero_catalogo_norm
+        and numero_ia_norm == numero_catalogo_norm
+    )
+
+    similaridade_numero = _similaridade_catalogo(numero_ia, numero_catalogo)
+
+    score = similaridade_nome * 50
+
+    if colecao_ia:
+        score += similaridade_colecao * 25
+
+    if numero_ia:
+        score += 40 if numero_exato else similaridade_numero * 10
+
+    return {
+        "carta": carta,
+        "score": score,
+        "similaridade_nome": similaridade_nome,
+        "similaridade_colecao": similaridade_colecao,
+        "similaridade_numero": similaridade_numero,
+        "numero_exato": numero_exato,
+        "nome_catalogo": nome_catalogo,
+        "colecao_catalogo": colecao_catalogo,
+        "numero_catalogo": numero_catalogo,
+    }
+
+
+def validar_identificacao_foto_catalogo(resultado, cartas):
+    """
+    Valida a identificação preliminar da IA contra o catálogo Pokémon.
+
+    Regra deliberadamente conservadora:
+    confirmação automática exige nome + coleção + número, além de imagem
+    que não tenha sido classificada como ruim.
+    """
+    identificacao = _extrair_identificacao_foto(resultado)
+
+    if not identificacao["nome"]:
+        return {
+            "status": "sem_dados",
+            "titulo": "Não foi possível validar no catálogo",
+            "mensagem": "A IA não conseguiu confirmar um nome de carta suficiente para consultar o catálogo.",
+            "melhor": None,
+            "candidatos": [],
+            "identificacao": identificacao,
+        }
+
+    comparacoes = []
+    for carta in cartas or []:
+        comparacao = _comparar_identificacao_com_carta(identificacao, carta)
+        if comparacao:
+            comparacoes.append(comparacao)
+
+    comparacoes.sort(key=lambda item: item["score"], reverse=True)
+
+    if not comparacoes:
+        return {
+            "status": "sem_resultado",
+            "titulo": "Não validado no catálogo",
+            "mensagem": "O catálogo não retornou uma correspondência utilizável para a identificação da foto.",
+            "melhor": None,
+            "candidatos": [],
+            "identificacao": identificacao,
+        }
+
+    melhor = comparacoes[0]
+
+    nome_forte = melhor["similaridade_nome"] >= 0.90
+    colecao_forte = melhor["similaridade_colecao"] >= 0.85
+    numero_exato = melhor["numero_exato"]
+
+    tem_colecao = bool(identificacao["colecao"])
+    tem_numero = bool(identificacao["numero"])
+    imagem_ruim = _normalizar_texto_catalogo(
+        identificacao["qualidade_imagem"]
+    ) == "ruim"
+
+    # Confirmação exige os três identificadores e imagem não ruim.
+    if (
+        nome_forte
+        and tem_colecao
+        and colecao_forte
+        and tem_numero
+        and numero_exato
+        and not imagem_ruim
+    ):
+        status = "confirmado"
+        titulo = "✅ Identificação validada pelo catálogo"
+        mensagem = (
+            "Nome, coleção e número correspondem fortemente a uma carta real "
+            "do catálogo Pokémon TCG."
+        )
+
+    # Boa correspondência, mas ainda falta algum identificador ou a foto é ruim.
+    elif (
+        nome_forte
+        and (
+            numero_exato
+            or (tem_colecao and colecao_forte)
+        )
+    ):
+        status = "provavel"
+        titulo = "🟡 Identificação provavelmente correta"
+        if imagem_ruim:
+            mensagem = (
+                "O catálogo encontrou uma correspondência forte, mas a qualidade "
+                "da imagem impede uma confirmação automática."
+            )
+        else:
+            mensagem = (
+                "O catálogo encontrou uma correspondência forte, mas ainda falta "
+                "confirmar pelo menos um identificador importante."
+            )
+
+    else:
+        status = "inconclusivo"
+        titulo = "⚠️ Identificação ainda não confirmada"
+        mensagem = (
+            "O catálogo encontrou versões semelhantes, mas os dados extraídos da "
+            "foto ainda não são suficientes para confirmar a carta exata."
+        )
+
+    return {
+        "status": status,
+        "titulo": titulo,
+        "mensagem": mensagem,
+        "melhor": melhor,
+        "candidatos": comparacoes[:8],
+        "identificacao": identificacao,
+    }
+
+
+def _indicador_correspondencia(valor_ia, valor_catalogo, limite=0.85, numero=False):
+    """Texto curto para explicar ao usuário o que coincidiu."""
+    if not valor_ia:
+        return "⚪ Não informado pela IA"
+
+    if numero:
+        iguais = (
+            _normalizar_texto_catalogo(valor_ia)
+            == _normalizar_texto_catalogo(valor_catalogo)
+        )
+    else:
+        iguais = _similaridade_catalogo(valor_ia, valor_catalogo) >= limite
+
+    return "✅ Compatível" if iguais else "⚠️ Divergente"
+
+
+def mostrar_validacao_foto_catalogo(validacao):
+    """Renderiza o resultado da validação sem consumir outro crédito."""
+    status = validacao.get("status")
+    titulo = validacao.get("titulo", "Validação do catálogo")
+    mensagem = validacao.get("mensagem", "")
+
+    if status == "confirmado":
+        st.success(titulo)
+    elif status in {"provavel", "inconclusivo"}:
+        st.warning(titulo)
+    else:
+        st.info(titulo)
+
+    if mensagem:
+        st.caption(mensagem)
+
+    melhor = validacao.get("melhor")
+    if not melhor:
+        return
+
+    identificacao = validacao.get("identificacao") or {}
+
+    col_nome, col_set, col_numero = st.columns(3)
+
+    with col_nome:
+        st.caption("Nome")
+        st.write(
+            _indicador_correspondencia(
+                identificacao.get("nome"),
+                melhor.get("nome_catalogo"),
+                limite=0.90,
+            )
+        )
+
+    with col_set:
+        st.caption("Coleção / Set")
+        st.write(
+            _indicador_correspondencia(
+                identificacao.get("colecao"),
+                melhor.get("colecao_catalogo"),
+                limite=0.85,
+            )
+        )
+
+    with col_numero:
+        st.caption("Número")
+        st.write(
+            _indicador_correspondencia(
+                identificacao.get("numero"),
+                melhor.get("numero_catalogo"),
+                numero=True,
+            )
+        )
+
+    with st.expander("🔎 Como o CardCraftAI validou esta identificação"):
+        st.write(
+            "**IA identificou:** "
+            f"{identificacao.get('nome') or 'não confirmado'} • "
+            f"{identificacao.get('colecao') or 'coleção não confirmada'} • "
+            f"#{identificacao.get('numero') or 'número não confirmado'}"
+        )
+        st.write(
+            "**Melhor correspondência do catálogo:** "
+            f"{melhor.get('nome_catalogo') or 'não disponível'} • "
+            f"{melhor.get('colecao_catalogo') or 'set não disponível'} • "
+            f"#{melhor.get('numero_catalogo') or 'número não disponível'}"
+        )
+        st.caption(
+            "A validação compara dados estruturados. Ela não autentica fisicamente "
+            "a carta e não substitui verificação profissional."
+        )
 
 
 def _url_imagem_carta(
@@ -1597,6 +1865,11 @@ def mostrar_catalogo_para_analise_foto(
         and
         "pokemon" not in jogo
     ):
+        st.divider()
+        st.info(
+            "A validação automática por catálogo desta fase está disponível "
+            "para cartas Pokémon TCG."
+        )
         return
 
     nome = resultado.get(
@@ -1604,15 +1877,20 @@ def mostrar_catalogo_para_analise_foto(
     )
 
     if not nome:
+        st.divider()
+        st.info(
+            "⚪ Não foi possível consultar o catálogo porque o nome da carta "
+            "não foi identificado com segurança."
+        )
         return
 
     st.divider()
     st.subheader(
-        "🖼️ Correspondências no catálogo Pokémon"
+        "🛡️ Validação da identificação por catálogo"
     )
     st.caption(
-        "Esta consulta ao catálogo não consome "
-        "um novo crédito."
+        "O CardCraftAI compara a identificação da foto com cartas reais do "
+        "catálogo Pokémon. Esta validação não consome um novo crédito."
     )
 
     try:
@@ -1634,13 +1912,23 @@ def mostrar_catalogo_para_analise_foto(
         )
     except Exception as erro:
         st.warning(
-            "A análise foi concluída, mas o catálogo "
-            "visual não pôde ser consultado."
+            "A análise foi concluída, mas o catálogo visual não pôde ser "
+            "consultado agora. A identificação da IA continua disponível, "
+            "mas não foi validada externamente."
         )
         st.caption(
             str(erro)
         )
         return
+
+    validacao = validar_identificacao_foto_catalogo(
+        resultado,
+        cartas,
+    )
+
+    mostrar_validacao_foto_catalogo(
+        validacao
+    )
 
     selecionada = st.session_state.get(
         "catalogo_selecionada_foto"
@@ -1650,11 +1938,31 @@ def mostrar_catalogo_para_analise_foto(
         mostrar_carta_catalogo_selecionada(
             selecionada,
             titulo=(
-                "✅ Correspondência escolhida "
+                "✅ Correspondência escolhida pelo usuário "
                 "para esta análise"
             ),
         )
+    else:
+        melhor = validacao.get("melhor")
+        if (
+            melhor
+            and
+            validacao.get("status") in {
+                "confirmado",
+                "provavel",
+            }
+        ):
+            mostrar_carta_catalogo_selecionada(
+                melhor.get("carta"),
+                titulo=(
+                    "🎯 Melhor correspondência encontrada "
+                    "no catálogo"
+                ),
+            )
 
+    st.subheader(
+        "🖼️ Outras correspondências para comparação"
+    )
     mostrar_galeria_catalogo(
         cartas,
         contexto="foto",
