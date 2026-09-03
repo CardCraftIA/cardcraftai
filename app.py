@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.1.4
-# Market Freshness + catalogo visual Pokemon + Reliability 1.0
+# CARDCRAFTAI RELIABILITY 2.1.5
+# Market Freshness + correcao visual de moeda + Reliability 1.0
 
 import base64
 import json
@@ -1077,7 +1077,20 @@ def _formatar_valor_moeda_catalogo(
         .replace("X", ".")
     )
 
-    return f"{simbolo} {texto}"
+    # O Streamlit interpreta "$" como delimitador matemático
+    # quando a string passa pelo Markdown. Escapamos somente
+    # para exibição, sem alterar o valor ou a moeda.
+    simbolo_exibicao = str(
+        simbolo or ""
+    ).replace(
+        "$",
+        r"\$",
+    )
+
+    return (
+        f"{simbolo_exibicao} "
+        f"{texto}"
+    )
 
 
 def _url_busca_tcgplayer(
