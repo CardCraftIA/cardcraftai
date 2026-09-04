@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.2.2
-# Retry gratuito do catalogo + estado resiliente da validacao por foto + Reliability 2.2.1
+# CARDCRAFTAI RELIABILITY 2.2.3
+# Resolucao exata por numero + aliases de colecao + Reliability 2.2.2
 
 import base64
 import json
@@ -383,9 +383,57 @@ def _normalizar_texto_catalogo(valor):
     )
 
 
+def _normalizar_colecao_catalogo(valor):
+    """Normaliza nomes equivalentes de coleções sem esconder divergências reais."""
+    texto = _normalizar_texto_catalogo(valor)
+    texto = texto.replace("&", " and " )
+    texto = " ".join(texto.split())
+
+    aliases = {
+        "sun and moon black star promos": "sm black star promos",
+        "sun moon black star promos": "sm black star promos",
+        "sword and shield black star promos": "swsh black star promos",
+        "sword shield black star promos": "swsh black star promos",
+        "scarlet and violet black star promos": "sv black star promos",
+        "scarlet violet black star promos": "sv black star promos",
+    }
+
+    return aliases.get(texto, texto)
+
+
+def _normalizar_numero_catalogo(valor):
+    """Normaliza o identificador impresso da carta para comparação exata."""
+    texto = str(valor or "").strip().lower()
+    return "".join(
+        caractere
+        for caractere in texto
+        if caractere.isalnum() or caractere == "/"
+    )
+
+
 def _similaridade_catalogo(a, b):
     a_norm = _normalizar_texto_catalogo(a)
     b_norm = _normalizar_texto_catalogo(b)
+
+    if not a_norm or not b_norm:
+        return 0.0
+
+    if a_norm == b_norm:
+        return 1.0
+
+    if a_norm in b_norm or b_norm in a_norm:
+        return 0.92
+
+    return SequenceMatcher(
+        None,
+        a_norm,
+        b_norm,
+    ).ratio()
+
+
+def _similaridade_colecao_catalogo(a, b):
+    a_norm = _normalizar_colecao_catalogo(a)
+    b_norm = _normalizar_colecao_catalogo(b)
 
     if not a_norm or not b_norm:
         return 0.0
@@ -698,6 +746,64 @@ def consultar_catalogo_pokemon(
     return []
 
 
+@st.cache_data(
+    ttl=3600,
+    show_spinner=False,
+)
+def consultar_catalogo_pokemon_por_numero(
+    numero_carta,
+    cache_buster=0,
+):
+    """
+    Reliability 2.2.3
+
+    Procura primeiro pelo número impresso da carta. O filtro final é local
+    e exato, para evitar que um resultado apenas semelhante seja tratado
+    como correspondência da mesma carta.
+    """
+    _ = cache_buster
+
+    numero = str(numero_carta or "").strip()
+    numero_norm = _normalizar_numero_catalogo(numero)
+
+    if not numero_norm:
+        return []
+
+    if not POKEMON_TCG_API_KEY:
+        raise RuntimeError(
+            "A chave POKEMON_TCG_API_KEY ainda não está "
+            "configurada nos Secrets do Streamlit."
+        )
+
+    numero_seguro = _frase_lucene_segura(numero)
+    resultado = _executar_requisicao_catalogo(
+        params={
+            "q": f'number:"{numero_seguro}"',
+            "page": 1,
+            "pageSize": 100,
+        },
+        tentativas=2,
+    )
+
+    if not resultado.get("ok"):
+        status = resultado.get("status")
+        if status in {500, 502, 503, 504}:
+            raise RuntimeError(
+                "O catálogo Pokémon TCG está temporariamente "
+                f"indisponível (HTTP {status}) durante a busca pelo número."
+            )
+        return []
+
+    cartas = resultado.get("data", []) or []
+
+    return [
+        carta
+        for carta in cartas
+        if isinstance(carta, dict)
+        and _normalizar_numero_catalogo(carta.get("number")) == numero_norm
+    ]
+
+
 
 def ranquear_cartas_catalogo(
     cartas,
@@ -736,7 +842,7 @@ def ranquear_cartas_catalogo(
 
         if colecao:
             score += (
-                _similaridade_catalogo(
+                _similaridade_colecao_catalogo(
                     colecao,
                     set_nome,
                 )
@@ -744,8 +850,8 @@ def ranquear_cartas_catalogo(
             )
 
         if numero:
-            numero_norm = _normalizar_texto_catalogo(numero)
-            numero_carta_norm = _normalizar_texto_catalogo(
+            numero_norm = _normalizar_numero_catalogo(numero)
+            numero_carta_norm = _normalizar_numero_catalogo(
                 numero_carta
             )
 
@@ -789,13 +895,67 @@ def buscar_cartas_catalogo_pokemon(
     limite=12,
     cache_buster=0,
 ):
-    cartas = consultar_catalogo_pokemon(
-        nome,
-        cache_buster=cache_buster,
-    )
+    """
+    Reliability 2.2.3
+
+    Ordem de resolução:
+    1. número exato, quando disponível;
+    2. nome da carta;
+    3. ranking local por número, nome e coleção normalizada.
+
+    O resultado exato por número nunca é descartado pela busca ampla por nome.
+    """
+    cartas_numero = []
+    erro_numero = None
+
+    if str(numero or "").strip():
+        try:
+            cartas_numero = consultar_catalogo_pokemon_por_numero(
+                numero,
+                cache_buster=cache_buster,
+            )
+        except RuntimeError as erro:
+            erro_numero = erro
+
+    cartas_nome = []
+    try:
+        cartas_nome = consultar_catalogo_pokemon(
+            nome,
+            cache_buster=cache_buster,
+        )
+    except RuntimeError:
+        if cartas_numero:
+            cartas_nome = []
+        else:
+            raise
+
+    combinadas = []
+    ids_vistos = set()
+
+    for carta in [*(cartas_numero or []), *(cartas_nome or [])]:
+        if not isinstance(carta, dict):
+            continue
+
+        chave = str(carta.get("id") or "").strip()
+        if not chave:
+            set_dados = carta.get("set") or {}
+            chave = "|".join([
+                str(carta.get("name") or ""),
+                str(set_dados.get("name") or ""),
+                str(carta.get("number") or ""),
+            ])
+
+        if chave in ids_vistos:
+            continue
+
+        ids_vistos.add(chave)
+        combinadas.append(carta)
+
+    if not combinadas and erro_numero is not None:
+        raise erro_numero
 
     return ranquear_cartas_catalogo(
-        cartas,
+        combinadas,
         nome=nome,
         colecao=colecao,
         numero=numero,
@@ -843,10 +1003,10 @@ def _comparar_identificacao_com_carta(identificacao, carta):
     numero_catalogo = carta.get("number", "")
 
     similaridade_nome = _similaridade_catalogo(nome_ia, nome_catalogo)
-    similaridade_colecao = _similaridade_catalogo(colecao_ia, colecao_catalogo)
+    similaridade_colecao = _similaridade_colecao_catalogo(colecao_ia, colecao_catalogo)
 
-    numero_ia_norm = _normalizar_texto_catalogo(numero_ia)
-    numero_catalogo_norm = _normalizar_texto_catalogo(numero_catalogo)
+    numero_ia_norm = _normalizar_numero_catalogo(numero_ia)
+    numero_catalogo_norm = _normalizar_numero_catalogo(numero_catalogo)
 
     numero_exato = bool(
         numero_ia_norm
@@ -903,7 +1063,13 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
         if comparacao:
             comparacoes.append(comparacao)
 
-    comparacoes.sort(key=lambda item: item["score"], reverse=True)
+    comparacoes.sort(
+        key=lambda item: (
+            1 if item.get("numero_exato") else 0,
+            item.get("score", 0),
+        ),
+        reverse=True,
+    )
 
     if not comparacoes:
         return {
@@ -939,8 +1105,8 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
         status = "confirmado"
         titulo = "✅ Identificação validada pelo catálogo"
         mensagem = (
-            "Nome, coleção e número correspondem fortemente a uma carta real "
-            "do catálogo Pokémon TCG."
+            "O número exato foi localizado e nome e coleção normalizada "
+            "correspondem a uma carta real do catálogo Pokémon TCG."
         )
 
     # Boa correspondência, mas ainda falta algum identificador ou a foto é ruim.
@@ -982,15 +1148,29 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
     }
 
 
-def _indicador_correspondencia(valor_ia, valor_catalogo, limite=0.85, numero=False):
+def _indicador_correspondencia(
+    valor_ia,
+    valor_catalogo,
+    limite=0.85,
+    numero=False,
+    colecao=False,
+):
     """Texto curto para explicar ao usuário o que coincidiu."""
     if not valor_ia:
         return "⚪ Não informado pela IA"
 
     if numero:
         iguais = (
-            _normalizar_texto_catalogo(valor_ia)
-            == _normalizar_texto_catalogo(valor_catalogo)
+            _normalizar_numero_catalogo(valor_ia)
+            == _normalizar_numero_catalogo(valor_catalogo)
+        )
+    elif colecao:
+        iguais = (
+            _similaridade_colecao_catalogo(
+                valor_ia,
+                valor_catalogo,
+            )
+            >= limite
         )
     else:
         iguais = _similaridade_catalogo(valor_ia, valor_catalogo) >= limite
@@ -1039,6 +1219,7 @@ def mostrar_validacao_foto_catalogo(validacao):
                 identificacao.get("colecao"),
                 melhor.get("colecao_catalogo"),
                 limite=0.85,
+                colecao=True,
             )
         )
 
