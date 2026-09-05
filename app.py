@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.2.3
-# Resolucao exata por numero + aliases de colecao + Reliability 2.2.2
+# CARDCRAFTAI RELIABILITY 2.2.4
+# Resolucao deterministica por ID/set + busca exata Lucene + bloqueio de falso positivo + Reliability 2.2.3
 
 import base64
 import json
@@ -750,16 +750,116 @@ def consultar_catalogo_pokemon(
     ttl=3600,
     show_spinner=False,
 )
+def _set_id_catalogo_por_colecao(colecao):
+    """Retorna o ID do set quando a coleção possui um alias determinístico conhecido."""
+    colecao_norm = _normalizar_colecao_catalogo(colecao)
+
+    mapa = {
+        "sm black star promos": "smp",
+        "swsh black star promos": "swshp",
+        "xy black star promos": "xyp",
+        "bw black star promos": "bwp",
+        "sv black star promos": "svp",
+    }
+
+    return mapa.get(colecao_norm)
+
+
+def _consultar_catalogo_por_id_composto(colecao, numero_carta):
+    """
+    Reliability 2.2.4
+
+    Para coleções cujo ID é conhecido, consulta diretamente /cards/<id>.
+    Isso evita que uma busca ampla por nome substitua uma carta de número exato.
+    """
+    set_id = _set_id_catalogo_por_colecao(colecao)
+    numero = str(numero_carta or "").strip()
+
+    if not set_id or not numero:
+        return []
+
+    card_id = f"{set_id}-{numero}"
+    codigos_transitorios = {500, 502, 503, 504}
+
+    for tentativa in range(1, 3):
+        try:
+            resposta = requests.get(
+                f"{POKEMON_TCG_API_URL}/{card_id}",
+                headers={
+                    "X-Api-Key": POKEMON_TCG_API_KEY,
+                    "Accept": "application/json",
+                },
+                timeout=12,
+            )
+        except requests.RequestException as erro:
+            if tentativa < 2:
+                time.sleep(0.8 * tentativa)
+                continue
+            raise RuntimeError(
+                "Não foi possível conectar ao catálogo Pokémon TCG "
+                "durante a consulta exata da carta."
+            ) from erro
+
+        if resposta.status_code == 404:
+            return []
+
+        if resposta.status_code == 401:
+            raise RuntimeError(
+                "A Pokémon TCG API recusou a chave configurada. "
+                "Verifique POKEMON_TCG_API_KEY nos Secrets."
+            )
+
+        if resposta.status_code == 429:
+            raise RuntimeError(
+                "O catálogo Pokémon TCG atingiu temporariamente "
+                "o limite de consultas. Tente novamente em alguns minutos."
+            )
+
+        if resposta.status_code in codigos_transitorios:
+            if tentativa < 2:
+                time.sleep(0.8 * tentativa)
+                continue
+            raise RuntimeError(
+                "O catálogo Pokémon TCG está temporariamente "
+                f"indisponível (HTTP {resposta.status_code}) durante a consulta exata."
+            )
+
+        try:
+            resposta.raise_for_status()
+        except requests.RequestException as erro:
+            raise RuntimeError(
+                "O catálogo Pokémon TCG respondeu com erro "
+                f"HTTP {resposta.status_code}."
+            ) from erro
+
+        try:
+            payload = resposta.json()
+        except ValueError as erro:
+            raise RuntimeError(
+                "O catálogo Pokémon TCG respondeu em formato inválido."
+            ) from erro
+
+        carta = payload.get("data")
+        if not isinstance(carta, dict):
+            return []
+
+        return [carta]
+
+    return []
+
+
 def consultar_catalogo_pokemon_por_numero(
     numero_carta,
+    colecao="",
     cache_buster=0,
 ):
     """
-    Reliability 2.2.3
+    Reliability 2.2.4
 
-    Procura primeiro pelo número impresso da carta. O filtro final é local
-    e exato, para evitar que um resultado apenas semelhante seja tratado
-    como correspondência da mesma carta.
+    Ordem de resolução do identificador:
+    1. ID direto quando coleção + número permitem derivá-lo;
+    2. busca Lucene exata com !number:<valor>;
+    3. busca normal por number com filtro local estritamente exato.
     """
     _ = cache_buster
 
@@ -775,33 +875,60 @@ def consultar_catalogo_pokemon_por_numero(
             "configurada nos Secrets do Streamlit."
         )
 
-    numero_seguro = _frase_lucene_segura(numero)
-    resultado = _executar_requisicao_catalogo(
-        params={
-            "q": f'number:"{numero_seguro}"',
-            "page": 1,
-            "pageSize": 100,
-        },
-        tentativas=2,
+    # Caminho mais determinístico: set conhecido + número impresso.
+    cartas_id = _consultar_catalogo_por_id_composto(
+        colecao,
+        numero,
     )
-
-    if not resultado.get("ok"):
-        status = resultado.get("status")
-        if status in {500, 502, 503, 504}:
-            raise RuntimeError(
-                "O catálogo Pokémon TCG está temporariamente "
-                f"indisponível (HTTP {status}) durante a busca pelo número."
-            )
-        return []
-
-    cartas = resultado.get("data", []) or []
-
-    return [
+    cartas_id = [
         carta
-        for carta in cartas
-        if isinstance(carta, dict)
-        and _normalizar_numero_catalogo(carta.get("number")) == numero_norm
+        for carta in cartas_id
+        if _normalizar_numero_catalogo(carta.get("number")) == numero_norm
     ]
+    if cartas_id:
+        return cartas_id
+
+    numero_seguro = _frase_lucene_segura(numero)
+
+    consultas = [
+        f"!number:{numero_seguro}",
+        f"number:{numero_seguro}",
+    ]
+
+    ultimo_status = None
+
+    for consulta in consultas:
+        resultado = _executar_requisicao_catalogo(
+            params={
+                "q": consulta,
+                "page": 1,
+                "pageSize": 100,
+            },
+            tentativas=2,
+        )
+
+        if not resultado.get("ok"):
+            ultimo_status = resultado.get("status")
+            continue
+
+        cartas = resultado.get("data", []) or []
+        exatas = [
+            carta
+            for carta in cartas
+            if isinstance(carta, dict)
+            and _normalizar_numero_catalogo(carta.get("number")) == numero_norm
+        ]
+
+        if exatas:
+            return exatas
+
+    if ultimo_status in {500, 502, 503, 504}:
+        raise RuntimeError(
+            "O catálogo Pokémon TCG está temporariamente "
+            f"indisponível (HTTP {ultimo_status}) durante a busca pelo número."
+        )
+
+    return []
 
 
 
@@ -896,7 +1023,7 @@ def buscar_cartas_catalogo_pokemon(
     cache_buster=0,
 ):
     """
-    Reliability 2.2.3
+    Reliability 2.2.4
 
     Ordem de resolução:
     1. número exato, quando disponível;
@@ -912,6 +1039,7 @@ def buscar_cartas_catalogo_pokemon(
         try:
             cartas_numero = consultar_catalogo_pokemon_por_numero(
                 numero,
+                colecao=colecao,
                 cache_buster=cache_buster,
             )
         except RuntimeError as erro:
@@ -1109,12 +1237,17 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
             "correspondem a uma carta real do catálogo Pokémon TCG."
         )
 
-    # Boa correspondência, mas ainda falta algum identificador ou a foto é ruim.
+    # Se a IA forneceu um número, uma carta com número diferente nunca pode
+    # ser promovida a "provável". Isso bloqueia falsos positivos como SM211 -> SM60.
     elif (
         nome_forte
         and (
-            numero_exato
-            or (tem_colecao and colecao_forte)
+            (tem_numero and numero_exato)
+            or (
+                not tem_numero
+                and tem_colecao
+                and colecao_forte
+            )
         )
     ):
         status = "provavel"
@@ -1133,10 +1266,17 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
     else:
         status = "inconclusivo"
         titulo = "⚠️ Identificação ainda não confirmada"
-        mensagem = (
-            "O catálogo encontrou versões semelhantes, mas os dados extraídos da "
-            "foto ainda não são suficientes para confirmar a carta exata."
-        )
+        if tem_numero and not numero_exato:
+            mensagem = (
+                "A IA informou um número de carta, mas nenhuma correspondência com "
+                "esse número exato foi confirmada. Versões com número diferente são "
+                "mostradas apenas para comparação e não são tratadas como a mesma carta."
+            )
+        else:
+            mensagem = (
+                "O catálogo encontrou versões semelhantes, mas os dados extraídos da "
+                "foto ainda não são suficientes para confirmar a carta exata."
+            )
 
     return {
         "status": status,
