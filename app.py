@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.3.1
-# Precisao temporal por campo: data do set != ano visual da carta + Reliability 2.3.0
+# CARDCRAFTAI RELIABILITY 2.4.0
+# Confidence Engine deterministico + proveniencia por evidencia + Reliability 2.3.1
 
 import base64
 import json
@@ -1304,6 +1304,405 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
     }
 
 
+# ============================================================
+# RELIABILITY 2.4 - CONFIDENCE ENGINE
+# ============================================================
+
+def _identificacao_para_confianca(dados):
+    """
+    Aceita tanto o resultado estruturado bruto da IA quanto o dicionário
+    já extraído por _extrair_identificacao_foto().
+    """
+    if not isinstance(dados, dict):
+        return _extrair_identificacao_foto({})
+
+    if any(
+        chave in dados
+        for chave in (
+            "nome_carta",
+            "colecao_set",
+            "numero_carta",
+            "status_identificacao",
+        )
+    ):
+        return _extrair_identificacao_foto(dados)
+
+    base = _extrair_identificacao_foto({})
+    for chave in base:
+        if chave in dados:
+            base[chave] = dados.get(chave)
+
+    return base
+
+
+def classificar_confianca_cardcraft(
+    dados_identificacao,
+    validacao=None,
+    catalogo_disponivel=True,
+):
+    """
+    Reliability 2.4.0
+
+    Converte evidências já existentes em um nível determinístico de confiança.
+    O Gemini não escolhe este nível e nenhuma porcentagem é inventada.
+
+    Prioridade:
+    1. divergência objetiva bloqueia promoção;
+    2. confirmação externa exige validação exata do catálogo;
+    3. alta confiança visual só existe quando não há confirmação externa
+       disponível e a leitura visual é forte, completa e com imagem utilizável;
+    4. correspondência externa incompleta vira confirmação parcial;
+    5. demais casos permanecem não confirmados.
+    """
+    identificacao = _identificacao_para_confianca(
+        dados_identificacao
+    )
+
+    nome = str(
+        identificacao.get("nome")
+        or ""
+    ).strip()
+    colecao = str(
+        identificacao.get("colecao")
+        or ""
+    ).strip()
+    numero = str(
+        identificacao.get("numero")
+        or ""
+    ).strip()
+
+    qualidade = _normalizar_texto_catalogo(
+        identificacao.get("qualidade_imagem")
+    )
+    status_modelo = _normalizar_texto_catalogo(
+        identificacao.get("status_modelo")
+    )
+
+    validacao = (
+        validacao
+        if isinstance(validacao, dict)
+        else {}
+    )
+    status_catalogo = str(
+        validacao.get("status")
+        or ""
+    ).strip().lower()
+    melhor = validacao.get("melhor")
+    melhor = (
+        melhor
+        if isinstance(melhor, dict)
+        else {}
+    )
+
+    nome_forte = bool(
+        melhor
+        and
+        float(
+            melhor.get("similaridade_nome")
+            or 0
+        )
+        >= 0.90
+    )
+    colecao_forte = bool(
+        melhor
+        and
+        float(
+            melhor.get("similaridade_colecao")
+            or 0
+        )
+        >= 0.85
+    )
+    numero_exato = bool(
+        melhor
+        and
+        melhor.get("numero_exato")
+    )
+
+    numero_catalogo = str(
+        melhor.get("numero_catalogo")
+        or ""
+    ).strip()
+
+    # Divergência objetiva tem prioridade absoluta.
+    if (
+        catalogo_disponivel
+        and
+        melhor
+        and
+        numero
+        and
+        numero_catalogo
+        and
+        not numero_exato
+    ):
+        return {
+            "codigo": "divergencia",
+            "rotulo": "⚠️ Divergência detectada",
+            "mensagem": (
+                "O número lido na carta diverge do número do melhor candidato "
+                "do catálogo. O CardCraftAI bloqueou qualquer promoção para "
+                "confirmação ou alta confiança."
+            ),
+            "evidencias": [
+                f"Número lido pela IA: #{numero}",
+                f"Número do melhor candidato do catálogo: #{numero_catalogo}",
+                "Divergência de número tem prioridade sobre semelhanças de nome ou coleção.",
+            ],
+            "confirmacao_externa": False,
+            "bloqueio_divergencia": True,
+        }
+
+    if (
+        catalogo_disponivel
+        and
+        status_catalogo == "confirmado"
+    ):
+        evidencias = [
+            "Número exato localizado no catálogo Pokémon TCG.",
+            "Nome compatível com a correspondência do catálogo.",
+            "Coleção / set compatível com a correspondência do catálogo.",
+        ]
+
+        return {
+            "codigo": "confirmado_catalogo",
+            "rotulo": "✅ Confirmado pelo catálogo",
+            "mensagem": (
+                "A identidade principal da carta foi confirmada externamente "
+                "por nome, coleção e número exato."
+            ),
+            "evidencias": evidencias,
+            "confirmacao_externa": True,
+            "bloqueio_divergencia": False,
+        }
+
+    if catalogo_disponivel:
+        evidencias_parciais = []
+
+        if numero_exato:
+            evidencias_parciais.append(
+                "Número exato compatível com um candidato do catálogo."
+            )
+        if nome_forte:
+            evidencias_parciais.append(
+                "Nome fortemente compatível com o catálogo."
+            )
+        if colecao_forte:
+            evidencias_parciais.append(
+                "Coleção / set fortemente compatível com o catálogo."
+            )
+
+        parcial = (
+            status_catalogo == "provavel"
+            or
+            (
+                status_catalogo == "inconclusivo"
+                and
+                (
+                    numero_exato
+                    or
+                    (
+                        nome_forte
+                        and
+                        colecao_forte
+                    )
+                )
+            )
+        )
+
+        if parcial:
+            if not numero:
+                evidencias_parciais.append(
+                    "O número da carta não foi lido com segurança."
+                )
+            elif not numero_exato:
+                evidencias_parciais.append(
+                    "O número ainda não possui confirmação exata."
+                )
+
+            if not colecao:
+                evidencias_parciais.append(
+                    "A coleção / set não foi lida com segurança."
+                )
+
+            return {
+                "codigo": "parcial",
+                "rotulo": "🟡 Parcialmente confirmado",
+                "mensagem": (
+                    "O catálogo confirma parte relevante da identificação, "
+                    "mas ainda falta um identificador decisivo para confirmar "
+                    "a carta exata."
+                ),
+                "evidencias": evidencias_parciais,
+                "confirmacao_externa": False,
+                "bloqueio_divergencia": False,
+            }
+
+        evidencias = []
+        if status_catalogo in {
+            "sem_resultado",
+            "sem_dados",
+        }:
+            evidencias.append(
+                "O catálogo foi consultado, mas não confirmou uma correspondência utilizável."
+            )
+        elif melhor:
+            evidencias.append(
+                "Há candidatos no catálogo, porém a correspondência ainda é insuficiente."
+            )
+        else:
+            evidencias.append(
+                "Não há evidência externa suficiente para confirmar a identidade."
+            )
+
+        return {
+            "codigo": "nao_confirmado",
+            "rotulo": "⚪ Não confirmado",
+            "mensagem": (
+                "As evidências disponíveis ainda não sustentam uma confirmação "
+                "segura da identidade da carta."
+            ),
+            "evidencias": evidencias,
+            "confirmacao_externa": False,
+            "bloqueio_divergencia": False,
+        }
+
+    # Sem confirmação externa disponível: só a leitura visual pode ser classificada.
+    campos_completos = bool(
+        nome
+        and
+        colecao
+        and
+        numero
+    )
+    imagem_utilizavel = qualidade in {
+        "boa",
+        "aceitavel",
+    }
+    leitura_visual_forte = status_modelo == "confirmada"
+
+    if (
+        campos_completos
+        and
+        imagem_utilizavel
+        and
+        leitura_visual_forte
+    ):
+        return {
+            "codigo": "alta_visual",
+            "rotulo": "🟢 Alta confiança visual",
+            "mensagem": (
+                "A leitura visual é forte e contém nome, coleção e número, "
+                "mas ainda não existe confirmação externa do catálogo para "
+                "esta execução."
+            ),
+            "evidencias": [
+                "Nome, coleção / set e número foram extraídos da imagem.",
+                "A leitura visual preliminar da IA foi classificada como forte.",
+                "A qualidade da imagem foi classificada como boa ou aceitável.",
+                "Este nível não equivale a confirmação pelo catálogo.",
+            ],
+            "confirmacao_externa": False,
+            "bloqueio_divergencia": False,
+        }
+
+    faltantes = []
+    if not nome:
+        faltantes.append("nome")
+    if not colecao:
+        faltantes.append("coleção / set")
+    if not numero:
+        faltantes.append("número")
+
+    evidencias = [
+        "Não há confirmação externa disponível para esta classificação."
+    ]
+
+    if faltantes:
+        evidencias.append(
+            "Identificadores ausentes ou inseguros: "
+            + ", ".join(faltantes)
+            + "."
+        )
+
+    if not imagem_utilizavel:
+        evidencias.append(
+            "A qualidade da imagem não sustenta alta confiança visual."
+        )
+
+    if not leitura_visual_forte:
+        evidencias.append(
+            "A leitura preliminar da IA não atingiu o nível visual forte."
+        )
+
+    return {
+        "codigo": "nao_confirmado",
+        "rotulo": "⚪ Não confirmado",
+        "mensagem": (
+            "Sem confirmação externa, a evidência visual disponível ainda "
+            "não é suficiente para classificar a identidade com alta confiança."
+        ),
+        "evidencias": evidencias,
+        "confirmacao_externa": False,
+        "bloqueio_divergencia": False,
+    }
+
+
+def mostrar_nivel_confianca_cardcraft(confianca):
+    """Apresenta o nível sem transformar incerteza em porcentagem artificial."""
+    if not isinstance(confianca, dict):
+        return
+
+    codigo = confianca.get(
+        "codigo",
+        "nao_confirmado",
+    )
+    rotulo = confianca.get(
+        "rotulo",
+        "⚪ Não confirmado",
+    )
+    mensagem = confianca.get(
+        "mensagem",
+        "",
+    )
+
+    st.markdown(
+        "### 🧭 Nível de confiança CardCraftAI"
+    )
+
+    if codigo == "confirmado_catalogo":
+        st.success(rotulo)
+    elif codigo == "divergencia":
+        st.error(rotulo)
+    elif codigo == "parcial":
+        st.warning(rotulo)
+    else:
+        # Alta confiança visual usa bloco informativo para não parecer
+        # equivalente a uma confirmação externa em verde.
+        st.info(rotulo)
+
+    if mensagem:
+        st.write(
+            mensagem
+        )
+
+    with st.expander(
+        "🧩 Por que este nível foi atribuído?"
+    ):
+        for item in (
+            confianca.get("evidencias")
+            or []
+        ):
+            st.write(
+                f"- {item}"
+            )
+
+        st.caption(
+            "O Confidence Engine 2.4.0 usa regras determinísticas sobre "
+            "evidências existentes. Ele não pede ao Gemini uma porcentagem "
+            "de confiança e não inventa precisão estatística."
+        )
+
+
 def _indicador_correspondencia(
     valor_ia,
     valor_catalogo,
@@ -1350,11 +1749,19 @@ def mostrar_validacao_foto_catalogo(validacao):
     if mensagem:
         st.caption(mensagem)
 
+    identificacao = validacao.get("identificacao") or {}
+    confianca = classificar_confianca_cardcraft(
+        identificacao,
+        validacao=validacao,
+        catalogo_disponivel=True,
+    )
+    mostrar_nivel_confianca_cardcraft(
+        confianca
+    )
+
     melhor = validacao.get("melhor")
     if not melhor:
         return
-
-    identificacao = validacao.get("identificacao") or {}
 
     col_nome, col_set, col_numero = st.columns(3)
 
@@ -2424,6 +2831,13 @@ def mostrar_catalogo_para_analise_foto(
             "⚪ Não foi possível consultar o catálogo porque o nome da carta "
             "não foi identificado com segurança."
         )
+        mostrar_nivel_confianca_cardcraft(
+            classificar_confianca_cardcraft(
+                resultado,
+                validacao=None,
+                catalogo_disponivel=False,
+            )
+        )
         return
 
     st.divider()
@@ -2450,6 +2864,14 @@ def mostrar_catalogo_para_analise_foto(
         _mostrar_falha_validacao_catalogo_foto(
             st.session_state.get(
                 "catalogo_validacao_foto_erro"
+            )
+        )
+
+        mostrar_nivel_confianca_cardcraft(
+            classificar_confianca_cardcraft(
+                resultado,
+                validacao=None,
+                catalogo_disponivel=False,
             )
         )
 
@@ -2521,6 +2943,14 @@ def mostrar_catalogo_para_analise_foto(
 
             _mostrar_falha_validacao_catalogo_foto(
                 erro
+            )
+
+            mostrar_nivel_confianca_cardcraft(
+                classificar_confianca_cardcraft(
+                    resultado,
+                    validacao=None,
+                    catalogo_disponivel=False,
+                )
             )
 
             st.info(
