@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.3.0
-# Proveniencia dos dados: catalogo confirmado vs estimativas visuais da IA + Reliability 2.2.4
+# CARDCRAFTAI RELIABILITY 2.3.1
+# Precisao temporal por campo: data do set != ano visual da carta + Reliability 2.3.0
 
 import base64
 import json
@@ -1112,6 +1112,9 @@ def _extrair_identificacao_foto(resultado):
             "nome": "",
             "colecao": "",
             "numero": "",
+            "ano_visual_ia": None,
+            "variante_ia": "",
+            "idioma_ia": "",
             "qualidade_imagem": "",
             "status_modelo": "",
         }
@@ -1120,6 +1123,9 @@ def _extrair_identificacao_foto(resultado):
         "nome": str(resultado.get("nome_carta") or "").strip(),
         "colecao": str(resultado.get("colecao_set") or "").strip(),
         "numero": str(resultado.get("numero_carta") or "").strip(),
+        "ano_visual_ia": resultado.get("ano"),
+        "variante_ia": str(resultado.get("variante") or "").strip(),
+        "idioma_ia": str(resultado.get("idioma_carta") or "").strip(),
         "qualidade_imagem": str(resultado.get("qualidade_imagem") or "").strip(),
         "status_modelo": str(resultado.get("status_identificacao") or "").strip(),
     }
@@ -1434,16 +1440,40 @@ def mostrar_validacao_foto_catalogo(validacao):
                 + texto_ou_nao_confirmado(resumo_confirmado.get("artista"))
             )
             st.write(
-                "**Ano do set:** "
-                + texto_ou_nao_confirmado(resumo_confirmado.get("ano"))
+                "**Lançamento do set:** "
+                + texto_ou_nao_confirmado(
+                    resumo_confirmado.get("data_lancamento_set")
+                )
+            )
+            st.caption(
+                "A data acima pertence ao set no catálogo. Ela não é, por si só, "
+                "a data específica de lançamento desta carta."
             )
 
         with col_estimado:
             st.info("🤖 Avaliação visual da IA")
             st.write(
-                "Variante, idioma aparente, condição e autenticidade visual "
-                "continuam sendo estimativas da IA. Esta validação do catálogo "
-                "não confirma esses campos."
+                "**Ano visível / estimado na carta:** "
+                + texto_ou_nao_confirmado(
+                    identificacao.get("ano_visual_ia")
+                )
+            )
+            st.write(
+                "**Variante sugerida:** "
+                + texto_ou_nao_confirmado(
+                    identificacao.get("variante_ia")
+                )
+            )
+            st.write(
+                "**Idioma aparente:** "
+                + texto_ou_nao_confirmado(
+                    identificacao.get("idioma_ia")
+                )
+            )
+            st.write(
+                "Ano visual, variante, idioma aparente, condição e autenticidade "
+                "visual continuam sendo estimativas da IA. A data de lançamento "
+                "do set não confirma o ano específico desta carta."
             )
             st.caption(
                 "Condição e autenticidade exigem avaliação física quando precisão "
@@ -1526,6 +1556,14 @@ def _resumo_carta_catalogo(
 ):
     set_dados = carta.get("set") or {}
 
+    data_lancamento_set = str(
+        set_dados.get(
+            "releaseDate",
+            "",
+        )
+        or ""
+    ).strip()
+
     return {
         "id": carta.get("id"),
         "nome": carta.get("name"),
@@ -1533,15 +1571,12 @@ def _resumo_carta_catalogo(
         "numero": carta.get("number"),
         "raridade": carta.get("rarity"),
         "artista": carta.get("artist"),
-        "ano": (
-            str(
-                set_dados.get(
-                    "releaseDate",
-                    "",
-                )
-            )[:4]
-            or None
-        ),
+        # releaseDate pertence ao objeto SET da Pokemon TCG API.
+        # Nao deve ser apresentado como data especifica de lancamento da carta.
+        "data_lancamento_set": data_lancamento_set or None,
+        "ano_set": data_lancamento_set[:4] or None,
+        # Compatibilidade interna com trechos antigos enquanto migramos a UI.
+        "ano": data_lancamento_set[:4] or None,
     }
 
 
@@ -2062,10 +2097,14 @@ def mostrar_carta_catalogo_selecionada(
             )
         )
         st.write(
-            "**Ano do set:** "
+            "**Lançamento do set:** "
             + texto_ou_nao_confirmado(
-                resumo.get("ano")
+                resumo.get("data_lancamento_set")
             )
+        )
+        st.caption(
+            "Data do set no catálogo; não representa necessariamente a data "
+            "específica de lançamento desta carta."
         )
         st.write(
             "**ID do catálogo:** "
@@ -2237,7 +2276,7 @@ def info_catalogo_para_analise(
         f"Número: {resumo.get('numero')}\n"
         f"Raridade: {resumo.get('raridade')}\n"
         f"Artista: {resumo.get('artista')}\n"
-        f"Ano do set: {resumo.get('ano')}"
+        f"Data de lançamento do set: {resumo.get('data_lancamento_set')}"
     )
 
 
@@ -2990,6 +3029,12 @@ REGRAS OBRIGATORIAS:
 - Quando um dado nao puder ser confirmado, use null e inclua o nome do campo
   em campos_incertos.
 - Nao invente colecao, numero, raridade, variante, idioma ou ano.
+- Em analise por foto, o campo ano deve representar somente um ano realmente
+  visivel na carta (por exemplo copyright) ou uma estimativa explicitamente
+  sustentada pela imagem; nao use a data de lancamento do set como se fosse o
+  ano especifico da carta.
+- Quando receber dados de catalogo, releaseDate pertence ao set e deve ser
+  tratada apenas como data de lancamento do set.
 - Nao invente precos, vendas recentes, anuncios ou consultas a sites.
 - A pesquisa web esta desativada nesta versao.
 - status_identificacao e apenas a avaliacao preliminar do modelo; nao significa
