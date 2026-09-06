@@ -1,12 +1,12 @@
-# CARDCRAFTAI RELIABILITY 2.5.0
-# Historico rastreavel de analises + Confidence Engine 2.4.0 + Reliability 2.3.1
+# CARDCRAFTAI RELIABILITY 2.6.0
+# Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
 import json
 import time
 import unicodedata
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from html import escape
 from io import BytesIO
@@ -15,6 +15,7 @@ from urllib.parse import quote_plus
 import requests
 import streamlit as st
 from google import genai
+from google.genai import errors, types
 from PIL import Image
 from supabase import create_client
 
@@ -82,8 +83,10 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.5.0"
+APP_VERSION = "2.6.0"
 AI_MODEL = "gemini-3.6-flash"
+GEMINI_TIMEOUT_MS = 45_000
+ANALYSIS_STALE_MINUTES = 15
 
 # O catálogo visual é um recurso adicional. Se a chave estiver ausente,
 # login, créditos e análise por IA continuam funcionando.
@@ -3066,7 +3069,10 @@ def mostrar_catalogo_para_analise_foto(
 # ============================================================
 
 gemini_client = genai.Client(
-    api_key=GEMINI_API_KEY
+    api_key=GEMINI_API_KEY,
+    http_options=types.HttpOptions(
+        timeout=GEMINI_TIMEOUT_MS,
+    ),
 )
 
 
@@ -3139,6 +3145,12 @@ if "analysis_tipo_atual" not in st.session_state:
 
 if "aviso_auditoria" not in st.session_state:
     st.session_state.aviso_auditoria = None
+
+if "aviso_recuperacao" not in st.session_state:
+    st.session_state.aviso_recuperacao = None
+
+if "ultima_recuperacao_runs" not in st.session_state:
+    st.session_state.ultima_recuperacao_runs = None
 
 
 # ============================================================
@@ -3266,6 +3278,8 @@ def limpar_sessao():
     st.session_state.analysis_request_id_atual = None
     st.session_state.analysis_tipo_atual = None
     st.session_state.aviso_auditoria = None
+    st.session_state.aviso_recuperacao = None
+    st.session_state.ultima_recuperacao_runs = None
 
 
 def usuario_logado():
@@ -3849,9 +3863,211 @@ def atualizar_registro_catalogo(
         st.session_state.aviso_auditoria = (
             "A análise foi preservada, mas o histórico técnico do catálogo "
             "não pôde ser atualizado nesta execução. "
-            f"Detalhe técnico: {erro_auditoria}"
+            f"Detalhe técnico: {_sanitizar_detalhe_tecnico(erro_auditoria, 600)}"
         )
         return False
+
+
+# ============================================================
+# RELIABILITY 2.6 - RESILIÊNCIA OPERACIONAL E FALHAS CONTROLADAS
+# ============================================================
+
+class CardCraftOperationalError(RuntimeError):
+    """Erro operacional com mensagem pública separada do detalhe técnico."""
+
+    def __init__(
+        self,
+        code,
+        public_message,
+        technical_message="",
+        retryable=False,
+    ):
+        super().__init__(public_message)
+        self.code = str(code or "operational_error")
+        self.public_message = str(public_message or "Falha operacional.")
+        self.technical_message = str(technical_message or "")
+        self.retryable = bool(retryable)
+
+
+def _sanitizar_detalhe_tecnico(valor, limite=4000):
+    """Remove segredos conhecidos antes de persistir detalhes técnicos."""
+    texto = str(valor or "")
+
+    segredos = [
+        GEMINI_API_KEY,
+        SUPABASE_KEY,
+        SUPABASE_SERVICE_ROLE_KEY,
+        POKEMON_TCG_API_KEY,
+    ]
+
+    for segredo in segredos:
+        segredo = str(segredo or "")
+        if segredo and len(segredo) >= 8:
+            texto = texto.replace(segredo, "[REDACTED]")
+
+    return texto[:limite]
+
+
+def _classificar_erro_gemini(erro):
+    """Converte falhas do SDK em códigos estáveis e mensagens seguras."""
+    if isinstance(erro, CardCraftOperationalError):
+        return erro
+
+    codigo_http = getattr(erro, "code", None)
+    detalhe = _sanitizar_detalhe_tecnico(erro)
+    texto = detalhe.lower()
+
+    if codigo_http == 429 or "429" in texto or "rate limit" in texto or "resource exhausted" in texto:
+        return CardCraftOperationalError(
+            "gemini_rate_limit",
+            "O serviço de IA atingiu um limite temporário. Seu crédito será devolvido; tente novamente mais tarde.",
+            detalhe,
+            retryable=True,
+        )
+
+    if codigo_http in {500, 502, 503, 504} or any(
+        termo in texto
+        for termo in (
+            "service unavailable",
+            "temporarily unavailable",
+            "internal server error",
+            "bad gateway",
+            "gateway timeout",
+        )
+    ):
+        return CardCraftOperationalError(
+            "gemini_unavailable",
+            "O serviço de IA está temporariamente indisponível. Seu crédito será devolvido; tente novamente mais tarde.",
+            detalhe,
+            retryable=True,
+        )
+
+    if codigo_http in {401, 403} or "permission denied" in texto or "unauthorized" in texto:
+        return CardCraftOperationalError(
+            "gemini_auth_error",
+            "A análise está temporariamente indisponível por uma configuração do serviço. Nenhum crédito será consumido.",
+            detalhe,
+            retryable=False,
+        )
+
+    if (
+        "timeout" in texto
+        or "timed out" in texto
+        or "deadline exceeded" in texto
+    ):
+        return CardCraftOperationalError(
+            "gemini_timeout",
+            "A IA demorou mais do que o limite seguro para responder. Seu crédito será devolvido; tente novamente.",
+            detalhe,
+            retryable=True,
+        )
+
+    if codigo_http == 400:
+        return CardCraftOperationalError(
+            "gemini_request_error",
+            "A solicitação não pôde ser processada pela IA. Nenhum crédito será consumido.",
+            detalhe,
+            retryable=False,
+        )
+
+    return CardCraftOperationalError(
+        "gemini_error",
+        "A análise não pôde ser concluída pela IA. Seu crédito será devolvido automaticamente.",
+        detalhe,
+        retryable=True,
+    )
+
+
+def _mensagem_falha_credito_pos_analise():
+    return (
+        "A análise foi concluída, mas houve uma inconsistência ao finalizar "
+        "o registro do crédito. Não repita a análise agora. O evento ficou "
+        "registrado para conferência técnica."
+    )
+
+
+def recuperar_analises_interrompidas_usuario():
+    """
+    Recupera execuções que ficaram presas em 'processing'.
+
+    Como o Gemini possui timeout explícito de 45 s, uma execução ainda em
+    processing após 15 min é tratada como interrompida. O crédito pendente é
+    devolvido de forma idempotente antes de o run ser marcado como failed.
+    """
+    user_id = st.session_state.get("user_id")
+    if not user_id:
+        return 0
+
+    limite = datetime.now(timezone.utc) - timedelta(
+        minutes=ANALYSIS_STALE_MINUTES
+    )
+
+    try:
+        resposta = (
+            supabase_service
+            .table("analysis_runs")
+            .select("id,usage_request_id,created_at,status")
+            .eq("user_id", str(user_id))
+            .eq("status", "processing")
+            .lt("created_at", limite.isoformat())
+            .limit(10)
+            .execute()
+        )
+        registros = resposta.data or []
+    except Exception:
+        return 0
+
+    recuperados = 0
+
+    for registro in registros:
+        run_id = registro.get("id")
+        request_id = registro.get("usage_request_id")
+
+        if not run_id:
+            continue
+
+        # Primeiro devolvemos o crédito. A RPC de refund já é idempotente.
+        if request_id:
+            try:
+                devolver_credito(request_id)
+            except Exception:
+                # Não marcamos o run como recuperado se o crédito não pôde ser
+                # devolvido; assim a inconsistência permanece visível.
+                continue
+
+        falhou = falhar_registro_analise(
+            run_id,
+            "stale_processing_recovered",
+            (
+                "Execução permaneceu em processing por mais de "
+                f"{ANALYSIS_STALE_MINUTES} minutos e foi recuperada "
+                "automaticamente pela Reliability 2.6."
+            ),
+        )
+
+        if falhou:
+            recuperados += 1
+
+    if recuperados:
+        st.session_state.aviso_recuperacao = (
+            f"♻️ O CardCraftAI recuperou {recuperados} análise(s) "
+            "interrompida(s) e devolveu o crédito pendente automaticamente."
+        )
+
+    return recuperados
+
+
+def talvez_recuperar_analises_interrompidas():
+    """Executa a varredura no máximo uma vez por minuto por sessão."""
+    agora = datetime.now(timezone.utc)
+    ultima = st.session_state.get("ultima_recuperacao_runs")
+
+    if isinstance(ultima, datetime):
+        if (agora - ultima).total_seconds() < 60:
+            return 0
+
+    st.session_state.ultima_recuperacao_runs = agora
+    return recuperar_analises_interrompidas_usuario()
 
 
 # ============================================================
@@ -3976,23 +4192,39 @@ Leia, quando realmente visiveis, nome, numero, set, idioma e outros marcadores.
 
         texto_json = interaction.output_text
         if not texto_json:
-            raise RuntimeError("O Gemini respondeu sem conteudo.")
+            raise CardCraftOperationalError(
+                "gemini_empty_response",
+                "A IA respondeu sem conteúdo utilizável. Seu crédito será devolvido automaticamente.",
+                "Gemini respondeu sem output_text.",
+                retryable=True,
+            )
 
         try:
             dados = json.loads(texto_json)
         except json.JSONDecodeError as erro_json:
-            raise RuntimeError(
-                "O Gemini nao retornou JSON valido. "
-                f"Detalhes: {erro_json}"
-            )
+            raise CardCraftOperationalError(
+                "gemini_invalid_json",
+                "A IA respondeu em um formato inválido. Seu crédito será devolvido automaticamente.",
+                _sanitizar_detalhe_tecnico(erro_json),
+                retryable=True,
+            ) from erro_json
 
-        return validar_analise_estruturada(dados)
+        try:
+            return validar_analise_estruturada(dados)
+        except Exception as erro_validacao:
+            raise CardCraftOperationalError(
+                "gemini_schema_validation_error",
+                "A resposta da IA não passou pela validação de segurança do CardCraftAI. Seu crédito será devolvido automaticamente.",
+                _sanitizar_detalhe_tecnico(erro_validacao),
+                retryable=True,
+            ) from erro_validacao
 
+    except CardCraftOperationalError:
+        raise
+    except errors.APIError as erro_api:
+        raise _classificar_erro_gemini(erro_api) from erro_api
     except Exception as erro:
-        raise RuntimeError(
-            "Falha na analise estruturada com Gemini 3.6 Flash.\n\n"
-            f"Detalhes: {erro}"
-        )
+        raise _classificar_erro_gemini(erro) from erro
 
 
 # ============================================================
@@ -4079,10 +4311,17 @@ def executar_analise_com_credito(
             * 1000
         )
 
+        erro_operacional = _classificar_erro_gemini(
+            erro_gemini
+        )
+
         falhar_registro_analise(
             run_id,
-            "gemini_error",
-            str(erro_gemini),
+            erro_operacional.code,
+            _sanitizar_detalhe_tecnico(
+                erro_operacional.technical_message
+                or erro_gemini
+            ),
         )
 
         # ====================================================
@@ -4095,20 +4334,20 @@ def executar_analise_com_credito(
             )
 
         except Exception as erro_estorno:
-            raise RuntimeError(
-                "A análise falhou e houve um problema "
-                "ao devolver automaticamente o crédito.\n\n"
-                "Não faça outra análise agora.\n\n"
-                f"Erro da análise: {erro_gemini}\n\n"
-                f"Erro do estorno: {erro_estorno}"
+            # Não mostramos detalhes internos ou chaves ao usuário.
+            st.session_state.aviso_credito = (
+                "A análise falhou e o estorno automático do crédito "
+                "não pôde ser confirmado. Não repita a análise agora; "
+                "o evento ficou registrado para conferência técnica."
             )
+            raise RuntimeError(
+                st.session_state.aviso_credito
+            ) from erro_estorno
 
         raise RuntimeError(
-            "A análise não pôde ser concluída.\n\n"
-            "✅ O crédito reservado foi devolvido "
-            "automaticamente.\n\n"
-            f"Detalhes: {erro_gemini}"
-        )
+            f"{erro_operacional.public_message}\n\n"
+            "✅ O crédito reservado foi devolvido automaticamente."
+        ) from erro_gemini
 
     # ========================================================
     # 5. PERSISTIR A LEITURA DA IA
@@ -4126,7 +4365,7 @@ def executar_analise_com_credito(
         st.session_state.aviso_auditoria = (
             "A análise foi concluída, mas o histórico técnico não pôde "
             "ser finalizado nesta execução. "
-            f"Detalhe técnico: {erro_auditoria}"
+            f"Detalhe técnico: {_sanitizar_detalhe_tecnico(erro_auditoria, 600)}"
         )
 
     # ========================================================
@@ -4148,11 +4387,9 @@ def executar_analise_com_credito(
     except Exception as erro_confirmacao:
         # NÃO fazemos estorno aqui:
         # o Gemini já executou e a análise foi entregue.
+        # O detalhe técnico não é exibido para evitar vazamento acidental.
         st.session_state.aviso_credito = (
-            "A análise foi concluída, porém houve "
-            "uma falha ao marcar o consumo como concluído. "
-            "O crédito permanece reservado. "
-            f"Detalhe técnico: {erro_confirmacao}"
+            _mensagem_falha_credito_pos_analise()
         )
 
     return resultado
@@ -4408,6 +4645,10 @@ if not usuario_logado():
 # PERFIL DO USUÁRIO
 # ============================================================
 
+# Reliability 2.6: antes de ler o saldo, recupera execuções antigas
+# interrompidas para que qualquer estorno apareça imediatamente.
+talvez_recuperar_analises_interrompidas()
+
 perfil = buscar_perfil()
 
 if not perfil:
@@ -4548,6 +4789,12 @@ st.caption(
 )
 
 st.divider()
+
+if st.session_state.aviso_recuperacao:
+    st.info(
+        st.session_state.aviso_recuperacao
+    )
+    st.session_state.aviso_recuperacao = None
 
 
 # ============================================================
