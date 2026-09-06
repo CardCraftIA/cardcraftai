@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.4.0
-# Confidence Engine deterministico + proveniencia por evidencia + Reliability 2.3.1
+# CARDCRAFTAI RELIABILITY 2.5.0
+# Historico rastreavel de analises + Confidence Engine 2.4.0 + Reliability 2.3.1
 
 import base64
 import json
@@ -67,6 +67,9 @@ try:
     GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
     SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+    # Esta variavel guarda a nova Secret key (sb_secret_...) do Supabase.
+    # O nome foi mantido para compatibilidade com a configuracao do Streamlit.
+    SUPABASE_SERVICE_ROLE_KEY = st.secrets["SUPABASE_SERVICE_ROLE_KEY"]
 
 except Exception:
     st.error(
@@ -74,9 +77,13 @@ except Exception:
         "Verifique:\n"
         "- GEMINI_API_KEY\n"
         "- SUPABASE_URL\n"
-        "- SUPABASE_KEY"
+        "- SUPABASE_KEY\n"
+        "- SUPABASE_SERVICE_ROLE_KEY"
     )
     st.stop()
+
+APP_VERSION = "2.5.0"
+AI_MODEL = "gemini-3.6-flash"
 
 # O catálogo visual é um recurso adicional. Se a chave estiver ausente,
 # login, créditos e análise por IA continuam funcionando.
@@ -2909,6 +2916,8 @@ def mostrar_catalogo_para_analise_foto(
             "catalogo_validacao_foto_resultado"
         )
     else:
+        inicio_catalogo = time.perf_counter()
+
         try:
             with st.spinner(
                 "Consultando o catálogo Pokémon para validar a identificação..."
@@ -2933,13 +2942,30 @@ def mostrar_catalogo_para_analise_foto(
                         0,
                     ),
                 )
+
+            catalogo_latency_ms = int(
+                (time.perf_counter() - inicio_catalogo)
+                * 1000
+            )
+
         except Exception as erro:
+            catalogo_latency_ms = int(
+                (time.perf_counter() - inicio_catalogo)
+                * 1000
+            )
+
             st.session_state.catalogo_validacao_foto_estado = "erro"
             st.session_state.catalogo_validacao_foto_erro = str(
                 erro
             )
             st.session_state.catalogo_validacao_foto_cartas = []
             st.session_state.catalogo_validacao_foto_resultado = None
+
+            atualizar_registro_catalogo(
+                resultado,
+                erro=erro,
+                catalogo_latency_ms=catalogo_latency_ms,
+            )
 
             _mostrar_falha_validacao_catalogo_foto(
                 erro
@@ -2968,6 +2994,13 @@ def mostrar_catalogo_para_analise_foto(
         validacao = validar_identificacao_foto_catalogo(
             resultado,
             cartas,
+        )
+
+        atualizar_registro_catalogo(
+            resultado,
+            validacao=validacao,
+            cartas=cartas,
+            catalogo_latency_ms=catalogo_latency_ms,
         )
 
         st.session_state.catalogo_validacao_foto_estado = "sucesso"
@@ -3095,6 +3128,18 @@ if "catalogo_validacao_foto_erro" not in st.session_state:
 if "catalogo_validacao_foto_retry" not in st.session_state:
     st.session_state.catalogo_validacao_foto_retry = 0
 
+if "analysis_run_id_atual" not in st.session_state:
+    st.session_state.analysis_run_id_atual = None
+
+if "analysis_request_id_atual" not in st.session_state:
+    st.session_state.analysis_request_id_atual = None
+
+if "analysis_tipo_atual" not in st.session_state:
+    st.session_state.analysis_tipo_atual = None
+
+if "aviso_auditoria" not in st.session_state:
+    st.session_state.aviso_auditoria = None
+
 
 # ============================================================
 # SUPABASE
@@ -3156,6 +3201,17 @@ def criar_cliente_supabase():
 supabase = criar_cliente_supabase()
 
 
+def criar_cliente_supabase_service():
+    """Cliente privilegiado exclusivo do processo servidor do Streamlit."""
+    return create_client(
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY,
+    )
+
+
+supabase_service = criar_cliente_supabase_service()
+
+
 # ============================================================
 # AUTENTICAÇÃO
 # ============================================================
@@ -3205,6 +3261,11 @@ def limpar_sessao():
     st.session_state.catalogo_consulta_nome = None
     st.session_state.catalogo_selecionada_nome = None
     st.session_state.catalogo_selecionada_foto = None
+
+    st.session_state.analysis_run_id_atual = None
+    st.session_state.analysis_request_id_atual = None
+    st.session_state.analysis_tipo_atual = None
+    st.session_state.aviso_auditoria = None
 
 
 def usuario_logado():
@@ -3412,6 +3473,388 @@ def devolver_credito(
 
 
 # ============================================================
+# RELIABILITY 2.5 - HISTÓRICO E RASTREABILIDADE
+# ============================================================
+
+def _rpc_scalar(valor):
+    """Normaliza retornos escalares do PostgREST/Supabase RPC."""
+    if isinstance(valor, list):
+        if not valor:
+            return None
+        return valor[0]
+    return valor
+
+
+def _tipo_analise_auditoria(tipo_acao):
+    mapa = {
+        "analise_foto": "photo",
+        "analise_nome": "name",
+    }
+    tipo = mapa.get(tipo_acao)
+    if not tipo:
+        raise RuntimeError(
+            f"Tipo de análise não suportado pela auditoria: {tipo_acao}"
+        )
+    return tipo
+
+
+def _nivel_confianca_banco(confianca):
+    """Converte o código visual 2.4 para os níveis persistidos na 2.5."""
+    codigo = str(
+        (confianca or {}).get("codigo")
+        or ""
+    ).strip()
+
+    mapa = {
+        "confirmado_catalogo": "confirmado",
+        "parcial": "parcial",
+        "divergencia": "divergente",
+        "nao_confirmado": "nao_confirmado",
+        # Alta confiança visual continua sem confirmação externa.
+        "alta_visual": "nao_confirmado",
+    }
+
+    return mapa.get(
+        codigo,
+        "nao_confirmado",
+    )
+
+
+def _motivo_confianca_auditoria(confianca):
+    confianca = (
+        confianca
+        if isinstance(confianca, dict)
+        else {}
+    )
+
+    return {
+        "engine": "2.4.0",
+        "codigo_original": confianca.get("codigo"),
+        "rotulo": confianca.get("rotulo"),
+        "mensagem": confianca.get("mensagem"),
+        "evidencias": confianca.get("evidencias") or [],
+        "confirmacao_externa": bool(
+            confianca.get("confirmacao_externa")
+        ),
+        "bloqueio_divergencia": bool(
+            confianca.get("bloqueio_divergencia")
+        ),
+    }
+
+
+def _resumo_comparacao_auditoria(comparacao):
+    if not isinstance(comparacao, dict):
+        return None
+
+    carta = comparacao.get("carta")
+    resumo_carta = (
+        _resumo_carta_catalogo(carta)
+        if isinstance(carta, dict)
+        else None
+    )
+
+    return {
+        "score": comparacao.get("score"),
+        "similaridade_nome": comparacao.get("similaridade_nome"),
+        "similaridade_colecao": comparacao.get("similaridade_colecao"),
+        "similaridade_numero": comparacao.get("similaridade_numero"),
+        "numero_exato": bool(comparacao.get("numero_exato")),
+        "nome_catalogo": comparacao.get("nome_catalogo"),
+        "colecao_catalogo": comparacao.get("colecao_catalogo"),
+        "numero_catalogo": comparacao.get("numero_catalogo"),
+        "carta": resumo_carta,
+    }
+
+
+def _payload_catalogo_auditoria(validacao, cartas=None):
+    validacao = (
+        validacao
+        if isinstance(validacao, dict)
+        else {}
+    )
+
+    candidatos = []
+    for item in validacao.get("candidatos") or []:
+        resumo = _resumo_comparacao_auditoria(item)
+        if resumo:
+            candidatos.append(resumo)
+
+    if not candidatos and cartas:
+        for carta in (cartas or [])[:8]:
+            if isinstance(carta, dict):
+                candidatos.append({
+                    "carta": _resumo_carta_catalogo(carta),
+                })
+
+    return {
+        "status": validacao.get("status"),
+        "titulo": validacao.get("titulo"),
+        "mensagem": validacao.get("mensagem"),
+        "identificacao": validacao.get("identificacao") or {},
+        "melhor": _resumo_comparacao_auditoria(
+            validacao.get("melhor")
+        ),
+        "candidatos": candidatos[:8],
+    }
+
+
+def iniciar_registro_analise(
+    request_id,
+    tipo_acao,
+):
+    user_id = st.session_state.get("user_id")
+    if not user_id:
+        raise RuntimeError(
+            "Usuário não identificado para iniciar o histórico técnico."
+        )
+
+    tipo_analise = _tipo_analise_auditoria(
+        tipo_acao
+    )
+
+    try:
+        resposta = (
+            supabase_service
+            .rpc(
+                "start_analysis_run",
+                {
+                    "p_user_id": str(user_id),
+                    "p_usage_request_id": str(request_id),
+                    "p_analysis_type": tipo_analise,
+                    "p_app_version": APP_VERSION,
+                    "p_ai_model": AI_MODEL,
+                },
+            )
+            .execute()
+        )
+
+        run_id = _rpc_scalar(
+            resposta.data
+        )
+
+        if not run_id:
+            raise RuntimeError(
+                "O servidor não retornou o identificador da análise."
+            )
+
+        st.session_state.analysis_run_id_atual = str(run_id)
+        st.session_state.analysis_request_id_atual = str(request_id)
+        st.session_state.analysis_tipo_atual = tipo_analise
+
+        return str(run_id)
+
+    except Exception as erro:
+        raise RuntimeError(
+            "Não foi possível iniciar o histórico técnico da análise. "
+            f"Detalhes: {erro}"
+        )
+
+
+def concluir_registro_analise(
+    run_id,
+    resultado,
+    ai_latency_ms=None,
+):
+    if not run_id:
+        return False
+
+    dados = resultado if isinstance(resultado, dict) else {}
+
+    payload = {
+        "ai_status": dados.get("status_identificacao"),
+        "ai_name": dados.get("nome_carta"),
+        "ai_set": dados.get("colecao_set"),
+        "ai_number": dados.get("numero_carta"),
+        "ai_language": dados.get("idioma_carta"),
+        "ai_year": dados.get("ano"),
+        "ai_variant": dados.get("variante"),
+        "input_quality": dados.get("qualidade_imagem"),
+        "input_quality_details": dados.get("motivo_qualidade_imagem"),
+        "catalog_status": "pending",
+        "confidence_reason": {
+            "stage": "ai_completed_catalog_pending",
+            "note": (
+                "A leitura da IA foi persistida antes da validação externa "
+                "do catálogo."
+            ),
+        },
+        "ai_payload": dados,
+        "ai_latency_ms": ai_latency_ms,
+    }
+
+    try:
+        resposta = (
+            supabase_service
+            .rpc(
+                "complete_analysis_run",
+                {
+                    "p_user_id": str(st.session_state.user_id),
+                    "p_run_id": str(run_id),
+                    "p_data": payload,
+                },
+            )
+            .execute()
+        )
+        return bool(
+            _rpc_scalar(resposta.data)
+        )
+    except Exception as erro:
+        raise RuntimeError(
+            "Não foi possível concluir o histórico técnico da análise. "
+            f"Detalhes: {erro}"
+        )
+
+
+def falhar_registro_analise(
+    run_id,
+    codigo,
+    mensagem,
+):
+    if not run_id:
+        return False
+
+    try:
+        resposta = (
+            supabase_service
+            .rpc(
+                "fail_analysis_run",
+                {
+                    "p_user_id": str(st.session_state.user_id),
+                    "p_run_id": str(run_id),
+                    "p_error_code": str(codigo or "analysis_error"),
+                    "p_error_message": str(mensagem or "")[:4000],
+                },
+            )
+            .execute()
+        )
+        return bool(
+            _rpc_scalar(resposta.data)
+        )
+    except Exception:
+        # A falha principal continua sendo tratada pelo fluxo da análise.
+        return False
+
+
+def atualizar_registro_catalogo(
+    resultado,
+    validacao=None,
+    cartas=None,
+    erro=None,
+    catalogo_latency_ms=None,
+):
+    run_id = st.session_state.get(
+        "analysis_run_id_atual"
+    )
+
+    if not run_id:
+        return False
+
+    validacao_dict = (
+        validacao
+        if isinstance(validacao, dict)
+        else None
+    )
+
+    if erro is not None:
+        http_status = _status_http_catalogo_erro(
+            erro
+        )
+        confianca = classificar_confianca_cardcraft(
+            resultado,
+            validacao=None,
+            catalogo_disponivel=False,
+        )
+
+        payload = {
+            "catalog_status": "error",
+            "catalog_http_status": http_status,
+            "catalog_payload": {
+                "error": str(erro)[:4000],
+            },
+            "catalog_latency_ms": catalogo_latency_ms,
+            "confidence_level": _nivel_confianca_banco(confianca),
+            "confidence_reason": _motivo_confianca_auditoria(confianca),
+        }
+
+    else:
+        melhor = (
+            (validacao_dict or {}).get("melhor")
+            or {}
+        )
+        carta = melhor.get("carta") or {}
+        set_dados = (
+            carta.get("set")
+            if isinstance(carta, dict)
+            else {}
+        ) or {}
+
+        confianca = classificar_confianca_cardcraft(
+            resultado,
+            validacao=validacao_dict,
+            catalogo_disponivel=True,
+        )
+
+        payload = {
+            "catalog_status": (
+                (validacao_dict or {}).get("status")
+                or "sem_resultado"
+            ),
+            "catalog_http_status": 200,
+            "catalog_card_id": (
+                carta.get("id")
+                if isinstance(carta, dict)
+                else None
+            ),
+            "catalog_name": (
+                carta.get("name")
+                if isinstance(carta, dict)
+                else None
+            ),
+            "catalog_set": (
+                set_dados.get("name")
+                if isinstance(set_dados, dict)
+                else None
+            ),
+            "catalog_number": (
+                carta.get("number")
+                if isinstance(carta, dict)
+                else None
+            ),
+            "catalog_payload": _payload_catalogo_auditoria(
+                validacao_dict,
+                cartas=cartas,
+            ),
+            "catalog_latency_ms": catalogo_latency_ms,
+            "confidence_level": _nivel_confianca_banco(confianca),
+            "confidence_reason": _motivo_confianca_auditoria(confianca),
+        }
+
+    try:
+        resposta = (
+            supabase_service
+            .rpc(
+                "update_analysis_catalog",
+                {
+                    "p_user_id": str(st.session_state.user_id),
+                    "p_run_id": str(run_id),
+                    "p_data": payload,
+                },
+            )
+            .execute()
+        )
+        return bool(
+            _rpc_scalar(resposta.data)
+        )
+    except Exception as erro_auditoria:
+        st.session_state.aviso_auditoria = (
+            "A análise foi preservada, mas o histórico técnico do catálogo "
+            "não pôde ser atualizado nesta execução. "
+            f"Detalhe técnico: {erro_auditoria}"
+        )
+        return False
+
+
+# ============================================================
 # IMAGEM
 # ============================================================
 
@@ -3446,7 +3889,7 @@ def analisar_carta(
     nome_carta_info=None,
 ):
 
-    modelo = "gemini-3.6-flash"
+    modelo = AI_MODEL
 
     prompt_base = f"""
 Voce atua como especialista em Trading Card Games (TCG), mas deve priorizar
@@ -3563,11 +4006,13 @@ def executar_analise_com_credito(
     tipo_acao="analise",
 ):
 
-    # Cada análise recebe um identificador único.
-
+    # Cada análise recebe um identificador único, compartilhado entre
+    # consumo de crédito e histórico técnico.
     request_id = uuid.uuid4()
+    run_id = None
 
     st.session_state.aviso_credito = None
+    st.session_state.aviso_auditoria = None
 
     # ========================================================
     # 1. RESERVAR O CRÉDITO ANTES DO GEMINI
@@ -3579,31 +4024,77 @@ def executar_analise_com_credito(
     )
 
     # ========================================================
-    # 2. CHAMAR O GEMINI
+    # 2. ABRIR O REGISTRO DE AUDITORIA
     # ========================================================
 
     try:
+        run_id = iniciar_registro_analise(
+            request_id,
+            tipo_acao,
+        )
 
+    except Exception as erro_auditoria:
+        # O Gemini ainda não foi chamado. Portanto podemos devolver
+        # o crédito e impedir uma análise que ficaria sem rastreabilidade.
+        try:
+            devolver_credito(
+                request_id
+            )
+        except Exception as erro_estorno:
+            raise RuntimeError(
+                "Não foi possível iniciar o histórico técnico e também "
+                "houve falha ao devolver o crédito reservado.\n\n"
+                f"Erro da auditoria: {erro_auditoria}\n\n"
+                f"Erro do estorno: {erro_estorno}"
+            )
+
+        raise RuntimeError(
+            "A análise não foi iniciada porque o histórico técnico "
+            "não pôde ser aberto.\n\n"
+            "✅ O crédito reservado foi devolvido automaticamente.\n\n"
+            f"Detalhes: {erro_auditoria}"
+        )
+
+    # ========================================================
+    # 3. CHAMAR O GEMINI E MEDIR LATÊNCIA
+    # ========================================================
+
+    inicio_ia = time.perf_counter()
+
+    try:
         resultado = analisar_carta(
             idioma=idioma,
             imagem_pil=imagem_pil,
             nome_carta_info=nome_carta_info,
         )
 
+        ai_latency_ms = int(
+            (time.perf_counter() - inicio_ia)
+            * 1000
+        )
+
     except Exception as erro_gemini:
+        ai_latency_ms = int(
+            (time.perf_counter() - inicio_ia)
+            * 1000
+        )
+
+        falhar_registro_analise(
+            run_id,
+            "gemini_error",
+            str(erro_gemini),
+        )
 
         # ====================================================
-        # 3. GEMINI FALHOU -> DEVOLVER CRÉDITO
+        # 4. GEMINI FALHOU -> DEVOLVER CRÉDITO
         # ====================================================
 
         try:
-
             devolver_credito(
                 request_id
             )
 
         except Exception as erro_estorno:
-
             raise RuntimeError(
                 "A análise falhou e houve um problema "
                 "ao devolver automaticamente o crédito.\n\n"
@@ -3620,17 +4111,34 @@ def executar_analise_com_credito(
         )
 
     # ========================================================
-    # 4. GEMINI FUNCIONOU -> CONFIRMAR CONSUMO
+    # 5. PERSISTIR A LEITURA DA IA
     # ========================================================
 
     try:
+        concluir_registro_analise(
+            run_id,
+            resultado,
+            ai_latency_ms=ai_latency_ms,
+        )
+    except Exception as erro_auditoria:
+        # O Gemini já executou. A análise continua sendo entregue e
+        # o crédito não é estornado; apenas registramos o incidente.
+        st.session_state.aviso_auditoria = (
+            "A análise foi concluída, mas o histórico técnico não pôde "
+            "ser finalizado nesta execução. "
+            f"Detalhe técnico: {erro_auditoria}"
+        )
 
+    # ========================================================
+    # 6. GEMINI FUNCIONOU -> CONFIRMAR CONSUMO
+    # ========================================================
+
+    try:
         confirmado = concluir_uso_credito(
             request_id
         )
 
         if confirmado is False:
-
             st.session_state.aviso_credito = (
                 "A análise foi concluída, mas o registro "
                 "de consumo ficou pendente. "
@@ -3638,10 +4146,8 @@ def executar_analise_com_credito(
             )
 
     except Exception as erro_confirmacao:
-
         # NÃO fazemos estorno aqui:
         # o Gemini já executou e a análise foi entregue.
-
         st.session_state.aviso_credito = (
             "A análise foi concluída, porém houve "
             "uma falha ao marcar o consumo como concluído. "
@@ -4073,6 +4579,11 @@ def mostrar_resultado(
             st.session_state.aviso_credito
         )
 
+    if st.session_state.aviso_auditoria:
+        st.warning(
+            st.session_state.aviso_auditoria
+        )
+
     st.divider()
 
     st.info(
@@ -4178,6 +4689,9 @@ if pagina == "📸 Análise por Foto":
                     ):
 
                         st.session_state.catalogo_selecionada_foto = None
+                        st.session_state.analysis_run_id_atual = None
+                        st.session_state.analysis_request_id_atual = None
+                        st.session_state.analysis_tipo_atual = None
 
                         with st.spinner(
                             "🤖 Analisando a carta..."
@@ -4430,6 +4944,10 @@ elif pagina == "🔍 Buscar Carta por Nome":
         key="btn_analise_nome",
         disabled=(creditos <= 0),
     ):
+        st.session_state.analysis_run_id_atual = None
+        st.session_state.analysis_request_id_atual = None
+        st.session_state.analysis_tipo_atual = None
+
         termo = termo_busca.strip()
         colecao = colecao_busca.strip()
 
