@@ -1,5 +1,5 @@
-# CARDCRAFTAI RELIABILITY 2.2.4
-# Resolucao deterministica por ID/set + busca exata Lucene + bloqueio de falso positivo + Reliability 2.2.3
+# CARDCRAFTAI RELIABILITY 2.3.0
+# Proveniencia dos dados: catalogo confirmado vs estimativas visuais da IA + Reliability 2.2.4
 
 import base64
 import json
@@ -268,17 +268,25 @@ def formatar_resultado_estruturado(dados):
     }
 
     linhas = [
-        "## 🃏 Identificacao",
-        f"**Status:** {rotulos_status.get(status, '🔴 Identificacao incerta')}",
+        "## 🃏 Identificacao preliminar da IA",
+        f"**Status da leitura visual:** {rotulos_status.get(status, '🔴 Identificacao incerta')}",
+        "",
+        (
+            "Os dados abaixo foram extraidos da imagem pela IA. "
+            "Nome, colecao e numero serao comparados com o catalogo "
+            "Pokemon quando ele estiver disponivel."
+        ),
         "",
         f"- **Jogo:** {texto_ou_nao_confirmado(dados.get('jogo'))}",
-        f"- **Nome:** {texto_ou_nao_confirmado(dados.get('nome_carta'))}",
-        f"- **Colecao / Set:** {texto_ou_nao_confirmado(dados.get('colecao_set'))}",
-        f"- **Numero:** {texto_ou_nao_confirmado(dados.get('numero_carta'))}",
-        f"- **Raridade:** {texto_ou_nao_confirmado(dados.get('raridade'))}",
-        f"- **Variante:** {texto_ou_nao_confirmado(dados.get('variante'))}",
-        f"- **Idioma:** {texto_ou_nao_confirmado(dados.get('idioma_carta'))}",
-        f"- **Ano:** {texto_ou_nao_confirmado(dados.get('ano'))}",
+        f"- **Nome lido:** {texto_ou_nao_confirmado(dados.get('nome_carta'))}",
+        f"- **Colecao / Set lido:** {texto_ou_nao_confirmado(dados.get('colecao_set'))}",
+        f"- **Numero lido:** {texto_ou_nao_confirmado(dados.get('numero_carta'))}",
+        "",
+        "### 🤖 Dados ainda dependentes de interpretacao da IA",
+        f"- **Raridade sugerida:** {texto_ou_nao_confirmado(dados.get('raridade'))}",
+        f"- **Variante sugerida:** {texto_ou_nao_confirmado(dados.get('variante'))}",
+        f"- **Idioma aparente:** {texto_ou_nao_confirmado(dados.get('idioma_carta'))}",
+        f"- **Ano lido / estimado:** {texto_ou_nao_confirmado(dados.get('ano'))}",
         "",
         "### 📸 Qualidade da entrada",
         f"**Imagem:** {rotulos_qualidade.get(qualidade, 'Nao aplicavel')}",
@@ -306,7 +314,7 @@ def formatar_resultado_estruturado(dados):
     condicao = dados.get("condicao_aparente") or {}
     linhas.extend([
         "",
-        "## 🔎 Condicao aparente",
+        "## 🔎 Condicao aparente — estimativa visual da IA",
         f"**Estimativa visual:** {condicao.get('estimativa', 'indeterminada')}",
     ])
     for item in condicao.get("observacoes") or []:
@@ -321,7 +329,7 @@ def formatar_resultado_estruturado(dados):
     }
     linhas.extend([
         "",
-        "## ⚠️ Autenticidade visual",
+        "## ⚠️ Autenticidade visual — triagem da IA",
         f"**Status:** {rotulos_autenticidade.get(autenticidade.get('status'), 'Indeterminada')}",
     ])
     for item in autenticidade.get("observacoes") or []:
@@ -349,8 +357,10 @@ def formatar_resultado_estruturado(dados):
     linhas.extend([
         "",
         "---",
-        "*A identificacao da IA e preliminar. Quando o catalogo Pokemon estiver disponivel, "
-        "a validacao externa aparece logo abaixo sem consumir outro credito.*",
+        "*A leitura da IA e preliminar. Quando o catalogo Pokemon estiver disponivel, "
+        "a validacao externa aparece logo abaixo sem consumir outro credito. "
+        "Somente os campos explicitamente marcados como confirmados pelo catalogo "
+        "devem ser tratados como validados externamente.*",
     ])
 
     return "\n".join(linhas)
@@ -1391,6 +1401,55 @@ def mostrar_validacao_foto_catalogo(validacao):
             "a carta e não substitui verificação profissional."
         )
 
+    if status == "confirmado":
+        carta_confirmada = melhor.get("carta") or {}
+        resumo_confirmado = _resumo_carta_catalogo(carta_confirmada)
+
+        st.markdown("### 🧾 Origem e confiabilidade dos dados")
+        col_confirmado, col_estimado = st.columns(
+            2,
+            gap="large",
+        )
+
+        with col_confirmado:
+            st.success("✅ Confirmado pelo catálogo Pokémon TCG")
+            st.write(
+                "**Nome:** "
+                + texto_ou_nao_confirmado(resumo_confirmado.get("nome"))
+            )
+            st.write(
+                "**Coleção / Set:** "
+                + texto_ou_nao_confirmado(resumo_confirmado.get("set"))
+            )
+            st.write(
+                "**Número:** "
+                + texto_ou_nao_confirmado(resumo_confirmado.get("numero"))
+            )
+            st.write(
+                "**Raridade:** "
+                + texto_ou_nao_confirmado(resumo_confirmado.get("raridade"))
+            )
+            st.write(
+                "**Artista:** "
+                + texto_ou_nao_confirmado(resumo_confirmado.get("artista"))
+            )
+            st.write(
+                "**Ano do set:** "
+                + texto_ou_nao_confirmado(resumo_confirmado.get("ano"))
+            )
+
+        with col_estimado:
+            st.info("🤖 Avaliação visual da IA")
+            st.write(
+                "Variante, idioma aparente, condição e autenticidade visual "
+                "continuam sendo estimativas da IA. Esta validação do catálogo "
+                "não confirma esses campos."
+            )
+            st.caption(
+                "Condição e autenticidade exigem avaliação física quando precisão "
+                "profissional for necessária."
+            )
+
 
 def _url_imagem_carta(
     carta,
@@ -1972,6 +2031,9 @@ def mostrar_carta_catalogo_selecionada(
         )
 
     with col_info:
+        st.caption(
+            "Fonte dos dados abaixo: catálogo Pokémon TCG."
+        )
         st.markdown(
             f"### {texto_ou_nao_confirmado(resumo.get('nome'))}"
         )
@@ -1997,6 +2059,12 @@ def mostrar_carta_catalogo_selecionada(
             "**Artista:** "
             + texto_ou_nao_confirmado(
                 resumo.get("artista")
+            )
+        )
+        st.write(
+            "**Ano do set:** "
+            + texto_ou_nao_confirmado(
+                resumo.get("ano")
             )
         )
         st.write(
