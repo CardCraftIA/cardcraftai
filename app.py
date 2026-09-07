@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.1
+# CARDCRAFTAI RELIABILITY 2.6.2
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -83,8 +83,9 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.1"
+APP_VERSION = "2.6.2"
 AI_MODEL = "gemini-3.6-flash"
+AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
 ANALYSIS_STALE_MINUTES = 15
 
@@ -3664,6 +3665,37 @@ def iniciar_registro_analise(
         )
 
 
+def atualizar_modelo_registro_analise(
+    run_id,
+    ai_model,
+):
+    """Atualiza o modelo que efetivamente produziu a resposta da análise."""
+    if not run_id or not ai_model:
+        return False
+
+    user_id = st.session_state.get("user_id")
+    if not user_id:
+        return False
+
+    try:
+        resposta = (
+            supabase_service
+            .table("analysis_runs")
+            .update({
+                "ai_model": str(ai_model),
+            })
+            .eq("id", str(run_id))
+            .eq("user_id", str(user_id))
+            .execute()
+        )
+        return bool(resposta.data)
+    except Exception as erro:
+        raise RuntimeError(
+            "Não foi possível registrar o modelo de IA efetivamente usado. "
+            f"Detalhes: {erro}"
+        )
+
+
 def concluir_registro_analise(
     run_id,
     resultado,
@@ -4041,7 +4073,7 @@ def recuperar_analises_interrompidas_usuario():
             (
                 "Execução permaneceu em processing por mais de "
                 f"{ANALYSIS_STALE_MINUTES} minutos e foi recuperada "
-                "automaticamente pela Reliability 2.6.1."
+                "automaticamente pela Reliability 2.6.2."
             ),
         )
 
@@ -4099,13 +4131,70 @@ def imagem_para_base64(
 # GEMINI
 # ============================================================
 
+def _executar_modelo_gemini(
+    modelo,
+    entrada,
+):
+    """Executa uma única tentativa estruturada em um modelo Gemini."""
+    try:
+        interaction = gemini_client.interactions.create(
+            model=modelo,
+            input=entrada,
+            response_format={
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": ANALISE_CARTA_SCHEMA,
+            },
+        )
+
+        texto_json = interaction.output_text
+        if not texto_json:
+            raise CardCraftOperationalError(
+                "gemini_empty_response",
+                "A IA respondeu sem conteúdo utilizável. Seu crédito será devolvido automaticamente.",
+                f"{modelo} respondeu sem output_text.",
+                retryable=True,
+            )
+
+        try:
+            dados = json.loads(texto_json)
+        except json.JSONDecodeError as erro_json:
+            raise CardCraftOperationalError(
+                "gemini_invalid_json",
+                "A IA respondeu em um formato inválido. Seu crédito será devolvido automaticamente.",
+                (
+                    f"Modelo: {modelo}. "
+                    f"Erro JSON: {_sanitizar_detalhe_tecnico(erro_json)}"
+                ),
+                retryable=True,
+            ) from erro_json
+
+        try:
+            return validar_analise_estruturada(dados)
+        except Exception as erro_validacao:
+            raise CardCraftOperationalError(
+                "gemini_schema_validation_error",
+                "A resposta da IA não passou pela validação de segurança do CardCraftAI. Seu crédito será devolvido automaticamente.",
+                (
+                    f"Modelo: {modelo}. "
+                    f"Validação: {_sanitizar_detalhe_tecnico(erro_validacao)}"
+                ),
+                retryable=True,
+            ) from erro_validacao
+
+    except CardCraftOperationalError:
+        raise
+    except errors.APIError as erro_api:
+        raise _classificar_erro_gemini(erro_api) from erro_api
+    except Exception as erro:
+        raise _classificar_erro_gemini(erro) from erro
+
+
 def analisar_carta(
     idioma,
     imagem_pil=None,
     nome_carta_info=None,
 ):
-
-    modelo = AI_MODEL
 
     prompt_base = f"""
 Voce atua como especialista em Trading Card Games (TCG), mas deve priorizar
@@ -4179,52 +4268,62 @@ Leia, quando realmente visiveis, nome, numero, set, idioma e outros marcadores.
     else:
         entrada = prompt_final
 
+    # Reliability 2.6.2:
+    # 1) tenta o modelo principal normalmente;
+    # 2) somente se ele retornar limite/quota (429 / RESOURCE_EXHAUSTED),
+    #    faz UMA tentativa no modelo gratuito de contingência;
+    # 3) timeout, credencial, schema inválido e demais falhas não disparam
+    #    o fallback para evitar duplicar latência ou mascarar erros reais.
     try:
-        interaction = gemini_client.interactions.create(
-            model=modelo,
-            input=entrada,
-            response_format={
-                "type": "text",
-                "mime_type": "application/json",
-                "schema": ANALISE_CARTA_SCHEMA,
-            },
+        resultado = _executar_modelo_gemini(
+            AI_MODEL,
+            entrada,
+        )
+        return resultado, AI_MODEL
+
+    except Exception as erro_principal:
+        erro_principal_operacional = _classificar_erro_gemini(
+            erro_principal
         )
 
-        texto_json = interaction.output_text
-        if not texto_json:
-            raise CardCraftOperationalError(
-                "gemini_empty_response",
-                "A IA respondeu sem conteúdo utilizável. Seu crédito será devolvido automaticamente.",
-                "Gemini respondeu sem output_text.",
-                retryable=True,
+        if erro_principal_operacional.code != "gemini_rate_limit":
+            raise erro_principal_operacional from erro_principal
+
+        try:
+            resultado = _executar_modelo_gemini(
+                AI_FALLBACK_MODEL,
+                entrada,
+            )
+            return resultado, AI_FALLBACK_MODEL
+
+        except Exception as erro_fallback:
+            erro_fallback_operacional = _classificar_erro_gemini(
+                erro_fallback
             )
 
-        try:
-            dados = json.loads(texto_json)
-        except json.JSONDecodeError as erro_json:
-            raise CardCraftOperationalError(
-                "gemini_invalid_json",
-                "A IA respondeu em um formato inválido. Seu crédito será devolvido automaticamente.",
-                _sanitizar_detalhe_tecnico(erro_json),
-                retryable=True,
-            ) from erro_json
+            detalhe = _sanitizar_detalhe_tecnico(
+                "Modelo principal: "
+                f"{AI_MODEL}; erro: "
+                f"{erro_principal_operacional.technical_message or erro_principal}. "
+                "Modelo de contingência: "
+                f"{AI_FALLBACK_MODEL}; erro: "
+                f"{erro_fallback_operacional.technical_message or erro_fallback}."
+            )
 
-        try:
-            return validar_analise_estruturada(dados)
-        except Exception as erro_validacao:
-            raise CardCraftOperationalError(
-                "gemini_schema_validation_error",
-                "A resposta da IA não passou pela validação de segurança do CardCraftAI. Seu crédito será devolvido automaticamente.",
-                _sanitizar_detalhe_tecnico(erro_validacao),
-                retryable=True,
-            ) from erro_validacao
+            if erro_fallback_operacional.code == "gemini_rate_limit":
+                raise CardCraftOperationalError(
+                    "gemini_all_models_rate_limited",
+                    "Os modelos de IA disponíveis atingiram o limite temporário. Seu crédito será devolvido; tente novamente mais tarde.",
+                    detalhe,
+                    retryable=True,
+                ) from erro_fallback
 
-    except CardCraftOperationalError:
-        raise
-    except errors.APIError as erro_api:
-        raise _classificar_erro_gemini(erro_api) from erro_api
-    except Exception as erro:
-        raise _classificar_erro_gemini(erro) from erro
+            raise CardCraftOperationalError(
+                "gemini_fallback_failed",
+                "O modelo principal atingiu o limite e o modelo de contingência também não conseguiu concluir a análise. Seu crédito será devolvido automaticamente.",
+                detalhe,
+                retryable=erro_fallback_operacional.retryable,
+            ) from erro_fallback
 
 
 # ============================================================
@@ -4294,7 +4393,7 @@ def executar_analise_com_credito(
     inicio_ia = time.perf_counter()
 
     try:
-        resultado = analisar_carta(
+        resultado, modelo_ia_usado = analisar_carta(
             idioma=idioma,
             imagem_pil=imagem_pil,
             nome_carta_info=nome_carta_info,
@@ -4354,6 +4453,14 @@ def executar_analise_com_credito(
     # ========================================================
 
     try:
+        # O run é aberto com o modelo principal. Se houve fallback,
+        # registramos o modelo que efetivamente produziu a resposta.
+        if modelo_ia_usado != AI_MODEL:
+            atualizar_modelo_registro_analise(
+                run_id,
+                modelo_ia_usado,
+            )
+
         concluir_registro_analise(
             run_id,
             resultado,
