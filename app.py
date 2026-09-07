@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.0
+# CARDCRAFTAI RELIABILITY 2.6.1
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -83,9 +83,9 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.0"
+APP_VERSION = "2.6.1"
 AI_MODEL = "gemini-3.6-flash"
-GEMINI_TIMEOUT_MS = 45_000
+GEMINI_TIMEOUT_MS = 90_000
 ANALYSIS_STALE_MINUTES = 15
 
 # O catálogo visual é um recurso adicional. Se a chave estiver ausente,
@@ -3990,7 +3990,7 @@ def recuperar_analises_interrompidas_usuario():
     """
     Recupera execuções que ficaram presas em 'processing'.
 
-    Como o Gemini possui timeout explícito de 45 s, uma execução ainda em
+    Como o Gemini possui timeout explícito de 90 s, uma execução ainda em
     processing após 15 min é tratada como interrompida. O crédito pendente é
     devolvido de forma idempotente antes de o run ser marcado como failed.
     """
@@ -4041,7 +4041,7 @@ def recuperar_analises_interrompidas_usuario():
             (
                 "Execução permaneceu em processing por mais de "
                 f"{ANALYSIS_STALE_MINUTES} minutos e foi recuperada "
-                "automaticamente pela Reliability 2.6."
+                "automaticamente pela Reliability 2.6.1."
             ),
         )
 
