@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.2
+# CARDCRAFTAI RELIABILITY 2.6.3
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -83,7 +83,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.2"
+APP_VERSION = "2.6.3"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -262,8 +262,9 @@ def texto_ou_nao_confirmado(valor):
     return texto if texto else "Nao confirmado"
 
 
-def formatar_resultado_estruturado(dados):
+def formatar_resultado_estruturado(dados, tipo_resultado=None):
     status = dados.get("status_identificacao", "incerta")
+    analise_por_nome = str(tipo_resultado or "").strip().lower() == "nome"
     rotulos_status = {
         "confirmada": "🟢 Identificacao preliminar forte",
         "provavel": "🟡 Identificacao provavel",
@@ -278,30 +279,56 @@ def formatar_resultado_estruturado(dados):
         "nao_aplicavel": "Nao aplicavel",
     }
 
-    linhas = [
-        "## 🃏 Identificacao preliminar da IA",
-        f"**Status da leitura visual:** {rotulos_status.get(status, '🔴 Identificacao incerta')}",
-        "",
-        (
-            "Os dados abaixo foram extraidos da imagem pela IA. "
-            "Nome, colecao e numero serao comparados com o catalogo "
-            "Pokemon quando ele estiver disponivel."
-        ),
-        "",
-        f"- **Jogo:** {texto_ou_nao_confirmado(dados.get('jogo'))}",
-        f"- **Nome lido:** {texto_ou_nao_confirmado(dados.get('nome_carta'))}",
-        f"- **Colecao / Set lido:** {texto_ou_nao_confirmado(dados.get('colecao_set'))}",
-        f"- **Numero lido:** {texto_ou_nao_confirmado(dados.get('numero_carta'))}",
-        "",
-        "### 🤖 Dados ainda dependentes de interpretacao da IA",
-        f"- **Raridade sugerida:** {texto_ou_nao_confirmado(dados.get('raridade'))}",
-        f"- **Variante sugerida:** {texto_ou_nao_confirmado(dados.get('variante'))}",
-        f"- **Idioma aparente:** {texto_ou_nao_confirmado(dados.get('idioma_carta'))}",
-        f"- **Ano lido / estimado:** {texto_ou_nao_confirmado(dados.get('ano'))}",
-        "",
-        "### 📸 Qualidade da entrada",
-        f"**Imagem:** {rotulos_qualidade.get(qualidade, 'Nao aplicavel')}",
-    ]
+    if analise_por_nome:
+        linhas = [
+            "## 🃏 Identificacao estruturada da IA",
+            f"**Status da analise:** {rotulos_status.get(status, '🔴 Identificacao incerta')}",
+            "",
+            (
+                "Os dados abaixo foram processados pela IA a partir da entrada textual "
+                "e, quando uma carta foi selecionada, dos dados do catalogo Pokemon TCG. "
+                "Nao houve analise de imagem neste fluxo."
+            ),
+            "",
+            f"- **Jogo:** {texto_ou_nao_confirmado(dados.get('jogo'))}",
+            f"- **Nome analisado:** {texto_ou_nao_confirmado(dados.get('nome_carta'))}",
+            f"- **Colecao / Set analisada:** {texto_ou_nao_confirmado(dados.get('colecao_set'))}",
+            f"- **Numero analisado:** {texto_ou_nao_confirmado(dados.get('numero_carta'))}",
+            "",
+            "### 🤖 Dados ainda dependentes de interpretacao da IA",
+            f"- **Raridade sugerida:** {texto_ou_nao_confirmado(dados.get('raridade'))}",
+            f"- **Variante sugerida:** {texto_ou_nao_confirmado(dados.get('variante'))}",
+            f"- **Idioma aparente:** {texto_ou_nao_confirmado(dados.get('idioma_carta'))}",
+            f"- **Ano lido / estimado:** {texto_ou_nao_confirmado(dados.get('ano'))}",
+            "",
+            "### 🧾 Qualidade da entrada",
+            "**Entrada:** Dados textuais / catalogo",
+        ]
+    else:
+        linhas = [
+            "## 🃏 Identificacao preliminar da IA",
+            f"**Status da leitura visual:** {rotulos_status.get(status, '🔴 Identificacao incerta')}",
+            "",
+            (
+                "Os dados abaixo foram extraidos da imagem pela IA. "
+                "Nome, colecao e numero serao comparados com o catalogo "
+                "Pokemon quando ele estiver disponivel."
+            ),
+            "",
+            f"- **Jogo:** {texto_ou_nao_confirmado(dados.get('jogo'))}",
+            f"- **Nome lido:** {texto_ou_nao_confirmado(dados.get('nome_carta'))}",
+            f"- **Colecao / Set lido:** {texto_ou_nao_confirmado(dados.get('colecao_set'))}",
+            f"- **Numero lido:** {texto_ou_nao_confirmado(dados.get('numero_carta'))}",
+            "",
+            "### 🤖 Dados ainda dependentes de interpretacao da IA",
+            f"- **Raridade sugerida:** {texto_ou_nao_confirmado(dados.get('raridade'))}",
+            f"- **Variante sugerida:** {texto_ou_nao_confirmado(dados.get('variante'))}",
+            f"- **Idioma aparente:** {texto_ou_nao_confirmado(dados.get('idioma_carta'))}",
+            f"- **Ano lido / estimado:** {texto_ou_nao_confirmado(dados.get('ano'))}",
+            "",
+            "### 📸 Qualidade da entrada",
+            f"**Imagem:** {rotulos_qualidade.get(qualidade, 'Nao aplicavel')}",
+        ]
 
     motivo = dados.get("motivo_qualidade_imagem")
     if motivo:
@@ -323,11 +350,18 @@ def formatar_resultado_estruturado(dados):
         linhas.extend([f"- {item}" for item in gerais])
 
     condicao = dados.get("condicao_aparente") or {}
-    linhas.extend([
-        "",
-        "## 🔎 Condicao aparente — estimativa visual da IA",
-        f"**Estimativa visual:** {condicao.get('estimativa', 'indeterminada')}",
-    ])
+    if analise_por_nome:
+        linhas.extend([
+            "",
+            "## 🔎 Condicao aparente — nao avaliada sem foto",
+            f"**Estimativa:** {condicao.get('estimativa', 'nao_aplicavel')}",
+        ])
+    else:
+        linhas.extend([
+            "",
+            "## 🔎 Condicao aparente — estimativa visual da IA",
+            f"**Estimativa visual:** {condicao.get('estimativa', 'indeterminada')}",
+        ])
     for item in condicao.get("observacoes") or []:
         linhas.append(f"- {item}")
 
@@ -338,11 +372,18 @@ def formatar_resultado_estruturado(dados):
         "indeterminada": "Nao foi possivel avaliar pela imagem",
         "nao_aplicavel": "Nao aplicavel",
     }
-    linhas.extend([
-        "",
-        "## ⚠️ Autenticidade visual — triagem da IA",
-        f"**Status:** {rotulos_autenticidade.get(autenticidade.get('status'), 'Indeterminada')}",
-    ])
+    if analise_por_nome:
+        linhas.extend([
+            "",
+            "## ⚠️ Autenticidade visual — nao avaliada sem foto",
+            f"**Status:** {rotulos_autenticidade.get(autenticidade.get('status'), 'Nao aplicavel')}",
+        ])
+    else:
+        linhas.extend([
+            "",
+            "## ⚠️ Autenticidade visual — triagem da IA",
+            f"**Status:** {rotulos_autenticidade.get(autenticidade.get('status'), 'Indeterminada')}",
+        ])
     for item in autenticidade.get("observacoes") or []:
         linhas.append(f"- {item}")
     linhas.append(
@@ -2698,6 +2739,68 @@ def info_catalogo_para_analise(
     )
 
 
+def validar_carta_selecionada_catalogo(
+    resultado,
+    carta,
+):
+    """
+    Reliability 2.6.3
+
+    Registra a identidade de uma carta que o proprio usuario selecionou
+    diretamente no catalogo Pokemon TCG. Nao faz nova requisicao de rede:
+    reaproveita a carta ja retornada pelo catalogo gratuito.
+
+    A identidade principal pode ser confirmada pelo catalogo porque a entrada
+    da analise e a propria carta selecionada. Ainda assim, a comparacao com a
+    resposta da IA e preservada para que uma divergencia objetiva de numero
+    continue bloqueando o nivel de confianca no Confidence Engine.
+    """
+    if not isinstance(carta, dict) or not carta:
+        return {
+            "status": "sem_dados",
+            "titulo": "Carta de catalogo nao disponivel",
+            "mensagem": (
+                "Nao havia uma carta selecionada do catalogo para registrar "
+                "como evidencia externa desta analise."
+            ),
+            "melhor": None,
+            "candidatos": [],
+            "identificacao": _extrair_identificacao_foto(resultado),
+        }
+
+    identificacao = _extrair_identificacao_foto(resultado)
+    comparacao = _comparar_identificacao_com_carta(
+        identificacao,
+        carta,
+    )
+
+    resumo = _resumo_carta_catalogo(carta)
+
+    return {
+        "status": "confirmado",
+        "titulo": "✅ Identidade confirmada pela carta selecionada no catalogo",
+        "mensagem": (
+            "A analise partiu de uma carta selecionada diretamente no catalogo "
+            "Pokemon TCG. O ID, nome, colecao e numero dessa entrada ficam "
+            "persistidos como evidencia externa rastreavel."
+        ),
+        "melhor": comparacao or {
+            "carta": carta,
+            "score": None,
+            "similaridade_nome": None,
+            "similaridade_colecao": None,
+            "similaridade_numero": None,
+            "numero_exato": False,
+            "nome_catalogo": resumo.get("nome"),
+            "colecao_catalogo": resumo.get("set"),
+            "numero_catalogo": resumo.get("numero"),
+        },
+        "candidatos": [comparacao] if comparacao else [],
+        "identificacao": identificacao,
+        "origem": "catalogo_selecionado_usuario",
+    }
+
+
 def _chave_validacao_foto_catalogo(resultado):
     """Cria uma chave estável para reutilizar a validação da mesma análise."""
     identificacao = _extrair_identificacao_foto(
@@ -4919,7 +5022,10 @@ def mostrar_resultado(
     )
 
     if isinstance(resultado, dict):
-        conteudo = formatar_resultado_estruturado(resultado)
+        conteudo = formatar_resultado_estruturado(
+            resultado,
+            tipo_resultado=st.session_state.get("resultado_tipo"),
+        )
     else:
         # Compatibilidade defensiva com resultados de sessoes antigas.
         conteudo = str(resultado)
@@ -5338,6 +5444,22 @@ elif pagina == "🔍 Buscar Carta por Nome":
                         tipo_acao="analise_nome",
                     )
                 )
+
+                # Reliability 2.6.3:
+                # se a analise partiu de uma carta selecionada no catalogo,
+                # persistimos essa evidencia externa no mesmo analysis_run
+                # antes do rerun. Nenhuma nova chamada ao catalogo e feita.
+                if carta_selecionada:
+                    validacao_nome = validar_carta_selecionada_catalogo(
+                        resultado,
+                        carta_selecionada,
+                    )
+                    atualizar_registro_catalogo(
+                        resultado,
+                        validacao=validacao_nome,
+                        cartas=[carta_selecionada],
+                        catalogo_latency_ms=0,
+                    )
 
                 st.session_state.resultado_analise = (
                     resultado
