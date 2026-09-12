@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.3
+# CARDCRAFTAI RELIABILITY 2.6.4
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -83,7 +83,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.3"
+APP_VERSION = "2.6.4"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -3196,6 +3196,9 @@ if "user_id" not in st.session_state:
 if "user_email" not in st.session_state:
     st.session_state.user_email = None
 
+if "email_confirmado" not in st.session_state:
+    st.session_state.email_confirmado = False
+
 if "resultado_analise" not in st.session_state:
     st.session_state.resultado_analise = None
 
@@ -3258,6 +3261,21 @@ if "ultima_recuperacao_runs" not in st.session_state:
 
 
 # ============================================================
+# AUTENTICAÇÃO - CONFIRMAÇÃO DE E-MAIL
+# ============================================================
+
+def _email_confirmado_no_usuario(usuario):
+    """Retorna True somente quando o Supabase marca o e-mail como confirmado."""
+    if not usuario:
+        return False
+
+    return bool(
+        getattr(usuario, "email_confirmed_at", None)
+        or getattr(usuario, "confirmed_at", None)
+    )
+
+
+# ============================================================
 # SUPABASE
 # ============================================================
 
@@ -3296,13 +3314,27 @@ def criar_cliente_supabase():
 
             if resposta.user:
 
-                st.session_state.user_id = (
-                    resposta.user.id
-                )
+                if _email_confirmado_no_usuario(
+                    resposta.user
+                ):
 
-                st.session_state.user_email = (
-                    resposta.user.email
-                )
+                    st.session_state.user_id = (
+                        resposta.user.id
+                    )
+
+                    st.session_state.user_email = (
+                        resposta.user.email
+                    )
+
+                    st.session_state.email_confirmado = True
+
+                else:
+
+                    st.session_state.access_token = None
+                    st.session_state.refresh_token = None
+                    st.session_state.user_id = None
+                    st.session_state.user_email = None
+                    st.session_state.email_confirmado = False
 
         except Exception:
 
@@ -3310,6 +3342,7 @@ def criar_cliente_supabase():
             st.session_state.refresh_token = None
             st.session_state.user_id = None
             st.session_state.user_email = None
+            st.session_state.email_confirmado = False
 
     return cliente
 
@@ -3340,6 +3373,14 @@ def salvar_sessao(resposta):
     if not resposta.session:
         return False
 
+    if not resposta.user:
+        return False
+
+    if not _email_confirmado_no_usuario(
+        resposta.user
+    ):
+        return False
+
     st.session_state.access_token = (
         resposta.session.access_token
     )
@@ -3348,15 +3389,15 @@ def salvar_sessao(resposta):
         resposta.session.refresh_token
     )
 
-    if resposta.user:
+    st.session_state.user_id = (
+        resposta.user.id
+    )
 
-        st.session_state.user_id = (
-            resposta.user.id
-        )
+    st.session_state.user_email = (
+        resposta.user.email
+    )
 
-        st.session_state.user_email = (
-            resposta.user.email
-        )
+    st.session_state.email_confirmado = True
 
     return True
 
@@ -3367,6 +3408,7 @@ def limpar_sessao():
     st.session_state.refresh_token = None
     st.session_state.user_id = None
     st.session_state.user_email = None
+    st.session_state.email_confirmado = False
 
     st.session_state.resultado_analise = None
     st.session_state.resultado_tipo = None
@@ -3392,6 +3434,8 @@ def usuario_logado():
         st.session_state.user_id is not None
         and
         st.session_state.access_token is not None
+        and
+        st.session_state.email_confirmado is True
     )
 
 
@@ -4643,6 +4687,10 @@ def tela_login():
             "Entre com seu e-mail e senha."
         )
 
+        st.caption(
+            "Novos cadastros precisam confirmar o e-mail antes do primeiro acesso."
+        )
+
         email_login = st.text_input(
             "E-mail",
             key="email_login",
@@ -4805,29 +4853,37 @@ def tela_login():
                         )
                     )
 
+                    # Reliability 2.6.4:
+                    # cadastro nunca libera acesso automaticamente.
+                    # O usuário só entra depois que o Supabase confirmar o e-mail.
                     if resposta.session:
 
-                        salvar_sessao(
-                            resposta
-                        )
+                        try:
+                            supabase.auth.sign_out()
+                        except Exception:
+                            pass
 
-                        st.success(
-                            "Conta criada com sucesso!"
-                        )
+                    limpar_sessao()
 
-                        st.rerun()
+                    st.success(
+                        "Cadastro realizado! ✅"
+                    )
 
-                    else:
+                    st.info(
+                        "📧 Enviamos um e-mail de confirmação para "
+                        f"{email_cadastro}. Abra a mensagem do CardCraftAI "
+                        "e clique em ‘Confirmar meu e-mail’."
+                    )
 
-                        st.success(
-                            "Conta criada com sucesso! ✅"
-                        )
+                    st.warning(
+                        "🔒 Sua conta só poderá entrar no CardCraftAI "
+                        "depois que o e-mail for confirmado."
+                    )
 
-                        st.info(
-                            "📧 Verifique sua caixa de e-mail. "
-                            "O Supabase pode exigir a confirmação "
-                            "antes do primeiro login."
-                        )
+                    st.caption(
+                        "Se não encontrar a mensagem, verifique também "
+                        "as pastas Spam, Lixo eletrônico e Promoções."
+                    )
 
                 except Exception as erro:
 
