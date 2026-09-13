@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.8
+# CARDCRAFTAI RELIABILITY 2.6.9
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -83,7 +83,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.8"
+APP_VERSION = "2.6.9"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -4934,7 +4934,7 @@ def executar_analise_com_credito(
 
 
 # ============================================================
-# DOCUMENTOS LEGAIS - BETA 2.6.8
+# DOCUMENTOS LEGAIS - BETA 2.6.9
 # ============================================================
 
 LEGAL_VERSION = "2026-09-13"
@@ -5189,6 +5189,193 @@ Esta Política poderá ser atualizada conforme o produto e as obrigações legai
 
     st.header(titulo)
     st.markdown(texto)
+
+
+# ============================================================
+# RELIABILITY 2.6.9 - ACEITE LEGAL PARA CONTAS EXISTENTES
+# ============================================================
+
+def buscar_aceite_legal_vigente():
+    """Retorna o aceite da versão legal vigente para o usuário autenticado."""
+    user_id = st.session_state.get("user_id")
+
+    if not user_id:
+        return None
+
+    try:
+        resposta = (
+            supabase
+            .table("legal_acceptances")
+            .select(
+                "id,user_id,terms_version,privacy_version,accepted_at,"
+                "app_version,locale,acceptance_source,created_at"
+            )
+            .eq("user_id", str(user_id))
+            .eq("terms_version", TERMS_VERSION)
+            .eq("privacy_version", PRIVACY_VERSION)
+            .limit(1)
+            .execute()
+        )
+
+        dados = resposta.data or []
+        return dados[0] if dados else None
+
+    except Exception as erro:
+        raise RuntimeError(
+            "Não foi possível verificar o aceite dos documentos legais. "
+            f"Detalhes: {erro}"
+        )
+
+
+def registrar_aceite_legal_vigente(idioma_atual="Português (BR)"):
+    """Registra, via RPC protegida, o aceite da versão legal vigente."""
+    mapa_locale = {
+        "Português (BR)": "pt-BR",
+        "English": "en",
+        "Español": "es",
+    }
+
+    locale = mapa_locale.get(
+        idioma_atual,
+        "pt-BR",
+    )
+
+    try:
+        resposta = (
+            supabase
+            .rpc(
+                "record_legal_acceptance",
+                {
+                    "p_terms_version": TERMS_VERSION,
+                    "p_privacy_version": PRIVACY_VERSION,
+                    "p_app_version": APP_VERSION,
+                    "p_locale": locale,
+                },
+            )
+            .execute()
+        )
+
+        return resposta.data
+
+    except Exception as erro:
+        raise RuntimeError(
+            "Não foi possível registrar o aceite dos documentos legais. "
+            f"Detalhes: {erro}"
+        )
+
+
+def tela_aceite_legal_pendente():
+    """Bloqueia o uso do app até a conta aceitar a versão legal vigente."""
+    st.title("🃏 CardCraftAI")
+    st.header("📜 Atualização dos documentos legais")
+
+    idioma_legal = st.selectbox(
+        "🌐 Idioma / Language",
+        [
+            "Português (BR)",
+            "English",
+            "Español",
+        ],
+        key="idioma_aceite_legal_existente",
+    )
+
+    if idioma_legal == "English":
+        st.info(
+            "Before continuing, please review and accept the current "
+            "Terms of Use and Privacy Policy."
+        )
+        texto_checkbox = (
+            "I have read and accept the Terms of Use and Privacy Policy."
+        )
+        texto_botao = "✅ Accept and continue"
+        texto_alerta = (
+            "You must accept the Terms of Use and Privacy Policy to continue."
+        )
+        texto_sucesso = "Acceptance recorded. You can now continue. ✅"
+        texto_sair = "🚪 Sign out"
+    elif idioma_legal == "Español":
+        st.info(
+            "Antes de continuar, revisa y acepta los Términos de Uso "
+            "y la Política de Privacidad vigentes."
+        )
+        texto_checkbox = (
+            "He leído y acepto los Términos de Uso y la Política de Privacidad."
+        )
+        texto_botao = "✅ Aceptar y continuar"
+        texto_alerta = (
+            "Debes aceptar los Términos de Uso y la Política de Privacidad "
+            "para continuar."
+        )
+        texto_sucesso = "Aceptación registrada. Ya puedes continuar. ✅"
+        texto_sair = "🚪 Cerrar sesión"
+    else:
+        st.info(
+            "Antes de continuar, revise e aceite os Termos de Uso e a "
+            "Política de Privacidade vigentes."
+        )
+        texto_checkbox = (
+            "Li e aceito os Termos de Uso e a Política de Privacidade."
+        )
+        texto_botao = "✅ Aceitar e continuar"
+        texto_alerta = (
+            "Você precisa aceitar os Termos de Uso e a Política de "
+            "Privacidade para continuar."
+        )
+        texto_sucesso = "Aceite registrado. Você já pode continuar. ✅"
+        texto_sair = "🚪 Sair da conta"
+
+    st.caption(
+        f"Versão vigente: {LEGAL_VERSION} | CardCraftAI {APP_VERSION}"
+    )
+
+    with st.expander("📜 Termos de Uso / Terms of Use", expanded=False):
+        renderizar_termos_uso(idioma_legal)
+
+    with st.expander(
+        "🔒 Política de Privacidade / Privacy Policy",
+        expanded=False,
+    ):
+        renderizar_politica_privacidade(idioma_legal)
+
+    aceitou = st.checkbox(
+        texto_checkbox,
+        key="aceite_legal_conta_existente",
+    )
+
+    if st.button(
+        texto_botao,
+        use_container_width=True,
+        key="btn_aceite_legal_conta_existente",
+    ):
+        if not aceitou:
+            st.warning(texto_alerta)
+        else:
+            try:
+                registrar_aceite_legal_vigente(idioma_legal)
+                st.success(texto_sucesso)
+                st.rerun()
+            except Exception as erro:
+                st.error(
+                    "Não foi possível registrar o aceite agora."
+                )
+                st.caption(
+                    f"Detalhe técnico: {erro}"
+                )
+
+    st.divider()
+
+    if st.button(
+        texto_sair,
+        use_container_width=True,
+        key="btn_sair_aceite_legal",
+    ):
+        try:
+            supabase.auth.sign_out()
+        except Exception:
+            pass
+
+        limpar_sessao()
+        st.rerun()
 
 
 # ============================================================
@@ -5596,6 +5783,44 @@ if not usuario_logado():
 
     tela_login()
 
+    st.stop()
+
+
+# ============================================================
+# RELIABILITY 2.6.9 - ACEITE LEGAL VIGENTE
+# ============================================================
+
+try:
+    aceite_legal_vigente = buscar_aceite_legal_vigente()
+except Exception as erro:
+    st.error(
+        "Não foi possível verificar os documentos legais da sua conta."
+    )
+    st.info(
+        "Por segurança, o acesso às funções do CardCraftAI permanece "
+        "bloqueado até essa verificação funcionar novamente."
+    )
+    st.caption(
+        f"Detalhe técnico: {erro}"
+    )
+
+    if st.button(
+        "🚪 Sair da conta",
+        use_container_width=True,
+        key="btn_sair_falha_aceite_legal",
+    ):
+        try:
+            supabase.auth.sign_out()
+        except Exception:
+            pass
+
+        limpar_sessao()
+        st.rerun()
+
+    st.stop()
+
+if not aceite_legal_vigente:
+    tela_aceite_legal_pendente()
     st.stop()
 
 
