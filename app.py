@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.7
+# CARDCRAFTAI RELIABILITY 2.6.8
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -83,7 +83,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.7"
+APP_VERSION = "2.6.8"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -4934,10 +4934,12 @@ def executar_analise_com_credito(
 
 
 # ============================================================
-# DOCUMENTOS LEGAIS - BETA 2.6.7
+# DOCUMENTOS LEGAIS - BETA 2.6.8
 # ============================================================
 
 LEGAL_VERSION = "2026-09-13"
+TERMS_VERSION = LEGAL_VERSION
+PRIVACY_VERSION = LEGAL_VERSION
 
 
 def renderizar_termos_uso(idioma_atual="Português (BR)"):
@@ -5436,6 +5438,16 @@ def tela_login():
             key="senha_confirmar",
         )
 
+        aceitou_documentos = st.checkbox(
+            "Li e aceito os Termos de Uso e a Política de Privacidade.",
+            key="aceite_legal_cadastro",
+        )
+
+        st.caption(
+            "Os documentos podem ser consultados abaixo antes do cadastro. "
+            f"Versão vigente: {LEGAL_VERSION}."
+        )
+
         if st.button(
             "✨ Criar minha conta",
             use_container_width=True,
@@ -5473,10 +5485,21 @@ def tela_login():
                     "As duas senhas não são iguais."
                 )
 
+            elif not aceitou_documentos:
+
+                st.warning(
+                    "Para criar a conta, você precisa aceitar "
+                    "os Termos de Uso e a Política de Privacidade."
+                )
+
             else:
 
                 try:
 
+                    # Reliability 2.6.8:
+                    # o cadastro só prossegue após aceite explícito.
+                    # As versões aceitas seguem como metadata para o trigger
+                    # registrar o histórico em public.legal_acceptances.
                     resposta = (
                         supabase
                         .auth
@@ -5484,6 +5507,15 @@ def tela_login():
                             {
                                 "email": email_cadastro,
                                 "password": senha_cadastro,
+                                "options": {
+                                    "data": {
+                                        "legal_accepted": True,
+                                        "terms_version": TERMS_VERSION,
+                                        "privacy_version": PRIVACY_VERSION,
+                                        "app_version": APP_VERSION,
+                                        "legal_locale": "pt-BR",
+                                    }
+                                },
                             }
                         )
                     )
