@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.5
+# CARDCRAFTAI RELIABILITY 2.6.6
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -3684,6 +3684,77 @@ def buscar_perfil():
         return None
 
 
+def buscar_compras_usuario(
+    limite=20,
+):
+    """Retorna as compras mais recentes do usuário autenticado."""
+
+    if not usuario_logado():
+        return []
+
+    try:
+
+        resposta = (
+            supabase
+            .table("purchases")
+            .select(
+                "id,provider,amount_cents,currency,"
+                "credits_purchased,status,created_at,approved_at"
+            )
+            .eq(
+                "user_id",
+                st.session_state.user_id,
+            )
+            .order(
+                "created_at",
+                desc=True,
+            )
+            .limit(
+                limite
+            )
+            .execute()
+        )
+
+        return resposta.data or []
+
+    except Exception:
+
+        return []
+
+
+def formatar_data_conta(valor):
+    """Formata timestamps do Supabase para exibição simples no painel."""
+
+    if not valor:
+        return "—"
+
+    try:
+        texto = str(valor).replace("Z", "+00:00")
+        data = datetime.fromisoformat(texto)
+        return data.strftime("%d/%m/%Y %H:%M")
+    except Exception:
+        return str(valor)
+
+
+def rotulo_status_compra(status):
+    status = str(status or "").strip().lower()
+
+    mapa = {
+        "pending": "Pendente",
+        "approved": "Aprovada",
+        "completed": "Concluída",
+        "refunded": "Reembolsada",
+        "cancelled": "Cancelada",
+        "canceled": "Cancelada",
+        "rejected": "Recusada",
+    }
+
+    return mapa.get(
+        status,
+        status.capitalize() if status else "—",
+    )
+
+
 def buscar_creditos():
 
     perfil = buscar_perfil()
@@ -5337,6 +5408,7 @@ pagina = st.sidebar.radio(
         "📸 Análise por Foto",
         "🔍 Buscar Carta por Nome",
         "💳 Planos e Créditos",
+        "👤 Minha Conta",
     ],
 )
 
@@ -5878,6 +5950,154 @@ elif pagina == "🔍 Buscar Carta por Nome":
 # ============================================================
 # PÁGINA 3 - PLANOS
 # ============================================================
+
+elif pagina == "👤 Minha Conta":
+
+    st.header(
+        "👤 Minha Conta"
+    )
+
+    st.caption(
+        "Consulte seus dados, saldo, segurança e histórico da conta."
+    )
+
+    col_email, col_creditos, col_plano = st.columns(3)
+
+    with col_email:
+        st.metric(
+            "E-mail confirmado",
+            "Sim ✅" if st.session_state.email_confirmado else "Não",
+        )
+
+    with col_creditos:
+        st.metric(
+            "Créditos disponíveis",
+            creditos,
+        )
+
+    with col_plano:
+        st.metric(
+            "Plano atual",
+            str(plano or "free").capitalize(),
+        )
+
+    st.subheader(
+        "📧 Dados da conta"
+    )
+
+    st.write(
+        f"**E-mail:** {st.session_state.user_email}"
+    )
+
+    if st.session_state.email_confirmado:
+        st.success(
+            "Seu endereço de e-mail está confirmado."
+        )
+    else:
+        st.warning(
+            "Seu endereço de e-mail ainda não está confirmado."
+        )
+
+    st.divider()
+
+    st.subheader(
+        "🔐 Segurança"
+    )
+
+    st.write(
+        "Se quiser trocar sua senha, envie um link seguro de "
+        "redefinição para o e-mail da sua conta."
+    )
+
+    if st.button(
+        "📨 Enviar link para redefinir senha",
+        use_container_width=True,
+        key="btn_conta_redefinir_senha",
+    ):
+
+        try:
+            supabase.auth.reset_password_for_email(
+                st.session_state.user_email
+            )
+
+            st.success(
+                "Se a conta estiver disponível, enviamos um link de "
+                "redefinição para o seu e-mail. ✅"
+            )
+
+            st.caption(
+                "Verifique também Spam, Lixo eletrônico e Promoções."
+            )
+
+        except Exception:
+            st.error(
+                "Não foi possível enviar o link agora."
+            )
+            st.info(
+                "Aguarde alguns instantes e tente novamente."
+            )
+
+    st.divider()
+
+    st.subheader(
+        "🧾 Histórico de compras"
+    )
+
+    compras = buscar_compras_usuario()
+
+    if not compras:
+        st.info(
+            "Nenhuma compra registrada nesta conta até o momento."
+        )
+    else:
+        linhas_compras = []
+
+        for compra in compras:
+            linhas_compras.append(
+                {
+                    "Data": formatar_data_conta(
+                        compra.get("created_at")
+                    ),
+                    "Status": rotulo_status_compra(
+                        compra.get("status")
+                    ),
+                    "Créditos": int(
+                        compra.get("credits_purchased") or 0
+                    ),
+                    "Valor": formatar_preco_brl(
+                        compra.get("amount_cents") or 0
+                    ),
+                    "Moeda": compra.get("currency") or "BRL",
+                    "Provedor": compra.get("provider") or "—",
+                }
+            )
+
+        st.dataframe(
+            linhas_compras,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    st.divider()
+
+    st.subheader(
+        "🚪 Sessão"
+    )
+
+    if st.button(
+        "Sair da minha conta",
+        use_container_width=True,
+        key="btn_conta_sair",
+    ):
+
+        try:
+            supabase.auth.sign_out()
+        except Exception:
+            pass
+
+        limpar_sessao()
+        st.rerun()
+
 
 elif pagina == "💳 Planos e Créditos":
 
