@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.4
+# CARDCRAFTAI RELIABILITY 2.6.5
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -83,7 +83,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.4"
+APP_VERSION = "2.6.5"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -3259,6 +3259,21 @@ if "aviso_recuperacao" not in st.session_state:
 if "ultima_recuperacao_runs" not in st.session_state:
     st.session_state.ultima_recuperacao_runs = None
 
+if "mostrar_recuperacao_senha" not in st.session_state:
+    st.session_state.mostrar_recuperacao_senha = False
+
+if "modo_recuperacao_senha" not in st.session_state:
+    st.session_state.modo_recuperacao_senha = False
+
+if "recovery_link_processed" not in st.session_state:
+    st.session_state.recovery_link_processed = None
+
+if "erro_recuperacao_senha" not in st.session_state:
+    st.session_state.erro_recuperacao_senha = None
+
+if "senha_redefinida_sucesso" not in st.session_state:
+    st.session_state.senha_redefinida_sucesso = False
+
 
 # ============================================================
 # AUTENTICAÇÃO - CONFIRMAÇÃO DE E-MAIL
@@ -3427,6 +3442,8 @@ def limpar_sessao():
     st.session_state.aviso_recuperacao = None
     st.session_state.ultima_recuperacao_runs = None
 
+    st.session_state.modo_recuperacao_senha = False
+
 
 def usuario_logado():
 
@@ -3437,6 +3454,202 @@ def usuario_logado():
         and
         st.session_state.email_confirmado is True
     )
+
+
+def processar_link_recuperacao_senha():
+    """
+    Converte o token_hash do e-mail de recuperação em uma sessão autenticada.
+
+    O template de Reset password aponta para:
+    ?token_hash=...&type=recovery
+
+    Isso evita depender do fragmento #access_token=... no navegador, que não
+    chega ao servidor Streamlit.
+    """
+
+    token_hash = str(
+        st.query_params.get(
+            "token_hash",
+            "",
+        )
+        or ""
+    ).strip()
+
+    tipo = str(
+        st.query_params.get(
+            "type",
+            "",
+        )
+        or ""
+    ).strip().lower()
+
+    if (
+        not token_hash
+        or
+        tipo != "recovery"
+    ):
+        return
+
+    assinatura = (
+        f"recovery:{token_hash}"
+    )
+
+    if (
+        st.session_state.recovery_link_processed
+        ==
+        assinatura
+        and
+        st.session_state.modo_recuperacao_senha
+    ):
+        return
+
+    st.session_state.recovery_link_processed = (
+        assinatura
+    )
+
+    try:
+
+        resposta = (
+            supabase
+            .auth
+            .verify_otp(
+                {
+                    "token_hash": token_hash,
+                    "type": "recovery",
+                }
+            )
+        )
+
+        if not salvar_sessao(
+            resposta
+        ):
+            raise RuntimeError(
+                "A sessão de recuperação não pôde ser iniciada."
+            )
+
+        st.session_state.modo_recuperacao_senha = True
+        st.session_state.erro_recuperacao_senha = None
+
+    except Exception:
+
+        limpar_sessao()
+
+        st.session_state.recovery_link_processed = None
+
+        st.session_state.erro_recuperacao_senha = (
+            "O link de recuperação é inválido, expirou ou já foi usado. "
+            "Solicite um novo link em “Esqueci minha senha”."
+        )
+
+
+def tela_redefinir_senha():
+
+    st.title(
+        "🃏 CardCraftAI"
+    )
+
+    st.header(
+        "🔐 Crie uma nova senha"
+    )
+
+    st.write(
+        "Defina a nova senha da sua conta."
+    )
+
+    st.info(
+        "Use pelo menos 6 caracteres e não compartilhe sua senha."
+    )
+
+    nova_senha = st.text_input(
+        "Nova senha",
+        type="password",
+        key="nova_senha_recuperacao",
+    )
+
+    confirmar_nova_senha = st.text_input(
+        "Confirme a nova senha",
+        type="password",
+        key="confirmar_nova_senha_recuperacao",
+    )
+
+    if st.button(
+        "✅ Salvar nova senha",
+        use_container_width=True,
+        key="btn_salvar_nova_senha",
+    ):
+
+        if len(
+            nova_senha
+        ) < 6:
+
+            st.warning(
+                "A nova senha precisa ter pelo menos 6 caracteres."
+            )
+
+        elif (
+            nova_senha
+            !=
+            confirmar_nova_senha
+        ):
+
+            st.warning(
+                "As duas senhas não são iguais."
+            )
+
+        else:
+
+            try:
+
+                supabase.auth.update_user(
+                    {
+                        "password": nova_senha,
+                    }
+                )
+
+                try:
+                    supabase.auth.sign_out()
+                except Exception:
+                    pass
+
+                limpar_sessao()
+
+                st.session_state.recovery_link_processed = None
+                st.session_state.erro_recuperacao_senha = None
+                st.session_state.senha_redefinida_sucesso = True
+
+                st.query_params.clear()
+
+                st.rerun()
+
+            except Exception:
+
+                st.error(
+                    "Não foi possível alterar a senha."
+                )
+
+                st.info(
+                    "Solicite um novo link de recuperação e tente novamente."
+                )
+
+    if st.button(
+        "← Cancelar e voltar ao login",
+        use_container_width=True,
+        key="btn_cancelar_recuperacao_senha",
+    ):
+
+        try:
+            supabase.auth.sign_out()
+        except Exception:
+            pass
+
+        limpar_sessao()
+
+        st.session_state.recovery_link_processed = None
+        st.session_state.erro_recuperacao_senha = None
+
+        st.query_params.clear()
+
+        st.rerun()
 
 
 # ============================================================
@@ -4670,6 +4883,23 @@ def tela_login():
         "🔐 Acesse sua conta"
     )
 
+    if st.session_state.senha_redefinida_sucesso:
+
+        st.success(
+            "Senha redefinida com sucesso. ✅ "
+            "Agora você já pode entrar com a nova senha."
+        )
+
+        st.session_state.senha_redefinida_sucesso = False
+
+    if st.session_state.erro_recuperacao_senha:
+
+        st.error(
+            st.session_state.erro_recuperacao_senha
+        )
+
+        st.session_state.erro_recuperacao_senha = None
+
     aba_login, aba_cadastro = st.tabs(
         [
             "🔑 Entrar",
@@ -4768,6 +4998,84 @@ def tela_login():
                     st.caption(
                         f"Detalhe técnico: {erro}"
                     )
+
+        if st.button(
+            "🔁 Esqueci minha senha",
+            use_container_width=True,
+            key="btn_mostrar_recuperacao_senha",
+        ):
+
+            st.session_state.mostrar_recuperacao_senha = (
+                not
+                st.session_state.mostrar_recuperacao_senha
+            )
+
+        if st.session_state.mostrar_recuperacao_senha:
+
+            st.divider()
+
+            st.subheader(
+                "Recuperar acesso"
+            )
+
+            st.caption(
+                "Informe o e-mail da sua conta. "
+                "Se houver uma conta associada, enviaremos "
+                "um link para criar uma nova senha."
+            )
+
+            email_recuperacao = st.text_input(
+                "E-mail para recuperação",
+                key="email_recuperacao_senha",
+                placeholder="seuemail@exemplo.com",
+            )
+
+            if st.button(
+                "📧 Enviar link de recuperação",
+                use_container_width=True,
+                key="btn_enviar_recuperacao_senha",
+            ):
+
+                email_recuperacao = (
+                    email_recuperacao
+                    .strip()
+                    .lower()
+                )
+
+                if not email_recuperacao:
+
+                    st.warning(
+                        "Informe seu e-mail."
+                    )
+
+                else:
+
+                    try:
+
+                        supabase.auth.reset_password_for_email(
+                            email_recuperacao
+                        )
+
+                        st.success(
+                            "Se existir uma conta com esse e-mail, "
+                            "o CardCraftAI enviará uma mensagem com "
+                            "o link para redefinir a senha. ✅"
+                        )
+
+                        st.caption(
+                            "Verifique também Spam, Lixo eletrônico "
+                            "e Promoções."
+                        )
+
+                    except Exception:
+
+                        st.error(
+                            "Não foi possível solicitar a recuperação agora."
+                        )
+
+                        st.info(
+                            "Aguarde alguns instantes e tente novamente."
+                        )
 
     # --------------------------------------------------------
     # CADASTRO
@@ -4894,6 +5202,19 @@ def tela_login():
                     st.caption(
                         f"Detalhe técnico: {erro}"
                     )
+
+
+# ============================================================
+# RECUPERAÇÃO DE SENHA
+# ============================================================
+
+processar_link_recuperacao_senha()
+
+if st.session_state.modo_recuperacao_senha:
+
+    tela_redefinir_senha()
+
+    st.stop()
 
 
 # ============================================================
