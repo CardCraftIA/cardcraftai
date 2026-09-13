@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.9
+# CARDCRAFTAI RELIABILITY 2.6.14
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -83,7 +83,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.9"
+APP_VERSION = "2.6.14"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -3456,6 +3456,40 @@ def usuario_logado():
     )
 
 
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_POLICY_MESSAGE = (
+    "Use pelo menos 8 caracteres, incluindo letra minúscula, "
+    "letra maiúscula, número e símbolo."
+)
+
+
+def validar_senha_forte(senha):
+    """Valida a política de senha usada no cadastro e na recuperação."""
+    senha = senha or ""
+
+    if len(senha) < PASSWORD_MIN_LENGTH:
+        return False, (
+            f"A senha precisa ter pelo menos {PASSWORD_MIN_LENGTH} caracteres."
+        )
+
+    if not any(caractere.islower() for caractere in senha):
+        return False, "A senha precisa ter pelo menos uma letra minúscula."
+
+    if not any(caractere.isupper() for caractere in senha):
+        return False, "A senha precisa ter pelo menos uma letra maiúscula."
+
+    if not any(caractere.isdigit() for caractere in senha):
+        return False, "A senha precisa ter pelo menos um número."
+
+    if not any(
+        (not caractere.isalnum()) and (not caractere.isspace())
+        for caractere in senha
+    ):
+        return False, "A senha precisa ter pelo menos um símbolo."
+
+    return True, None
+
+
 def processar_link_recuperacao_senha():
     """
     Converte o token_hash do e-mail de recuperação em uma sessão autenticada.
@@ -3557,7 +3591,7 @@ def tela_redefinir_senha():
     )
 
     st.info(
-        "Use pelo menos 6 caracteres e não compartilhe sua senha."
+        PASSWORD_POLICY_MESSAGE
     )
 
     nova_senha = st.text_input(
@@ -3578,12 +3612,14 @@ def tela_redefinir_senha():
         key="btn_salvar_nova_senha",
     ):
 
-        if len(
+        senha_valida, erro_senha = validar_senha_forte(
             nova_senha
-        ) < 6:
+        )
+
+        if not senha_valida:
 
             st.warning(
-                "A nova senha precisa ter pelo menos 6 caracteres."
+                erro_senha
             )
 
         elif (
@@ -4934,7 +4970,7 @@ def executar_analise_com_credito(
 
 
 # ============================================================
-# DOCUMENTOS LEGAIS - BETA 2.6.9
+# DOCUMENTOS LEGAIS - BETA 2.6.14
 # ============================================================
 
 LEGAL_VERSION = "2026-09-13"
@@ -5192,7 +5228,7 @@ Esta Política poderá ser atualizada conforme o produto e as obrigações legai
 
 
 # ============================================================
-# RELIABILITY 2.6.9 - ACEITE LEGAL PARA CONTAS EXISTENTES
+# RELIABILITY 2.6.14 - ACEITE LEGAL PARA CONTAS EXISTENTES
 # ============================================================
 
 def buscar_aceite_legal_vigente():
@@ -5500,7 +5536,7 @@ def tela_login():
                             "Não foi possível iniciar a sessão."
                         )
 
-                except Exception as erro:
+                except Exception:
 
                     st.error(
                         "Não foi possível entrar."
@@ -5509,10 +5545,6 @@ def tela_login():
                     st.info(
                         "Verifique o e-mail, a senha "
                         "e se a conta já foi confirmada."
-                    )
-
-                    st.caption(
-                        f"Detalhe técnico: {erro}"
                     )
 
         if st.button(
@@ -5625,6 +5657,10 @@ def tela_login():
             key="senha_confirmar",
         )
 
+        st.caption(
+            PASSWORD_POLICY_MESSAGE
+        )
+
         aceitou_documentos = st.checkbox(
             "Li e aceito os Termos de Uso e a Política de Privacidade.",
             key="aceite_legal_cadastro",
@@ -5647,19 +5683,20 @@ def tela_login():
                 .lower()
             )
 
+            senha_valida, erro_senha = validar_senha_forte(
+                senha_cadastro
+            )
+
             if not email_cadastro:
 
                 st.warning(
                     "Informe seu e-mail."
                 )
 
-            elif len(
-                senha_cadastro
-            ) < 6:
+            elif not senha_valida:
 
                 st.warning(
-                    "A senha precisa ter "
-                    "pelo menos 6 caracteres."
+                    erro_senha
                 )
 
             elif (
@@ -5787,7 +5824,7 @@ if not usuario_logado():
 
 
 # ============================================================
-# RELIABILITY 2.6.9 - ACEITE LEGAL VIGENTE
+# RELIABILITY 2.6.14 - ACEITE LEGAL VIGENTE
 # ============================================================
 
 try:
