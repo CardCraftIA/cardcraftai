@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.18
+# CARDCRAFTAI RELIABILITY 2.6.19
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.18"
+APP_VERSION = "2.6.19"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -112,7 +112,7 @@ ANALYSIS_STALE_MINUTES = 15
 
 
 # ============================================================
-# RELIABILITY 2.6.18 - CHECKOUT MERCADO PAGO + RETORNO SEGURO
+# RELIABILITY 2.6.19 - MULTIMOEDA + CHECKOUT MERCADO PAGO SEGURO
 # ============================================================
 
 LANGUAGE_OPTIONS = [
@@ -127,6 +127,14 @@ LANGUAGE_LOCALES = {
     "Português (BR)": "pt-BR",
     "Español": "es",
     "日本語": "ja",
+}
+
+PRICING_CURRENCIES = ["BRL", "USD", "EUR"]
+
+CURRENCY_LABELS = {
+    "BRL": "BRL — R$",
+    "USD": "USD — US$",
+    "EUR": "EUR — €",
 }
 
 UI_TEXT = {
@@ -264,6 +272,11 @@ UI_TEXT = {
         "checkout_open": "🔐 Continue to Mercado Pago",
         "checkout_error": "Could not start the checkout.",
         "secure_checkout_note": "Payments are processed securely by Mercado Pago. CardCraftAI does not receive or store your card details.",
+        "currency_label": "Display currency",
+        "currency_caption": "Currency is independent of the interface language. Prices are loaded from CardCraftAI's pricing table.",
+        "international_checkout_pending": "International prices are available for display, but checkout in {currency} is not enabled yet. Purchases are currently processed only in BRL.",
+        "currency_price_missing": "Price unavailable in {currency}.",
+        "subscription_brl_only": "The Store Plan is currently priced and billed only in BRL.",
         "payment_success_return": "✅ Mercado Pago returned the payment as approved. Credits are released only after server confirmation. If the balance has not updated yet, wait a few seconds and refresh.",
         "payment_pending_return": "⏳ The payment is still pending. Credits will be released automatically after Mercado Pago confirms approval.",
         "payment_failure_return": "❌ The payment was not completed. No credits were added.",
@@ -328,6 +341,11 @@ UI_TEXT = {
         "checkout_creating": "Criando checkout seguro...", "checkout_ready": "Checkout seguro criado. Continue no Mercado Pago para concluir a compra.",
         "checkout_open": "🔐 Continuar para o Mercado Pago", "checkout_error": "Não foi possível iniciar o checkout.",
         "secure_checkout_note": "O pagamento é processado com segurança pelo Mercado Pago. O CardCraftAI não recebe nem armazena os dados do seu cartão.",
+        "currency_label": "Moeda de exibição",
+        "currency_caption": "A moeda é independente do idioma da interface. Os preços são carregados da tabela de preços do CardCraftAI.",
+        "international_checkout_pending": "Os preços internacionais já estão disponíveis para exibição, mas o checkout em {currency} ainda não está habilitado. As compras são processadas atualmente apenas em BRL.",
+        "currency_price_missing": "Preço indisponível em {currency}.",
+        "subscription_brl_only": "O Plano Lojista está atualmente precificado e cobrado somente em BRL.",
         "payment_success_return": "✅ O Mercado Pago retornou o pagamento como aprovado. Os créditos só são liberados após a confirmação do servidor. Se o saldo ainda não atualizou, aguarde alguns segundos e atualize.",
         "payment_pending_return": "⏳ O pagamento ainda está pendente. Os créditos serão liberados automaticamente quando o Mercado Pago confirmar a aprovação.",
         "payment_failure_return": "❌ O pagamento não foi concluído. Nenhum crédito foi adicionado.",
@@ -376,6 +394,11 @@ UI_TEXT = {
         "checkout_creating": "Creando checkout seguro...", "checkout_ready": "Checkout seguro creado. Continúa en Mercado Pago para completar la compra.",
         "checkout_open": "🔐 Continuar a Mercado Pago", "checkout_error": "No se pudo iniciar el checkout.",
         "secure_checkout_note": "El pago se procesa de forma segura por Mercado Pago. CardCraftAI no recibe ni almacena los datos de tu tarjeta.",
+        "currency_label": "Moneda de visualización",
+        "currency_caption": "La moneda es independiente del idioma de la interfaz. Los precios se cargan desde la tabla de precios de CardCraftAI.",
+        "international_checkout_pending": "Los precios internacionales ya están disponibles para visualización, pero el checkout en {currency} todavía no está habilitado. Actualmente las compras se procesan solo en BRL.",
+        "currency_price_missing": "Precio no disponible en {currency}.",
+        "subscription_brl_only": "El Plan Tienda actualmente tiene precio y cobro únicamente en BRL.",
         "payment_success_return": "✅ Mercado Pago devolvió el pago como aprobado. Los créditos solo se liberan después de la confirmación del servidor. Si el saldo aún no se actualizó, espera unos segundos y actualiza.",
         "payment_pending_return": "⏳ El pago todavía está pendiente. Los créditos se liberarán automáticamente cuando Mercado Pago confirme la aprobación.",
         "payment_failure_return": "❌ El pago no se completó. No se añadieron créditos.",
@@ -422,6 +445,11 @@ UI_TEXT = {
         "checkout_creating": "安全なチェックアウトを作成しています...", "checkout_ready": "安全なチェックアウトを作成しました。Mercado Pago で購入を完了してください。",
         "checkout_open": "🔐 Mercado Pago に進む", "checkout_error": "チェックアウトを開始できませんでした。",
         "secure_checkout_note": "支払いは Mercado Pago が安全に処理します。CardCraftAI はカード情報を受信・保存しません。",
+        "currency_label": "表示通貨",
+        "currency_caption": "表示通貨はインターフェース言語とは独立しています。価格は CardCraftAI の価格テーブルから読み込まれます。",
+        "international_checkout_pending": "国際価格は表示できますが、{currency} でのチェックアウトはまだ有効化されていません。現在、購入処理は BRL のみ対応しています。",
+        "currency_price_missing": "{currency} の価格は利用できません。",
+        "subscription_brl_only": "ストアプランは現在 BRL のみで価格設定・請求されます。",
         "payment_success_return": "✅ Mercado Pago では支払いが承認済みとして戻りました。クレジットはサーバー確認後にのみ付与されます。残高がまだ更新されていない場合は、数秒待って更新してください。",
         "payment_pending_return": "⏳ 支払いはまだ保留中です。Mercado Pago が承認を確認すると、クレジットは自動的に付与されます。",
         "payment_failure_return": "❌ 支払いは完了しませんでした。クレジットは追加されていません。",
@@ -3714,6 +3742,12 @@ if "checkout_preference" not in st.session_state:
 if "payment_return_status" not in st.session_state:
     st.session_state.payment_return_status = None
 
+if "pricing_currency" not in st.session_state:
+    st.session_state.pricing_currency = "BRL"
+
+if st.session_state.pricing_currency not in PRICING_CURRENCIES:
+    st.session_state.pricing_currency = "BRL"
+
 
 # ============================================================
 # AUTENTICAÇÃO - CONFIRMAÇÃO DE E-MAIL
@@ -4201,7 +4235,11 @@ def buscar_creditos():
     )
 
 
-def buscar_pacotes_ativos():
+def buscar_pacotes_ativos(currency="BRL"):
+
+    moeda = str(currency or "BRL").strip().upper()
+    if moeda not in PRICING_CURRENCIES:
+        moeda = "BRL"
 
     try:
 
@@ -4222,24 +4260,72 @@ def buscar_pacotes_ativos():
             .execute()
         )
 
-        return resposta.data or []
+        pacotes = resposta.data or []
+
+        precos_resposta = (
+            supabase
+            .table("credit_package_prices")
+            .select(
+                "package_id,currency,price_cents,active"
+            )
+            .eq(
+                "currency",
+                moeda
+            )
+            .eq(
+                "active",
+                True
+            )
+            .execute()
+        )
+
+        precos_por_pacote = {
+            str(item.get("package_id")): item
+            for item in (precos_resposta.data or [])
+            if item.get("package_id") is not None
+        }
+
+        resultado = []
+
+        for pacote_original in pacotes:
+            pacote = dict(pacote_original)
+            preco_moeda = precos_por_pacote.get(
+                str(pacote.get("id"))
+            )
+
+            pacote["display_currency"] = moeda
+            pacote["display_price_available"] = bool(preco_moeda)
+            pacote["display_price_cents"] = (
+                int(preco_moeda.get("price_cents") or 0)
+                if preco_moeda
+                else None
+            )
+
+            resultado.append(pacote)
+
+        return resultado
 
     except Exception as erro:
 
         raise RuntimeError(
-            "Não foi possível carregar os planos e pacotes.\n\n"
+            "Não foi possível carregar os planos e preços por moeda.\n\n"
             f"Detalhes: {erro}"
         )
 
 
-def formatar_preco_brl(
-    price_cents
+def formatar_preco(
+    price_cents,
+    currency="BRL",
 ):
 
-    valor = (
-        int(price_cents or 0)
-        / 100
-    )
+    if price_cents is None:
+        return "—"
+
+    moeda = str(currency or "BRL").strip().upper()
+    valor = int(price_cents or 0) / 100
+
+    if moeda == "USD":
+        return f"US$ {valor:,.2f}"
 
     texto = (
         f"{valor:,.2f}"
@@ -4248,11 +4334,19 @@ def formatar_preco_brl(
         .replace("X", ".")
     )
 
+    if moeda == "EUR":
+        return f"€ {texto}"
+
     return f"R$ {texto}"
 
 
+def formatar_preco_brl(price_cents):
+    """Compatibilidade com trechos antigos que ainda esperam preço em BRL."""
+    return formatar_preco(price_cents, "BRL")
+
+
 # ============================================================
-# RELIABILITY 2.6.18 - CHECKOUT MERCADO PAGO
+# RELIABILITY 2.6.19 - CHECKOUT MERCADO PAGO
 # ============================================================
 
 def criar_preferencia_mercadopago(package_code):
@@ -7012,8 +7106,9 @@ elif pagina == "account":
                     "Créditos": int(
                         compra.get("credits_purchased") or 0
                     ),
-                    "Valor": formatar_preco_brl(
-                        compra.get("amount_cents") or 0
+                    "Valor": formatar_preco(
+                        compra.get("amount_cents") or 0,
+                        compra.get("currency") or "BRL",
                     ),
                     "Moeda": compra.get("currency") or "BRL",
                     "Provedor": compra.get("provider") or "—",
@@ -7113,15 +7208,37 @@ elif pagina == "plans":
         t("packages_from_db", idioma)
     )
 
-    st.info(
-        t("secure_checkout_note", idioma)
+    moeda_exibicao = st.selectbox(
+        t("currency_label", idioma),
+        options=PRICING_CURRENCIES,
+        key="pricing_currency",
+        format_func=lambda codigo: CURRENCY_LABELS.get(codigo, codigo),
     )
+
+    st.caption(
+        t("currency_caption", idioma)
+    )
+
+    if moeda_exibicao == "BRL":
+        st.info(
+            t("secure_checkout_note", idioma)
+        )
+    else:
+        st.info(
+            t(
+                "international_checkout_pending",
+                idioma,
+                currency=moeda_exibicao,
+            )
+        )
 
     st.divider()
 
     try:
 
-        pacotes = buscar_pacotes_ativos()
+        pacotes = buscar_pacotes_ativos(
+            moeda_exibicao
+        )
 
     except Exception as erro:
 
@@ -7180,11 +7297,13 @@ elif pagina == "plans":
                         )
                     )
 
-                    preco = formatar_preco_brl(
-                        pacote.get(
-                            "price_cents",
-                            0
-                        )
+                    preco_disponivel = bool(
+                        pacote.get("display_price_available")
+                    )
+
+                    preco = formatar_preco(
+                        pacote.get("display_price_cents"),
+                        moeda_exibicao,
                     )
 
                     codigo = str(
@@ -7219,10 +7338,25 @@ elif pagina == "plans":
                             descricao
                         )
 
+                    checkout_habilitado = (
+                        moeda_exibicao == "BRL"
+                        and preco_disponivel
+                    )
+
+                    if not preco_disponivel:
+                        st.caption(
+                            t(
+                                "currency_price_missing",
+                                idioma,
+                                currency=moeda_exibicao,
+                            )
+                        )
+
                     if st.button(
                         t("buy", idioma, name=nome),
                         use_container_width=True,
-                        key=f"comprar_{codigo}",
+                        key=f"comprar_{codigo}_{moeda_exibicao}",
+                        disabled=not checkout_habilitado,
                     ):
 
                         st.session_state.checkout_preference = None
@@ -7250,6 +7384,8 @@ elif pagina == "plans":
 
                     if (
                         isinstance(checkout_atual, dict)
+                        and
+                        moeda_exibicao == "BRL"
                         and
                         checkout_atual.get("package_code") == codigo
                         and
@@ -7285,12 +7421,20 @@ elif pagina == "plans":
                     )
                 )
 
-                preco = formatar_preco_brl(
-                    pacote.get(
-                        "price_cents",
-                        0
-                    )
+                assinatura_tem_preco_selecionado = bool(
+                    pacote.get("display_price_available")
                 )
+
+                if assinatura_tem_preco_selecionado:
+                    preco = formatar_preco(
+                        pacote.get("display_price_cents"),
+                        moeda_exibicao,
+                    )
+                else:
+                    preco = formatar_preco(
+                        pacote.get("price_cents", 0),
+                        pacote.get("currency") or "BRL",
+                    )
 
                 codigo = pacote.get(
                     "code",
@@ -7336,6 +7480,11 @@ elif pagina == "plans":
                         key=f"assinar_{codigo}",
                         disabled=True,
                     )
+
+                    if not assinatura_tem_preco_selecionado:
+                        st.caption(
+                            t("subscription_brl_only", idioma)
+                        )
 
                     st.caption(
                         t("subscription_pending", idioma)
