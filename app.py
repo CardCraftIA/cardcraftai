@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.14
+# CARDCRAFTAI RELIABILITY 2.6.15
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -83,11 +83,314 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.14"
+APP_VERSION = "2.6.15"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
 ANALYSIS_STALE_MINUTES = 15
+
+
+# ============================================================
+# RELIABILITY 2.6.15 - INTERFACE MULTILÍNGUE
+# ============================================================
+
+LANGUAGE_OPTIONS = [
+    "English",
+    "Português (BR)",
+    "Español",
+    "日本語",
+]
+
+LANGUAGE_LOCALES = {
+    "English": "en",
+    "Português (BR)": "pt-BR",
+    "Español": "es",
+    "日本語": "ja",
+}
+
+UI_TEXT = {
+    "English": {
+        "language": "🌐 Language / Idioma",
+        "tagline_login": "Artificial intelligence for TCG card identification and evaluation",
+        "access_account": "🔐 Access your account",
+        "password_reset_success": "Password reset successfully. ✅ You can now sign in with your new password.",
+        "tab_login": "🔑 Sign in",
+        "tab_signup": "✨ Create Account",
+        "login_intro": "Sign in with your email and password.",
+        "email_confirm_hint": "New accounts must confirm their email before the first sign-in.",
+        "email": "Email",
+        "password": "Password",
+        "email_placeholder": "you@example.com",
+        "sign_in": "🔑 Sign in",
+        "fill_email_password": "Enter your email and password.",
+        "login_success": "Signed in successfully.",
+        "session_failed": "Could not start the session.",
+        "login_failed": "Could not sign in.",
+        "check_credentials": "Check your email, password and whether the account has been confirmed.",
+        "forgot_password": "🔁 Forgot my password",
+        "recover_access": "Recover access",
+        "recover_caption": "Enter your account email. If an account exists, we will send a link to create a new password.",
+        "recovery_email": "Recovery email",
+        "send_recovery": "📧 Send recovery link",
+        "enter_email": "Enter your email.",
+        "recovery_sent": "If an account exists with this email, CardCraftAI will send a password reset link. ✅",
+        "check_spam": "Also check Spam, Junk and Promotions.",
+        "recovery_request_failed": "Could not request password recovery right now.",
+        "try_again_later": "Wait a moment and try again.",
+        "signup_intro": "Create your CardCraftAI account.",
+        "free_credits": "🎁 New accounts receive 5 free credits.",
+        "your_email": "Your email",
+        "create_password": "Create a password",
+        "confirm_password": "Confirm your password",
+        "password_policy": "Use at least 8 characters, including a lowercase letter, uppercase letter, number and symbol.",
+        "accept_legal": "I have read and accept the Terms of Use and Privacy Policy.",
+        "legal_available": "You can review the documents below before signing up. Current version: {version}.",
+        "create_account": "✨ Create my account",
+        "password_min": "The password must have at least {n} characters.",
+        "password_lower": "The password must contain at least one lowercase letter.",
+        "password_upper": "The password must contain at least one uppercase letter.",
+        "password_digit": "The password must contain at least one number.",
+        "password_symbol": "The password must contain at least one symbol.",
+        "password_mismatch": "The two passwords do not match.",
+        "must_accept_legal": "To create the account, you must accept the Terms of Use and Privacy Policy.",
+        "signup_success": "Account created! ✅",
+        "confirmation_sent": "📧 We sent a confirmation email to {email}. Open the CardCraftAI message and click ‘Confirm my email’.",
+        "confirmation_required": "🔒 Your account can only sign in to CardCraftAI after the email is confirmed.",
+        "signup_failed": "Could not create the account.",
+        "legal_beta": "Beta legal documents",
+        "terms": "📜 Terms of Use",
+        "privacy": "🔒 Privacy Policy",
+        "new_password_title": "🔐 Create a new password",
+        "new_password_intro": "Set the new password for your account.",
+        "new_password": "New password",
+        "confirm_new_password": "Confirm the new password",
+        "save_new_password": "✅ Save new password",
+        "change_password_failed": "Could not change the password.",
+        "cancel_login": "← Cancel and return to sign in",
+        "recovery_invalid": "The recovery link is invalid, expired or has already been used. Request a new link using ‘Forgot my password’.",
+        "panel": "⚙️ Control Panel",
+        "account": "👤 Account",
+        "credits": "💎 Credits",
+        "current_plan": "Current plan: {plan}",
+        "no_credits": "You have no credits available.",
+        "navigation": "Navigation",
+        "nav_photo": "📸 Photo Analysis",
+        "nav_search": "🔍 Search Card by Name",
+        "nav_plans": "💳 Plans & Credits",
+        "nav_account": "👤 My Account",
+        "nav_terms": "📜 Terms of Use",
+        "nav_privacy": "🔒 Privacy Policy",
+        "sign_out": "🚪 Sign out",
+        "tagline_app": "Artificial intelligence for TCG card identification, analysis and visual cataloging.",
+        "result": "📊 Analysis Result",
+        "web_disabled": "🧪 Web search is temporarily disabled in this version.",
+        "analysis_used_credit": "💎 The completed analysis used 1 credit.",
+        "photo_title": "📸 Photo Analysis",
+        "photo_intro": "Upload or take a photo of your card.",
+        "analysis_cost": "💎 Each completed analysis uses 1 credit.",
+        "upload_file": "📁 Upload File",
+        "use_camera": "📷 Use Camera",
+        "choose_image": "Choose an image",
+        "take_photo": "Take a photo of the card",
+        "selected_card": "Selected card",
+        "analyze_card": "🚀 Analyze Card — 1 credit",
+        "analyzing_card": "🤖 Analyzing the card...",
+        "send_photo_start": "👈 Upload or take a photo to begin.",
+        "analysis_complete": "✅ Analysis complete.",
+        "search_title": "🔍 Search Card by Name",
+        "catalog_free": "🖼️ Searching and comparing images in the Pokémon catalog is free. Specialized analysis uses 1 credit.",
+        "card_name": "Card name",
+        "set_name": "Collection / Set",
+        "search_catalog": "🖼️ Search catalog — free",
+        "enter_card_name": "Enter the card name to search the catalog.",
+        "searching_catalog": "📚 Searching the Pokémon catalog...",
+        "catalog_error": "Could not query the Pokémon catalog right now.",
+        "catalog_results": "🖼️ Visual catalog results",
+        "no_catalog_results": "No matching card was found.",
+        "specialized_analysis": "🤖 Specialized analysis",
+        "analyze_one_credit": "🤖 Analyze — 1 credit",
+        "my_account": "👤 My Account",
+        "account_caption": "View your account data, balance, security and history.",
+        "confirmed_email": "Confirmed email",
+        "yes": "Yes ✅",
+        "no": "No",
+        "available_credits": "Available credits",
+        "account_data": "📧 Account data",
+        "email_confirmed_ok": "Your email address is confirmed.",
+        "security": "🔐 Security",
+        "security_reset_text": "To change your password, send a secure reset link to your account email.",
+        "send_password_reset": "📨 Send password reset link",
+        "purchase_history": "🧾 Purchase history",
+        "no_purchases": "No purchases have been recorded for this account yet.",
+        "session": "🚪 Session",
+        "sign_out_account": "Sign out of my account",
+        "plans_title": "💳 Plans & Credits",
+        "balance": "💎 Your current balance",
+        "credits_word": "credits",
+        "packages_from_db": "The packages below are loaded directly from Supabase.",
+        "no_packages": "No active package is available right now.",
+        "credit_packages": "🎒 Credit Packages",
+        "price": "Price",
+        "buy": "Buy {name}",
+        "checkout_pending": "💳 Checkout is not connected yet. In the next step we will connect this button to a payment provider.",
+        "subscriptions": "🏢 Subscriptions",
+        "per_cycle": "{n} credits per cycle",
+        "monthly_fee": "Monthly fee",
+        "subscribe": "Subscribe to {name}",
+        "subscription_pending": "💳 The subscription is not connected to checkout yet. We will integrate it in a later step.",
+        "beta_legal_note": "Beta document. Before commercial launch, we will publish the official support/privacy contact and complete the final legal review.",
+    },
+    "Português (BR)": {
+        "language": "🌐 Idioma / Language",
+        "tagline_login": "Inteligência artificial para identificação e avaliação de cartas TCG",
+        "access_account": "🔐 Acesse sua conta",
+        "password_reset_success": "Senha redefinida com sucesso. ✅ Agora você já pode entrar com a nova senha.",
+        "tab_login": "🔑 Entrar", "tab_signup": "✨ Criar Conta", "login_intro": "Entre com seu e-mail e senha.",
+        "email_confirm_hint": "Novos cadastros precisam confirmar o e-mail antes do primeiro acesso.",
+        "email": "E-mail", "password": "Senha", "email_placeholder": "seuemail@exemplo.com", "sign_in": "🔑 Entrar",
+        "fill_email_password": "Preencha o e-mail e a senha.", "login_success": "Login realizado com sucesso.",
+        "session_failed": "Não foi possível iniciar a sessão.", "login_failed": "Não foi possível entrar.",
+        "check_credentials": "Verifique o e-mail, a senha e se a conta já foi confirmada.", "forgot_password": "🔁 Esqueci minha senha",
+        "recover_access": "Recuperar acesso", "recover_caption": "Informe o e-mail da sua conta. Se houver uma conta associada, enviaremos um link para criar uma nova senha.",
+        "recovery_email": "E-mail para recuperação", "send_recovery": "📧 Enviar link de recuperação", "enter_email": "Informe seu e-mail.",
+        "recovery_sent": "Se existir uma conta com esse e-mail, o CardCraftAI enviará uma mensagem com o link para redefinir a senha. ✅",
+        "check_spam": "Verifique também Spam, Lixo eletrônico e Promoções.", "recovery_request_failed": "Não foi possível solicitar a recuperação agora.",
+        "try_again_later": "Aguarde alguns instantes e tente novamente.", "signup_intro": "Crie sua conta CardCraftAI.",
+        "free_credits": "🎁 Novas contas recebem 5 créditos gratuitos.", "your_email": "Seu e-mail", "create_password": "Crie uma senha",
+        "confirm_password": "Confirme sua senha", "password_policy": "Use pelo menos 8 caracteres, incluindo letra minúscula, letra maiúscula, número e símbolo.",
+        "accept_legal": "Li e aceito os Termos de Uso e a Política de Privacidade.", "legal_available": "Os documentos podem ser consultados abaixo antes do cadastro. Versão vigente: {version}.",
+        "create_account": "✨ Criar minha conta", "password_min": "A senha precisa ter pelo menos {n} caracteres.",
+        "password_lower": "A senha precisa ter pelo menos uma letra minúscula.", "password_upper": "A senha precisa ter pelo menos uma letra maiúscula.",
+        "password_digit": "A senha precisa ter pelo menos um número.", "password_symbol": "A senha precisa ter pelo menos um símbolo.",
+        "password_mismatch": "As duas senhas não são iguais.", "must_accept_legal": "Para criar a conta, você precisa aceitar os Termos de Uso e a Política de Privacidade.",
+        "signup_success": "Cadastro realizado! ✅", "confirmation_sent": "📧 Enviamos um e-mail de confirmação para {email}. Abra a mensagem do CardCraftAI e clique em ‘Confirmar meu e-mail’.",
+        "confirmation_required": "🔒 Sua conta só poderá entrar no CardCraftAI depois que o e-mail for confirmado.", "signup_failed": "Não foi possível criar a conta.",
+        "legal_beta": "Documentos legais da versão beta", "terms": "📜 Termos de Uso", "privacy": "🔒 Política de Privacidade",
+        "new_password_title": "🔐 Crie uma nova senha", "new_password_intro": "Defina a nova senha da sua conta.", "new_password": "Nova senha",
+        "confirm_new_password": "Confirme a nova senha", "save_new_password": "✅ Salvar nova senha", "change_password_failed": "Não foi possível alterar a senha.",
+        "cancel_login": "← Cancelar e voltar ao login", "recovery_invalid": "O link de recuperação é inválido, expirou ou já foi usado. Solicite um novo link em ‘Esqueci minha senha’.",
+        "panel": "⚙️ Painel de Controle", "account": "👤 Conta", "credits": "💎 Créditos", "current_plan": "Plano atual: {plan}",
+        "no_credits": "Você não possui créditos disponíveis.", "navigation": "Navegação", "nav_photo": "📸 Análise por Foto", "nav_search": "🔍 Buscar Carta por Nome",
+        "nav_plans": "💳 Planos e Créditos", "nav_account": "👤 Minha Conta", "nav_terms": "📜 Termos de Uso", "nav_privacy": "🔒 Política de Privacidade",
+        "sign_out": "🚪 Sair da conta", "tagline_app": "Inteligência artificial para identificação, análise e catálogo visual de cartas TCG.", "result": "📊 Resultado da Análise",
+        "web_disabled": "🧪 A pesquisa web está temporariamente desativada nesta versão.", "analysis_used_credit": "💎 A análise concluída consumiu 1 crédito.",
+        "photo_title": "📸 Análise por Foto", "photo_intro": "Envie ou tire uma foto da sua carta.", "analysis_cost": "💎 Cada análise concluída consome 1 crédito.",
+        "upload_file": "📁 Enviar Arquivo", "use_camera": "📷 Usar Câmera", "choose_image": "Escolha uma imagem", "take_photo": "Tire uma foto da carta",
+        "selected_card": "Carta selecionada", "analyze_card": "🚀 Analisar Carta — 1 crédito", "analyzing_card": "🤖 Analisando a carta...",
+        "send_photo_start": "👈 Envie ou tire uma foto para começar.", "analysis_complete": "✅ Análise concluída.", "search_title": "🔍 Buscar Carta por Nome",
+        "catalog_free": "🖼️ Buscar e comparar imagens no catálogo Pokémon é grátis. A análise especializada consome 1 crédito.", "card_name": "Nome da carta",
+        "set_name": "Coleção / Set", "search_catalog": "🖼️ Buscar no catálogo — grátis", "enter_card_name": "Digite o nome da carta para pesquisar no catálogo.",
+        "searching_catalog": "📚 Procurando cartas no catálogo Pokémon...", "catalog_error": "Não foi possível consultar o catálogo Pokémon agora.",
+        "catalog_results": "🖼️ Resultados visuais do catálogo", "no_catalog_results": "Nenhuma carta correspondente foi encontrada.", "specialized_analysis": "🤖 Análise especializada",
+        "analyze_one_credit": "🤖 Analisar — 1 crédito", "my_account": "👤 Minha Conta", "account_caption": "Consulte seus dados, saldo, segurança e histórico da conta.",
+        "confirmed_email": "E-mail confirmado", "yes": "Sim ✅", "no": "Não", "available_credits": "Créditos disponíveis", "account_data": "📧 Dados da conta",
+        "email_confirmed_ok": "Seu endereço de e-mail está confirmado.", "security": "🔐 Segurança", "security_reset_text": "Se quiser trocar sua senha, envie um link seguro de redefinição para o e-mail da sua conta.",
+        "send_password_reset": "📨 Enviar link para redefinir senha", "purchase_history": "🧾 Histórico de compras", "no_purchases": "Nenhuma compra registrada nesta conta até o momento.",
+        "session": "🚪 Sessão", "sign_out_account": "Sair da minha conta", "plans_title": "💳 Planos e Créditos", "balance": "💎 Seu saldo atual", "credits_word": "créditos",
+        "packages_from_db": "Os pacotes abaixo são carregados diretamente do Supabase.", "no_packages": "Nenhum pacote ativo está disponível no momento.", "credit_packages": "🎒 Pacotes de Créditos",
+        "price": "Preço", "buy": "Comprar {name}", "checkout_pending": "💳 O checkout ainda não está conectado. Na próxima etapa vamos vincular este botão a um provedor de pagamento.",
+        "subscriptions": "🏢 Assinaturas", "per_cycle": "{n} créditos por ciclo", "monthly_fee": "Mensalidade", "subscribe": "Assinar {name}",
+        "subscription_pending": "💳 A assinatura ainda não está conectada ao checkout. Faremos essa integração na próxima etapa.",
+        "beta_legal_note": "Documento beta. Antes do lançamento comercial, vamos publicar o canal oficial de suporte/privacidade e concluir a revisão jurídica final.",
+    },
+    "Español": {
+        "language": "🌐 Idioma / Language", "tagline_login": "Inteligencia artificial para identificación y evaluación de cartas TCG", "access_account": "🔐 Accede a tu cuenta",
+        "password_reset_success": "Contraseña restablecida correctamente. ✅ Ya puedes iniciar sesión con la nueva contraseña.", "tab_login": "🔑 Entrar", "tab_signup": "✨ Crear cuenta",
+        "login_intro": "Inicia sesión con tu correo y contraseña.", "email_confirm_hint": "Las cuentas nuevas deben confirmar el correo antes del primer acceso.", "email": "Correo electrónico",
+        "password": "Contraseña", "email_placeholder": "tuemail@ejemplo.com", "sign_in": "🔑 Entrar", "fill_email_password": "Introduce el correo y la contraseña.", "login_success": "Sesión iniciada correctamente.",
+        "session_failed": "No se pudo iniciar la sesión.", "login_failed": "No fue posible entrar.", "check_credentials": "Verifica el correo, la contraseña y si la cuenta ya fue confirmada.",
+        "forgot_password": "🔁 Olvidé mi contraseña", "recover_access": "Recuperar acceso", "recover_caption": "Introduce el correo de tu cuenta. Si existe una cuenta asociada, enviaremos un enlace para crear una nueva contraseña.",
+        "recovery_email": "Correo de recuperación", "send_recovery": "📧 Enviar enlace de recuperación", "enter_email": "Introduce tu correo.",
+        "recovery_sent": "Si existe una cuenta con este correo, CardCraftAI enviará un enlace para restablecer la contraseña. ✅", "check_spam": "Revisa también Spam, Correo no deseado y Promociones.",
+        "recovery_request_failed": "No se pudo solicitar la recuperación ahora.", "try_again_later": "Espera unos instantes e inténtalo de nuevo.", "signup_intro": "Crea tu cuenta CardCraftAI.",
+        "free_credits": "🎁 Las cuentas nuevas reciben 5 créditos gratuitos.", "your_email": "Tu correo", "create_password": "Crea una contraseña", "confirm_password": "Confirma tu contraseña",
+        "password_policy": "Usa al menos 8 caracteres, incluyendo una minúscula, una mayúscula, un número y un símbolo.", "accept_legal": "He leído y acepto los Términos de Uso y la Política de Privacidad.",
+        "legal_available": "Puedes consultar los documentos antes del registro. Versión vigente: {version}.", "create_account": "✨ Crear mi cuenta", "password_min": "La contraseña debe tener al menos {n} caracteres.",
+        "password_lower": "La contraseña debe contener al menos una letra minúscula.", "password_upper": "La contraseña debe contener al menos una letra mayúscula.", "password_digit": "La contraseña debe contener al menos un número.",
+        "password_symbol": "La contraseña debe contener al menos un símbolo.", "password_mismatch": "Las dos contraseñas no coinciden.", "must_accept_legal": "Para crear la cuenta, debes aceptar los Términos de Uso y la Política de Privacidad.",
+        "signup_success": "¡Cuenta creada! ✅", "confirmation_sent": "📧 Enviamos un correo de confirmación a {email}. Abre el mensaje de CardCraftAI y pulsa ‘Confirmar mi correo’.",
+        "confirmation_required": "🔒 Tu cuenta solo podrá entrar en CardCraftAI después de confirmar el correo.", "signup_failed": "No se pudo crear la cuenta.", "legal_beta": "Documentos legales de la versión beta",
+        "terms": "📜 Términos de Uso", "privacy": "🔒 Política de Privacidad", "new_password_title": "🔐 Crea una nueva contraseña", "new_password_intro": "Define la nueva contraseña de tu cuenta.",
+        "new_password": "Nueva contraseña", "confirm_new_password": "Confirma la nueva contraseña", "save_new_password": "✅ Guardar nueva contraseña", "change_password_failed": "No se pudo cambiar la contraseña.",
+        "cancel_login": "← Cancelar y volver al acceso", "recovery_invalid": "El enlace de recuperación no es válido, ha caducado o ya fue usado. Solicita uno nuevo en ‘Olvidé mi contraseña’.",
+        "panel": "⚙️ Panel de Control", "account": "👤 Cuenta", "credits": "💎 Créditos", "current_plan": "Plan actual: {plan}", "no_credits": "No tienes créditos disponibles.",
+        "navigation": "Navegación", "nav_photo": "📸 Análisis por Foto", "nav_search": "🔍 Buscar Carta por Nombre", "nav_plans": "💳 Planes y Créditos", "nav_account": "👤 Mi Cuenta",
+        "nav_terms": "📜 Términos de Uso", "nav_privacy": "🔒 Política de Privacidad", "sign_out": "🚪 Cerrar sesión", "tagline_app": "Inteligencia artificial para identificación, análisis y catálogo visual de cartas TCG.",
+        "result": "📊 Resultado del Análisis", "web_disabled": "🧪 La búsqueda web está temporalmente desactivada en esta versión.", "analysis_used_credit": "💎 El análisis completado consumió 1 crédito.",
+        "photo_title": "📸 Análisis por Foto", "photo_intro": "Sube o toma una foto de tu carta.", "analysis_cost": "💎 Cada análisis completado consume 1 crédito.", "upload_file": "📁 Subir Archivo",
+        "use_camera": "📷 Usar Cámara", "choose_image": "Elige una imagen", "take_photo": "Toma una foto de la carta", "selected_card": "Carta seleccionada", "analyze_card": "🚀 Analizar Carta — 1 crédito",
+        "analyzing_card": "🤖 Analizando la carta...", "send_photo_start": "👈 Sube o toma una foto para comenzar.", "analysis_complete": "✅ Análisis completado.", "search_title": "🔍 Buscar Carta por Nombre",
+        "catalog_free": "🖼️ Buscar y comparar imágenes en el catálogo Pokémon es gratis. El análisis especializado consume 1 crédito.", "card_name": "Nombre de la carta", "set_name": "Colección / Set",
+        "search_catalog": "🖼️ Buscar en el catálogo — gratis", "enter_card_name": "Escribe el nombre de la carta para buscar en el catálogo.", "searching_catalog": "📚 Buscando cartas en el catálogo Pokémon...",
+        "catalog_error": "No se pudo consultar el catálogo Pokémon ahora.", "catalog_results": "🖼️ Resultados visuales del catálogo", "no_catalog_results": "No se encontró ninguna carta correspondiente.",
+        "specialized_analysis": "🤖 Análisis especializado", "analyze_one_credit": "🤖 Analizar — 1 crédito", "my_account": "👤 Mi Cuenta", "account_caption": "Consulta tus datos, saldo, seguridad e historial de la cuenta.",
+        "confirmed_email": "Correo confirmado", "yes": "Sí ✅", "no": "No", "available_credits": "Créditos disponibles", "account_data": "📧 Datos de la cuenta", "email_confirmed_ok": "Tu correo electrónico está confirmado.",
+        "security": "🔐 Seguridad", "security_reset_text": "Para cambiar tu contraseña, envía un enlace seguro de restablecimiento al correo de tu cuenta.", "send_password_reset": "📨 Enviar enlace para restablecer contraseña",
+        "purchase_history": "🧾 Historial de compras", "no_purchases": "Todavía no hay compras registradas en esta cuenta.", "session": "🚪 Sesión", "sign_out_account": "Cerrar mi sesión", "plans_title": "💳 Planes y Créditos",
+        "balance": "💎 Tu saldo actual", "credits_word": "créditos", "packages_from_db": "Los paquetes siguientes se cargan directamente desde Supabase.", "no_packages": "No hay paquetes activos disponibles en este momento.",
+        "credit_packages": "🎒 Paquetes de Créditos", "price": "Precio", "buy": "Comprar {name}", "checkout_pending": "💳 El checkout aún no está conectado. En el siguiente paso vincularemos este botón a un proveedor de pagos.",
+        "subscriptions": "🏢 Suscripciones", "per_cycle": "{n} créditos por ciclo", "monthly_fee": "Mensualidad", "subscribe": "Suscribirse a {name}", "subscription_pending": "💳 La suscripción aún no está conectada al checkout. La integraremos en una etapa posterior.",
+        "beta_legal_note": "Documento beta. Antes del lanzamiento comercial, publicaremos el contacto oficial de soporte/privacidad y completaremos la revisión jurídica final.",
+    },
+    "日本語": {
+        "language": "🌐 Language / 言語", "tagline_login": "TCGカードの識別・評価を支援するAI", "access_account": "🔐 アカウントにログイン",
+        "password_reset_success": "パスワードを再設定しました。✅ 新しいパスワードでログインできます。", "tab_login": "🔑 ログイン", "tab_signup": "✨ アカウント作成",
+        "login_intro": "メールアドレスとパスワードでログインしてください。", "email_confirm_hint": "新規アカウントは初回ログイン前にメール確認が必要です。", "email": "メールアドレス",
+        "password": "パスワード", "email_placeholder": "you@example.com", "sign_in": "🔑 ログイン", "fill_email_password": "メールアドレスとパスワードを入力してください。",
+        "login_success": "ログインしました。", "session_failed": "セッションを開始できませんでした。", "login_failed": "ログインできませんでした。", "check_credentials": "メール、パスワード、アカウント確認済みかを確認してください。",
+        "forgot_password": "🔁 パスワードを忘れた", "recover_access": "アクセスを復旧", "recover_caption": "アカウントのメールアドレスを入力してください。該当アカウントが存在する場合、新しいパスワードを作成するリンクを送信します。",
+        "recovery_email": "復旧用メール", "send_recovery": "📧 復旧リンクを送信", "enter_email": "メールアドレスを入力してください。", "recovery_sent": "このメールのアカウントが存在する場合、CardCraftAI がパスワード再設定リンクを送信します。✅",
+        "check_spam": "迷惑メールやプロモーションフォルダも確認してください。", "recovery_request_failed": "現在パスワード復旧をリクエストできません。", "try_again_later": "少し待ってから再度お試しください。",
+        "signup_intro": "CardCraftAI アカウントを作成します。", "free_credits": "🎁 新規アカウントには5クレジットが無料で付与されます。", "your_email": "メールアドレス",
+        "create_password": "パスワードを作成", "confirm_password": "パスワードを確認", "password_policy": "8文字以上で、小文字・大文字・数字・記号をそれぞれ1つ以上含めてください。",
+        "accept_legal": "利用規約とプライバシーポリシーを読み、同意します。", "legal_available": "登録前に以下の文書を確認できます。現行版: {version}。", "create_account": "✨ アカウントを作成",
+        "password_min": "パスワードは{n}文字以上必要です。", "password_lower": "小文字を1文字以上含めてください。", "password_upper": "大文字を1文字以上含めてください。", "password_digit": "数字を1文字以上含めてください。",
+        "password_symbol": "記号を1文字以上含めてください。", "password_mismatch": "2つのパスワードが一致しません。", "must_accept_legal": "アカウントを作成するには利用規約とプライバシーポリシーへの同意が必要です。",
+        "signup_success": "アカウントを作成しました！✅", "confirmation_sent": "📧 {email} に確認メールを送信しました。CardCraftAI のメールを開き、「メールを確認」をクリックしてください。",
+        "confirmation_required": "🔒 メール確認が完了するまで CardCraftAI にログインできません。", "signup_failed": "アカウントを作成できませんでした。", "legal_beta": "ベータ版の法的文書",
+        "terms": "📜 利用規約", "privacy": "🔒 プライバシーポリシー", "new_password_title": "🔐 新しいパスワードを作成", "new_password_intro": "アカウントの新しいパスワードを設定します。",
+        "new_password": "新しいパスワード", "confirm_new_password": "新しいパスワードを確認", "save_new_password": "✅ 新しいパスワードを保存", "change_password_failed": "パスワードを変更できませんでした。",
+        "cancel_login": "← キャンセルしてログインへ戻る", "recovery_invalid": "復旧リンクは無効、期限切れ、または既に使用されています。「パスワードを忘れた」から新しいリンクを取得してください。",
+        "panel": "⚙️ コントロールパネル", "account": "👤 アカウント", "credits": "💎 クレジット", "current_plan": "現在のプラン: {plan}", "no_credits": "利用可能なクレジットがありません。",
+        "navigation": "ナビゲーション", "nav_photo": "📸 写真で分析", "nav_search": "🔍 カード名で検索", "nav_plans": "💳 プランとクレジット", "nav_account": "👤 マイアカウント",
+        "nav_terms": "📜 利用規約", "nav_privacy": "🔒 プライバシーポリシー", "sign_out": "🚪 ログアウト", "tagline_app": "TCGカードの識別・分析・ビジュアルカタログを支援するAI。",
+        "result": "📊 分析結果", "web_disabled": "🧪 このバージョンではWeb検索を一時的に無効化しています。", "analysis_used_credit": "💎 完了した分析で1クレジットを使用しました。",
+        "photo_title": "📸 写真で分析", "photo_intro": "カードの写真をアップロードするか撮影してください。", "analysis_cost": "💎 完了した分析ごとに1クレジットを使用します。", "upload_file": "📁 ファイルをアップロード",
+        "use_camera": "📷 カメラを使う", "choose_image": "画像を選択", "take_photo": "カードを撮影", "selected_card": "選択したカード", "analyze_card": "🚀 カードを分析 — 1クレジット",
+        "analyzing_card": "🤖 カードを分析しています...", "send_photo_start": "👈 写真をアップロードまたは撮影して開始してください。", "analysis_complete": "✅ 分析が完了しました。", "search_title": "🔍 カード名で検索",
+        "catalog_free": "🖼️ Pokémonカタログの画像検索・比較は無料です。専門分析は1クレジットを使用します。", "card_name": "カード名", "set_name": "コレクション / セット",
+        "search_catalog": "🖼️ カタログを検索 — 無料", "enter_card_name": "検索するカード名を入力してください。", "searching_catalog": "📚 Pokémonカタログを検索しています...", "catalog_error": "現在Pokémonカタログを検索できません。",
+        "catalog_results": "🖼️ カタログの画像結果", "no_catalog_results": "一致するカードが見つかりませんでした。", "specialized_analysis": "🤖 専門分析", "analyze_one_credit": "🤖 分析 — 1クレジット",
+        "my_account": "👤 マイアカウント", "account_caption": "アカウント情報、残高、セキュリティ、履歴を確認します。", "confirmed_email": "確認済みメール", "yes": "はい ✅", "no": "いいえ",
+        "available_credits": "利用可能クレジット", "account_data": "📧 アカウント情報", "email_confirmed_ok": "メールアドレスは確認済みです。", "security": "🔐 セキュリティ",
+        "security_reset_text": "パスワードを変更するには、アカウントのメールに安全な再設定リンクを送信してください。", "send_password_reset": "📨 パスワード再設定リンクを送信", "purchase_history": "🧾 購入履歴",
+        "no_purchases": "このアカウントにはまだ購入履歴がありません。", "session": "🚪 セッション", "sign_out_account": "アカウントからログアウト", "plans_title": "💳 プランとクレジット",
+        "balance": "💎 現在の残高", "credits_word": "クレジット", "packages_from_db": "以下のパッケージはSupabaseから直接読み込まれます。", "no_packages": "現在利用可能なパッケージはありません。",
+        "credit_packages": "🎒 クレジットパッケージ", "price": "価格", "buy": "{name} を購入", "checkout_pending": "💳 チェックアウトはまだ接続されていません。次の段階で決済プロバイダーに接続します。",
+        "subscriptions": "🏢 サブスクリプション", "per_cycle": "1サイクルあたり{n}クレジット", "monthly_fee": "月額", "subscribe": "{name} に登録", "subscription_pending": "💳 サブスクリプションはまだチェックアウトに接続されていません。後の段階で統合します。",
+        "beta_legal_note": "ベータ版文書です。商用公開前に公式サポート／プライバシー窓口を公開し、最終的な法務レビューを完了します。",
+    },
+}
+
+
+def idioma_interface_atual():
+    if "idioma_interface" not in st.session_state:
+        st.session_state.idioma_interface = "English"
+    if st.session_state.idioma_interface not in LANGUAGE_OPTIONS:
+        st.session_state.idioma_interface = "English"
+    return st.session_state.idioma_interface
+
+
+def t(chave, idioma=None, **kwargs):
+    idioma = idioma or idioma_interface_atual()
+    tabela = UI_TEXT.get(idioma, UI_TEXT["English"])
+    texto = tabela.get(chave, UI_TEXT["English"].get(chave, chave))
+    if kwargs:
+        try:
+            return texto.format(**kwargs)
+        except Exception:
+            return texto
+    return texto
 
 # O catálogo visual é um recurso adicional. Se a chave estiver ausente,
 # login, créditos e análise por IA continuam funcionando.
@@ -3457,35 +3760,31 @@ def usuario_logado():
 
 
 PASSWORD_MIN_LENGTH = 8
-PASSWORD_POLICY_MESSAGE = (
-    "Use pelo menos 8 caracteres, incluindo letra minúscula, "
-    "letra maiúscula, número e símbolo."
-)
+PASSWORD_POLICY_MESSAGE = "Use at least 8 characters with lowercase, uppercase, number and symbol."
 
 
-def validar_senha_forte(senha):
+def validar_senha_forte(senha, idioma_atual=None):
     """Valida a política de senha usada no cadastro e na recuperação."""
     senha = senha or ""
+    idioma_atual = idioma_atual or idioma_interface_atual()
 
     if len(senha) < PASSWORD_MIN_LENGTH:
-        return False, (
-            f"A senha precisa ter pelo menos {PASSWORD_MIN_LENGTH} caracteres."
-        )
+        return False, t("password_min", idioma_atual, n=PASSWORD_MIN_LENGTH)
 
     if not any(caractere.islower() for caractere in senha):
-        return False, "A senha precisa ter pelo menos uma letra minúscula."
+        return False, t("password_lower", idioma_atual)
 
     if not any(caractere.isupper() for caractere in senha):
-        return False, "A senha precisa ter pelo menos uma letra maiúscula."
+        return False, t("password_upper", idioma_atual)
 
     if not any(caractere.isdigit() for caractere in senha):
-        return False, "A senha precisa ter pelo menos um número."
+        return False, t("password_digit", idioma_atual)
 
     if not any(
         (not caractere.isalnum()) and (not caractere.isspace())
         for caractere in senha
     ):
-        return False, "A senha precisa ter pelo menos um símbolo."
+        return False, t("password_symbol", idioma_atual)
 
     return True, None
 
@@ -3570,121 +3869,74 @@ def processar_link_recuperacao_senha():
 
         st.session_state.recovery_link_processed = None
 
-        st.session_state.erro_recuperacao_senha = (
-            "O link de recuperação é inválido, expirou ou já foi usado. "
-            "Solicite um novo link em “Esqueci minha senha”."
-        )
+        st.session_state.erro_recuperacao_senha = t("recovery_invalid")
 
 
 def tela_redefinir_senha():
+    idioma = idioma_interface_atual()
 
-    st.title(
-        "🃏 CardCraftAI"
+    st.selectbox(
+        t("language", idioma),
+        LANGUAGE_OPTIONS,
+        key="idioma_interface",
     )
+    idioma = idioma_interface_atual()
 
-    st.header(
-        "🔐 Crie uma nova senha"
-    )
-
-    st.write(
-        "Defina a nova senha da sua conta."
-    )
-
-    st.info(
-        PASSWORD_POLICY_MESSAGE
-    )
+    st.title("🃏 CardCraftAI")
+    st.header(t("new_password_title", idioma))
+    st.write(t("new_password_intro", idioma))
+    st.info(t("password_policy", idioma))
 
     nova_senha = st.text_input(
-        "Nova senha",
+        t("new_password", idioma),
         type="password",
         key="nova_senha_recuperacao",
     )
-
     confirmar_nova_senha = st.text_input(
-        "Confirme a nova senha",
+        t("confirm_new_password", idioma),
         type="password",
         key="confirmar_nova_senha_recuperacao",
     )
 
     if st.button(
-        "✅ Salvar nova senha",
+        t("save_new_password", idioma),
         use_container_width=True,
         key="btn_salvar_nova_senha",
     ):
-
-        senha_valida, erro_senha = validar_senha_forte(
-            nova_senha
-        )
+        senha_valida, erro_senha = validar_senha_forte(nova_senha, idioma)
 
         if not senha_valida:
-
-            st.warning(
-                erro_senha
-            )
-
-        elif (
-            nova_senha
-            !=
-            confirmar_nova_senha
-        ):
-
-            st.warning(
-                "As duas senhas não são iguais."
-            )
-
+            st.warning(erro_senha)
+        elif nova_senha != confirmar_nova_senha:
+            st.warning(t("password_mismatch", idioma))
         else:
-
             try:
-
-                supabase.auth.update_user(
-                    {
-                        "password": nova_senha,
-                    }
-                )
-
+                supabase.auth.update_user({"password": nova_senha})
                 try:
                     supabase.auth.sign_out()
                 except Exception:
                     pass
-
                 limpar_sessao()
-
                 st.session_state.recovery_link_processed = None
                 st.session_state.erro_recuperacao_senha = None
                 st.session_state.senha_redefinida_sucesso = True
-
                 st.query_params.clear()
-
                 st.rerun()
-
             except Exception:
-
-                st.error(
-                    "Não foi possível alterar a senha."
-                )
-
-                st.info(
-                    "Solicite um novo link de recuperação e tente novamente."
-                )
+                st.error(t("change_password_failed", idioma))
 
     if st.button(
-        "← Cancelar e voltar ao login",
+        t("cancel_login", idioma),
         use_container_width=True,
         key="btn_cancelar_recuperacao_senha",
     ):
-
         try:
             supabase.auth.sign_out()
         except Exception:
             pass
-
         limpar_sessao()
-
         st.session_state.recovery_link_processed = None
-        st.session_state.erro_recuperacao_senha = None
-
         st.query_params.clear()
-
         st.rerun()
 
 
@@ -4970,7 +5222,7 @@ def executar_analise_com_credito(
 
 
 # ============================================================
-# DOCUMENTOS LEGAIS - BETA 2.6.14
+# DOCUMENTOS LEGAIS - BETA 2.6.15
 # ============================================================
 
 LEGAL_VERSION = "2026-09-13"
@@ -4978,7 +5230,7 @@ TERMS_VERSION = LEGAL_VERSION
 PRIVACY_VERSION = LEGAL_VERSION
 
 
-def renderizar_termos_uso(idioma_atual="Português (BR)"):
+def renderizar_termos_uso(idioma_atual="English"):
     """Exibe os Termos de Uso em linguagem simples e compatível com a fase beta."""
 
     if idioma_atual == "English":
@@ -5057,6 +5309,45 @@ No tomes decisiones relevantes de compra, venta, seguros, impuestos o finanzas b
 Estos términos pueden actualizarse cuando cambien el producto, los proveedores o los requisitos legales. La fecha de la versión vigente aparece arriba. Antes del lanzamiento comercial se publicará un canal oficial de soporte y privacidad.
 """
 
+    elif idioma_atual == "日本語":
+        titulo = "📜 利用規約"
+        texto = f"""
+**法的文書の版:** {LEGAL_VERSION}  
+**製品:** CardCraftAI — ベータ
+
+### 1. サービス
+CardCraftAI は、Trading Card Game（TCG）カードの識別、整理、分析を支援するAIツールです。画像による識別、カタログ比較、説明的分析、アカウントクレジット、購入履歴などの機能を提供する場合があります。
+
+### 2. AIの制限
+AIおよびカタログの結果は、不完全、古い、または誤っている場合があります。CardCraftAI は、正確な識別、真贋、専門的なグレーディング、市場価格、投資収益、販売価格を保証しません。状態や真贋に関する表示は予備的な視覚支援であり、PSA、CGC、Beckett、専門店などによる評価の代替ではありません。
+
+### 3. 市場情報
+現在の市場検索が利用できない場合、推定値をリアルタイム価格として表示しません。購入、販売、保険などの重要な判断を行う前に、価格、最近の取引、出品条件を独立した情報源で確認してください。
+
+### 4. ユーザーの責任
+送信する画像、文章、情報について、ユーザーは適切な利用権を持つ必要があります。詐欺、偽造品の出品、なりすまし、違法行為、嫌がらせ、セキュリティの悪用、クレジットやアクセス制御の回避にサービスを利用してはいけません。
+
+### 5. アカウントとセキュリティ
+パスワードおよび登録メールへのアクセスを安全に管理してください。不正アクセスが疑われる場合は、公式サポート窓口が公開された後、その窓口を利用してください。
+
+### 6. クレジットと有料サービス
+クレジットは対象機能を利用するための権利であり、通貨、投資、預金残高ではありません。価格、パッケージ、決済方法、返金条件は購入前に表示されます。適用法上の消費者保護権は本規約によって放棄されません。
+
+### 7. 可用性
+保守、外部サービス障害、API制限、セキュリティ事象、技術障害などにより、サービスが変更、停止、一時利用不可になる場合があります。対象となる分析が完了前に失敗した場合、クレジットが自動返却されることがあります。
+
+### 8. 知的財産
+CardCraftAI のソフトウェア、インターフェース、ブランド、独自コンテンツは適用される知的財産法により保護されます。TCG名、カード画像、商標、外部カタログデータは各権利者に帰属します。明示されない限り、CardCraftAI はこれらの権利者と提携または承認関係にありません。
+
+### 9. 責任ある利用
+購入、販売、保険、税務、法務、重要な金銭判断をAI結果だけに依存して行わないでください。CardCraftAI は情報支援として利用し、重要な判断は独立して確認してください。
+
+### 10. 変更
+製品、外部提供者、法的要件の変化に応じて本規約を更新することがあります。現行版の日付は上部に表示されます。商用公開前に公式サポート／プライバシー窓口を公開します。
+
+CardCraftAI を継続して利用することで、これらの制限を理解し、責任を持ってサービスを利用することに同意したものとみなされます。
+"""
+
     else:
         titulo = "📜 Termos de Uso"
         texto = f"""
@@ -5100,7 +5391,7 @@ Ao continuar utilizando o CardCraftAI, você reconhece essas limitações e conc
     st.markdown(texto)
 
 
-def renderizar_politica_privacidade(idioma_atual="Português (BR)"):
+def renderizar_politica_privacidade(idioma_atual="English"):
     """Exibe uma política de privacidade transparente para a fase beta."""
 
     if idioma_atual == "English":
@@ -5183,6 +5474,46 @@ La versión beta no está diseñada para recopilar intencionalmente información
 Esta Política puede cambiar con el producto y las obligaciones legales. La fecha de la versión vigente aparece arriba. Antes del lanzamiento comercial se publicará un canal oficial de privacidad y soporte.
 """
 
+    elif idioma_atual == "日本語":
+        titulo = "🔒 プライバシーポリシー"
+        texto = f"""
+**プライバシー版:** {LEGAL_VERSION}  
+**製品:** CardCraftAI — ベータ
+
+### 1. 処理するデータ
+利用状況に応じて、CardCraftAI はメールアドレス、ユーザーID、プラン、クレジットなどのアカウント情報、認証・セッション情報、利用・技術ログ、分析状態、カタログ選択、購入記録、および分析のためにユーザーが意図的に送信したカード画像や文章を処理する場合があります。
+
+### 2. 利用目的
+これらの情報は、認証、分析提供、クレジット管理、重複請求防止、中断した処理の復旧、アカウント・購入履歴の表示、取引メール送信、障害調査、サービス保護、信頼性向上のために利用します。
+
+### 3. カード画像とAI処理
+カード画像をAI分析に送信すると、アプリは画像を処理用に準備し、設定されたAI提供者へ分析リクエストを送ります。現在の構成では、CardCraftAI はアップロード画像を自社のSupabaseデータベースへ意図的に保存しません。ただし、ホスティングやAI提供者は各社の規約・プライバシーポリシーに基づき技術データを処理する場合があります。
+
+### 4. サービス提供者
+現在の技術構成では、認証・DBにSupabase、ホスティングにStreamlit、AIにGoogle Gemini、取引メールにBrevo、カード検索・検証に外部TCGカタログを利用する場合があります。チェックアウト導入時には決済提供者が追加される場合があります。
+
+### 5. 国際的な処理
+一部の技術提供者は世界各地で運用されているため、データがユーザーの国以外で処理される場合があります。国際的な商用展開前に、適用法に応じた提供者と保護措置を採用する方針です。
+
+### 6. 保持期間
+アカウント、クレジット、購入、技術記録は、サービス提供、セキュリティ維持、紛争対応、重複請求防止、法的義務への対応に必要な期間保持される場合があります。不要となったデータは適用される保持方針に従って削除または匿名化されるべきです。
+
+### 7. プライバシー権
+法域により、処理内容の確認、アクセス、訂正、削除、制限、異議申立て、データポータビリティなどの権利が認められる場合があります。これらには法的例外が適用される場合があります。
+
+### 8. 個人データの販売
+現在のCardCraftAIの設計では、ユーザーの個人データを販売しません。
+
+### 9. セキュリティ
+CardCraftAI は、認証、メール確認、アクセス制御、データベースポリシー、サーバー側シークレットなどを使用して不正アクセスの低減に努めます。ただし、オンラインシステムで絶対的な安全性を保証することはできません。
+
+### 10. 子ども・未成年者
+ベータ版は、子どもの機微情報を意図的に収集することを目的としていません。法的に本規約へ同意できないユーザーは、現地法に従い、親または法定代理人の許可・監督のもとで利用してください。
+
+### 11. 更新と連絡先
+製品および法的義務の変化に応じて本ポリシーを更新する場合があります。現行版の日付は上部に表示されます。商用公開前に公式のプライバシー／サポート窓口を公開します。
+"""
+
     else:
         titulo = "🔒 Política de Privacidade"
         texto = f"""
@@ -5228,7 +5559,7 @@ Esta Política poderá ser atualizada conforme o produto e as obrigações legai
 
 
 # ============================================================
-# RELIABILITY 2.6.14 - ACEITE LEGAL PARA CONTAS EXISTENTES
+# RELIABILITY 2.6.15 - ACEITE LEGAL PARA CONTAS EXISTENTES
 # ============================================================
 
 def buscar_aceite_legal_vigente():
@@ -5263,18 +5594,9 @@ def buscar_aceite_legal_vigente():
         )
 
 
-def registrar_aceite_legal_vigente(idioma_atual="Português (BR)"):
+def registrar_aceite_legal_vigente(idioma_atual="English"):
     """Registra, via RPC protegida, o aceite da versão legal vigente."""
-    mapa_locale = {
-        "Português (BR)": "pt-BR",
-        "English": "en",
-        "Español": "es",
-    }
-
-    locale = mapa_locale.get(
-        idioma_atual,
-        "pt-BR",
-    )
+    locale = LANGUAGE_LOCALES.get(idioma_atual, "en")
 
     try:
         resposta = (
@@ -5307,12 +5629,8 @@ def tela_aceite_legal_pendente():
 
     idioma_legal = st.selectbox(
         "🌐 Idioma / Language",
-        [
-            "Português (BR)",
-            "English",
-            "Español",
-        ],
-        key="idioma_aceite_legal_existente",
+        LANGUAGE_OPTIONS,
+        key="idioma_interface",
     )
 
     if idioma_legal == "English":
@@ -5344,6 +5662,13 @@ def tela_aceite_legal_pendente():
         )
         texto_sucesso = "Aceptación registrada. Ya puedes continuar. ✅"
         texto_sair = "🚪 Cerrar sesión"
+    elif idioma_legal == "日本語":
+        st.info("続行する前に、現行の利用規約とプライバシーポリシーを確認し、同意してください。")
+        texto_checkbox = "利用規約とプライバシーポリシーを読み、同意します。"
+        texto_botao = "✅ 同意して続行"
+        texto_alerta = "続行するには利用規約とプライバシーポリシーへの同意が必要です。"
+        texto_sucesso = "同意を記録しました。続行できます。✅"
+        texto_sair = "🚪 ログアウト"
     else:
         st.info(
             "Antes de continuar, revise e aceite os Termos de Uso e a "
@@ -5419,390 +5744,153 @@ def tela_aceite_legal_pendente():
 # ============================================================
 
 def tela_login():
-
-    st.title(
-        "🃏 CardCraftAI"
+    st.selectbox(
+        "🌐 Language / Idioma",
+        LANGUAGE_OPTIONS,
+        key="idioma_interface",
     )
+    idioma = idioma_interface_atual()
 
-    st.subheader(
-        "Inteligência artificial para "
-        "identificação e avaliação de cartas TCG"
-    )
-
+    st.title("🃏 CardCraftAI")
+    st.subheader(t("tagline_login", idioma))
     st.divider()
-
-    st.header(
-        "🔐 Acesse sua conta"
-    )
+    st.header(t("access_account", idioma))
 
     if st.session_state.senha_redefinida_sucesso:
-
-        st.success(
-            "Senha redefinida com sucesso. ✅ "
-            "Agora você já pode entrar com a nova senha."
-        )
-
+        st.success(t("password_reset_success", idioma))
         st.session_state.senha_redefinida_sucesso = False
 
     if st.session_state.erro_recuperacao_senha:
-
-        st.error(
-            st.session_state.erro_recuperacao_senha
-        )
-
+        st.error(st.session_state.erro_recuperacao_senha)
         st.session_state.erro_recuperacao_senha = None
 
-    aba_login, aba_cadastro = st.tabs(
-        [
-            "🔑 Entrar",
-            "✨ Criar Conta",
-        ]
-    )
-
-    # --------------------------------------------------------
-    # LOGIN
-    # --------------------------------------------------------
+    aba_login, aba_cadastro = st.tabs([
+        t("tab_login", idioma),
+        t("tab_signup", idioma),
+    ])
 
     with aba_login:
-
-        st.write(
-            "Entre com seu e-mail e senha."
-        )
-
-        st.caption(
-            "Novos cadastros precisam confirmar o e-mail antes do primeiro acesso."
-        )
+        st.write(t("login_intro", idioma))
+        st.caption(t("email_confirm_hint", idioma))
 
         email_login = st.text_input(
-            "E-mail",
-            key="email_login",
-            placeholder="seuemail@exemplo.com",
+            t("email", idioma), key="email_login", placeholder=t("email_placeholder", idioma)
         )
-
         senha_login = st.text_input(
-            "Senha",
-            type="password",
-            key="senha_login",
+            t("password", idioma), type="password", key="senha_login"
         )
 
-        if st.button(
-            "🔑 Entrar",
-            use_container_width=True,
-            key="btn_login",
-        ):
-
-            if (
-                not email_login.strip()
-                or
-                not senha_login
-            ):
-
-                st.warning(
-                    "Preencha o e-mail e a senha."
-                )
-
+        if st.button(t("sign_in", idioma), use_container_width=True, key="btn_login"):
+            if not email_login.strip() or not senha_login:
+                st.warning(t("fill_email_password", idioma))
             else:
-
                 try:
-
-                    resposta = (
-                        supabase
-                        .auth
-                        .sign_in_with_password(
-                            {
-                                "email": (
-                                    email_login
-                                    .strip()
-                                    .lower()
-                                ),
-                                "password": senha_login,
-                            }
-                        )
-                    )
-
-                    if salvar_sessao(
-                        resposta
-                    ):
-
-                        st.success(
-                            "Login realizado com sucesso."
-                        )
-
+                    resposta = supabase.auth.sign_in_with_password({
+                        "email": email_login.strip().lower(),
+                        "password": senha_login,
+                    })
+                    if salvar_sessao(resposta):
+                        st.success(t("login_success", idioma))
                         st.rerun()
-
                     else:
-
-                        st.error(
-                            "Não foi possível iniciar a sessão."
-                        )
-
+                        st.error(t("session_failed", idioma))
                 except Exception:
+                    st.error(t("login_failed", idioma))
+                    st.info(t("check_credentials", idioma))
 
-                    st.error(
-                        "Não foi possível entrar."
-                    )
-
-                    st.info(
-                        "Verifique o e-mail, a senha "
-                        "e se a conta já foi confirmada."
-                    )
-
-        if st.button(
-            "🔁 Esqueci minha senha",
-            use_container_width=True,
-            key="btn_mostrar_recuperacao_senha",
-        ):
-
-            st.session_state.mostrar_recuperacao_senha = (
-                not
-                st.session_state.mostrar_recuperacao_senha
-            )
+        if st.button(t("forgot_password", idioma), use_container_width=True, key="btn_mostrar_recuperacao_senha"):
+            st.session_state.mostrar_recuperacao_senha = not st.session_state.mostrar_recuperacao_senha
 
         if st.session_state.mostrar_recuperacao_senha:
-
             st.divider()
-
-            st.subheader(
-                "Recuperar acesso"
-            )
-
-            st.caption(
-                "Informe o e-mail da sua conta. "
-                "Se houver uma conta associada, enviaremos "
-                "um link para criar uma nova senha."
-            )
-
+            st.subheader(t("recover_access", idioma))
+            st.caption(t("recover_caption", idioma))
             email_recuperacao = st.text_input(
-                "E-mail para recuperação",
-                key="email_recuperacao_senha",
-                placeholder="seuemail@exemplo.com",
+                t("recovery_email", idioma), key="email_recuperacao_senha", placeholder=t("email_placeholder", idioma)
             )
-
-            if st.button(
-                "📧 Enviar link de recuperação",
-                use_container_width=True,
-                key="btn_enviar_recuperacao_senha",
-            ):
-
-                email_recuperacao = (
-                    email_recuperacao
-                    .strip()
-                    .lower()
-                )
-
+            if st.button(t("send_recovery", idioma), use_container_width=True, key="btn_enviar_recuperacao_senha"):
+                email_recuperacao = email_recuperacao.strip().lower()
                 if not email_recuperacao:
-
-                    st.warning(
-                        "Informe seu e-mail."
-                    )
-
+                    st.warning(t("enter_email", idioma))
                 else:
-
                     try:
-
-                        supabase.auth.reset_password_for_email(
-                            email_recuperacao
-                        )
-
-                        st.success(
-                            "Se existir uma conta com esse e-mail, "
-                            "o CardCraftAI enviará uma mensagem com "
-                            "o link para redefinir a senha. ✅"
-                        )
-
-                        st.caption(
-                            "Verifique também Spam, Lixo eletrônico "
-                            "e Promoções."
-                        )
-
+                        supabase.auth.reset_password_for_email(email_recuperacao)
+                        st.success(t("recovery_sent", idioma))
+                        st.caption(t("check_spam", idioma))
                     except Exception:
-
-                        st.error(
-                            "Não foi possível solicitar a recuperação agora."
-                        )
-
-                        st.info(
-                            "Aguarde alguns instantes e tente novamente."
-                        )
-
-    # --------------------------------------------------------
-    # CADASTRO
-    # --------------------------------------------------------
+                        st.error(t("recovery_request_failed", idioma))
+                        st.info(t("try_again_later", idioma))
 
     with aba_cadastro:
-
-        st.write(
-            "Crie sua conta CardCraftAI."
-        )
-
-        st.success(
-            "🎁 Novas contas recebem 5 créditos gratuitos."
-        )
-
+        st.write(t("signup_intro", idioma))
+        st.success(t("free_credits", idioma))
         email_cadastro = st.text_input(
-            "Seu e-mail",
-            key="email_cadastro",
-            placeholder="seuemail@exemplo.com",
+            t("your_email", idioma), key="email_cadastro", placeholder=t("email_placeholder", idioma)
         )
-
         senha_cadastro = st.text_input(
-            "Crie uma senha",
-            type="password",
-            key="senha_cadastro",
+            t("create_password", idioma), type="password", key="senha_cadastro"
         )
-
         senha_confirmar = st.text_input(
-            "Confirme sua senha",
-            type="password",
-            key="senha_confirmar",
+            t("confirm_password", idioma), type="password", key="senha_confirmar"
         )
+        st.caption(t("password_policy", idioma))
+        aceitou_documentos = st.checkbox(t("accept_legal", idioma), key="aceite_legal_cadastro")
+        st.caption(t("legal_available", idioma, version=LEGAL_VERSION))
 
-        st.caption(
-            PASSWORD_POLICY_MESSAGE
-        )
-
-        aceitou_documentos = st.checkbox(
-            "Li e aceito os Termos de Uso e a Política de Privacidade.",
-            key="aceite_legal_cadastro",
-        )
-
-        st.caption(
-            "Os documentos podem ser consultados abaixo antes do cadastro. "
-            f"Versão vigente: {LEGAL_VERSION}."
-        )
-
-        if st.button(
-            "✨ Criar minha conta",
-            use_container_width=True,
-            key="btn_cadastro",
-        ):
-
-            email_cadastro = (
-                email_cadastro
-                .strip()
-                .lower()
-            )
-
-            senha_valida, erro_senha = validar_senha_forte(
-                senha_cadastro
-            )
+        if st.button(t("create_account", idioma), use_container_width=True, key="btn_cadastro"):
+            email_cadastro = email_cadastro.strip().lower()
+            senha_valida, erro_senha = validar_senha_forte(senha_cadastro, idioma)
 
             if not email_cadastro:
-
-                st.warning(
-                    "Informe seu e-mail."
-                )
-
+                st.warning(t("enter_email", idioma))
             elif not senha_valida:
-
-                st.warning(
-                    erro_senha
-                )
-
-            elif (
-                senha_cadastro
-                !=
-                senha_confirmar
-            ):
-
-                st.warning(
-                    "As duas senhas não são iguais."
-                )
-
+                st.warning(erro_senha)
+            elif senha_cadastro != senha_confirmar:
+                st.warning(t("password_mismatch", idioma))
             elif not aceitou_documentos:
-
-                st.warning(
-                    "Para criar a conta, você precisa aceitar "
-                    "os Termos de Uso e a Política de Privacidade."
-                )
-
+                st.warning(t("must_accept_legal", idioma))
             else:
-
                 try:
-
-                    # Reliability 2.6.8:
-                    # o cadastro só prossegue após aceite explícito.
-                    # As versões aceitas seguem como metadata para o trigger
-                    # registrar o histórico em public.legal_acceptances.
-                    resposta = (
-                        supabase
-                        .auth
-                        .sign_up(
-                            {
-                                "email": email_cadastro,
-                                "password": senha_cadastro,
-                                "options": {
-                                    "data": {
-                                        "legal_accepted": True,
-                                        "terms_version": TERMS_VERSION,
-                                        "privacy_version": PRIVACY_VERSION,
-                                        "app_version": APP_VERSION,
-                                        "legal_locale": "pt-BR",
-                                    }
-                                },
+                    resposta = supabase.auth.sign_up({
+                        "email": email_cadastro,
+                        "password": senha_cadastro,
+                        "options": {
+                            "data": {
+                                "legal_accepted": True,
+                                "terms_version": TERMS_VERSION,
+                                "privacy_version": PRIVACY_VERSION,
+                                "app_version": APP_VERSION,
+                                "legal_locale": LANGUAGE_LOCALES.get(idioma, "en"),
+                                "preferred_language": LANGUAGE_LOCALES.get(idioma, "en"),
                             }
-                        )
-                    )
-
-                    # Reliability 2.6.4:
-                    # cadastro nunca libera acesso automaticamente.
-                    # O usuário só entra depois que o Supabase confirmar o e-mail.
+                        },
+                    })
                     if resposta.session:
-
                         try:
                             supabase.auth.sign_out()
                         except Exception:
                             pass
-
                     limpar_sessao()
-
-                    st.success(
-                        "Cadastro realizado! ✅"
-                    )
-
-                    st.info(
-                        "📧 Enviamos um e-mail de confirmação para "
-                        f"{email_cadastro}. Abra a mensagem do CardCraftAI "
-                        "e clique em ‘Confirmar meu e-mail’."
-                    )
-
-                    st.warning(
-                        "🔒 Sua conta só poderá entrar no CardCraftAI "
-                        "depois que o e-mail for confirmado."
-                    )
-
-                    st.caption(
-                        "Se não encontrar a mensagem, verifique também "
-                        "as pastas Spam, Lixo eletrônico e Promoções."
-                    )
-
-                except Exception as erro:
-
-                    st.error(
-                        "Não foi possível criar a conta."
-                    )
-
-                    st.caption(
-                        f"Detalhe técnico: {erro}"
-                    )
-
+                    st.success(t("signup_success", idioma))
+                    st.info(t("confirmation_sent", idioma, email=email_cadastro))
+                    st.warning(t("confirmation_required", idioma))
+                    st.caption(t("check_spam", idioma))
+                except Exception:
+                    st.error(t("signup_failed", idioma))
 
     st.divider()
-    st.caption(
-        "Documentos legais da versão beta"
-    )
-
-    with st.expander("📜 Termos de Uso"):
-        renderizar_termos_uso("Português (BR)")
-
-    with st.expander("🔒 Política de Privacidade"):
-        renderizar_politica_privacidade("Português (BR)")
+    st.caption(t("legal_beta", idioma))
+    with st.expander(t("terms", idioma)):
+        renderizar_termos_uso(idioma)
+    with st.expander(t("privacy", idioma)):
+        renderizar_politica_privacidade(idioma)
 
 
 # ============================================================
 # RECUPERAÇÃO DE SENHA
 # ============================================================
 
+idioma_interface_atual()
 processar_link_recuperacao_senha()
 
 if st.session_state.modo_recuperacao_senha:
@@ -5824,7 +5912,7 @@ if not usuario_logado():
 
 
 # ============================================================
-# RELIABILITY 2.6.14 - ACEITE LEGAL VIGENTE
+# RELIABILITY 2.6.15 - ACEITE LEGAL VIGENTE
 # ============================================================
 
 try:
@@ -5916,64 +6004,81 @@ plano = perfil.get(
 )
 
 
+
+
+def traduzir_pacote_ui(pacote, idioma):
+    codigo = str(pacote.get("code") or "")
+    traducoes = {
+        "English": {
+            "STARTER_10": ("Starter Pack", "10 credits for card analyses"),
+            "COLLECTOR_50": ("Collector Pack", "50 credits for card analyses"),
+            "PRO_150": ("Pro Pack", "150 credits for intensive use"),
+            "STORE_MONTHLY": ("Store Plan", "Monthly plan for stores and professional sellers"),
+        },
+        "Español": {
+            "STARTER_10": ("Paquete Inicial", "10 créditos para análisis de cartas"),
+            "COLLECTOR_50": ("Paquete Coleccionista", "50 créditos para análisis de cartas"),
+            "PRO_150": ("Paquete Pro", "150 créditos para uso intensivo"),
+            "STORE_MONTHLY": ("Plan Tienda", "Plan mensual para tiendas y vendedores profesionales"),
+        },
+        "日本語": {
+            "STARTER_10": ("スターターパック", "カード分析用10クレジット"),
+            "COLLECTOR_50": ("コレクターパック", "カード分析用50クレジット"),
+            "PRO_150": ("プロパック", "集中利用向け150クレジット"),
+            "STORE_MONTHLY": ("ショッププラン", "店舗・プロ販売者向け月額プラン"),
+        },
+    }
+    if idioma in traducoes and codigo in traducoes[idioma]:
+        return traducoes[idioma][codigo]
+    return (pacote.get("name", "Package"), pacote.get("description", ""))
+
+
 # ============================================================
 # SIDEBAR
 # ============================================================
 
-st.sidebar.title(
-    "⚙️ Painel de Controle"
-)
+idioma = idioma_interface_atual()
 
-st.sidebar.write(
-    "👤 Conta"
-)
+st.sidebar.title(t("panel", idioma))
+
+st.sidebar.write(t("account", idioma))
 
 st.sidebar.success(
     st.session_state.user_email
 )
 
-st.sidebar.metric(
-    "💎 Créditos",
-    creditos,
-)
+st.sidebar.metric(t("credits", idioma), creditos)
 
-st.sidebar.caption(
-    f"Plano atual: {plano}"
-)
+st.sidebar.caption(t("current_plan", idioma, plan=plano))
 
 if creditos == 0:
 
-    st.sidebar.warning(
-        "Você não possui créditos disponíveis."
-    )
+    st.sidebar.warning(t("no_credits", idioma))
 
 
 st.sidebar.divider()
 
 
 idioma = st.sidebar.selectbox(
-    "🌐 Idioma / Language",
-    [
-        "Português (BR)",
-        "English",
-        "Español",
-    ],
+    t("language", idioma),
+    LANGUAGE_OPTIONS,
+    key="idioma_interface",
 )
-
+idioma = idioma_interface_atual()
 
 st.sidebar.divider()
 
-
 pagina = st.sidebar.radio(
-    "Navegação",
-    [
-        "📸 Análise por Foto",
-        "🔍 Buscar Carta por Nome",
-        "💳 Planos e Créditos",
-        "👤 Minha Conta",
-        "📜 Termos de Uso",
-        "🔒 Política de Privacidade",
-    ],
+    t("navigation", idioma),
+    ["photo", "search", "plans", "account", "terms", "privacy"],
+    format_func=lambda pagina_id: t({
+        "photo": "nav_photo",
+        "search": "nav_search",
+        "plans": "nav_plans",
+        "account": "nav_account",
+        "terms": "nav_terms",
+        "privacy": "nav_privacy",
+    }[pagina_id], idioma),
 )
 
 
@@ -5981,7 +6086,7 @@ st.sidebar.divider()
 
 
 if st.sidebar.button(
-    "🚪 Sair da conta",
+    t("sign_out", idioma),
     use_container_width=True,
 ):
 
@@ -6006,10 +6111,7 @@ st.title(
     "🃏 CardCraftAI"
 )
 
-st.caption(
-    "Inteligência artificial para identificação, "
-    "análise e catálogo visual de cartas TCG."
-)
+st.caption(t("tagline_app", idioma))
 
 st.divider()
 
@@ -6030,9 +6132,7 @@ def mostrar_resultado(
 
     st.divider()
 
-    st.header(
-        "📊 Resultado da Analise"
-    )
+    st.header(t("result", idioma))
 
     if isinstance(resultado, dict):
         conteudo = formatar_resultado_estruturado(
@@ -6059,32 +6159,22 @@ def mostrar_resultado(
 
     st.divider()
 
-    st.info(
-        "🧪 A pesquisa web esta temporariamente desativada nesta versao."
-    )
+    st.info(t("web_disabled", idioma))
 
-    st.caption(
-        "💎 A analise concluida consumiu 1 credito."
-    )
+    st.caption(t("analysis_used_credit", idioma))
 
 
 # ============================================================
 # PÁGINA 1 - ANÁLISE POR FOTO
 # ============================================================
 
-if pagina == "📸 Análise por Foto":
+if pagina == "photo":
 
-    st.header(
-        "📸 Análise por Foto"
-    )
+    st.header(t("photo_title", idioma))
 
-    st.write(
-        "Envie ou tire uma foto da sua carta."
-    )
+    st.write(t("photo_intro", idioma))
 
-    st.info(
-        "💎 Cada análise concluída consome 1 crédito."
-    )
+    st.info(t("analysis_cost", idioma))
 
     col1, col2 = st.columns(
         [1, 1],
@@ -6095,8 +6185,8 @@ if pagina == "📸 Análise por Foto":
 
         aba_upload, aba_camera = st.tabs(
             [
-                "📁 Enviar Arquivo",
-                "📷 Usar Câmera",
+                t("upload_file", idioma),
+                t("use_camera", idioma),
             ]
         )
 
@@ -6104,7 +6194,7 @@ if pagina == "📸 Análise por Foto":
 
             arquivo_upload = (
                 st.file_uploader(
-                    "Escolha uma imagem",
+                    t("choose_image", idioma),
                     type=[
                         "jpg",
                         "jpeg",
@@ -6118,7 +6208,7 @@ if pagina == "📸 Análise por Foto":
 
             arquivo_camera = (
                 st.camera_input(
-                    "Tire uma foto da carta"
+                    t("take_photo", idioma)
                 )
             )
 
@@ -6142,7 +6232,7 @@ if pagina == "📸 Análise por Foto":
 
                 st.image(
                     imagem,
-                    caption="Carta selecionada",
+                    caption=t("selected_card", idioma),
                     use_container_width=True,
                 )
 
@@ -6156,7 +6246,7 @@ if pagina == "📸 Análise por Foto":
                 else:
 
                     if st.button(
-                        "🚀 Analisar Carta — 1 crédito",
+                        t("analyze_card", idioma),
                         use_container_width=True,
                         key="btn_analise_foto",
                     ):
@@ -6167,7 +6257,7 @@ if pagina == "📸 Análise por Foto":
                         st.session_state.analysis_tipo_atual = None
 
                         with st.spinner(
-                            "🤖 Analisando a carta..."
+                            t("analyzing_card", idioma)
                         ):
 
                             try:
@@ -6210,8 +6300,7 @@ if pagina == "📸 Análise por Foto":
         else:
 
             st.info(
-                "👈 Envie ou tire uma foto "
-                "para começar."
+                t("send_photo_start", idioma)
             )
 
 
@@ -6228,7 +6317,7 @@ if pagina == "📸 Análise por Foto":
         if st.session_state.resultado_novo:
 
             st.success(
-                "✅ Análise concluída."
+                t("analysis_complete", idioma)
             )
 
             st.session_state.resultado_novo = False
@@ -6246,16 +6335,11 @@ if pagina == "📸 Análise por Foto":
 # PÁGINA 2 - BUSCAR POR NOME
 # ============================================================
 
-elif pagina == "🔍 Buscar Carta por Nome":
+elif pagina == "search":
 
-    st.header(
-        "🔍 Buscar Carta por Nome"
-    )
+    st.header(t("search_title", idioma))
 
-    st.info(
-        "🖼️ Buscar e comparar imagens no catálogo Pokémon "
-        "é grátis. A análise especializada consome 1 crédito."
-    )
+    st.info(t("catalog_free", idioma))
 
     col1, col2 = st.columns(
         [2, 1]
@@ -6263,20 +6347,20 @@ elif pagina == "🔍 Buscar Carta por Nome":
 
     with col1:
         termo_busca = st.text_input(
-            "Nome da carta",
+            t("card_name", idioma),
             placeholder="Ex.: Charizard GX",
             key="termo_busca",
         )
 
     with col2:
         colecao_busca = st.text_input(
-            "Coleção / Set",
+            t("set_name", idioma),
             placeholder="Ex.: SM Black Star Promos",
             key="colecao_busca",
         )
 
     if st.button(
-        "🖼️ Buscar no catálogo — grátis",
+        t("search_catalog", idioma),
         use_container_width=True,
         key="btn_buscar_catalogo_nome",
     ):
@@ -6285,12 +6369,11 @@ elif pagina == "🔍 Buscar Carta por Nome":
 
         if not termo:
             st.warning(
-                "Digite o nome da carta para pesquisar "
-                "no catálogo."
+                t("enter_card_name", idioma)
             )
         else:
             with st.spinner(
-                "📚 Procurando cartas no catálogo Pokémon..."
+                t("searching_catalog", idioma)
             ):
                 try:
                     resultados_catalogo = (
@@ -6316,8 +6399,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
                     st.session_state.catalogo_selecionada_nome = None
 
                     st.error(
-                        "Não foi possível consultar "
-                        "o catálogo Pokémon agora."
+                        t("catalog_error", idioma)
                     )
                     st.caption(
                         str(erro)
@@ -6356,7 +6438,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
         st.divider()
 
         st.subheader(
-            "🖼️ Resultados visuais do catálogo"
+            t("catalog_results", idioma)
         )
 
         st.caption(
@@ -6382,13 +6464,13 @@ elif pagina == "🔍 Buscar Carta por Nome":
             )
         else:
             st.warning(
-                "Nenhuma carta correspondente foi encontrada."
+                t("no_catalog_results", idioma)
             )
 
     st.divider()
 
     st.subheader(
-        "🤖 Análise especializada"
+        t("specialized_analysis", idioma)
     )
 
     if carta_selecionada:
@@ -6412,7 +6494,7 @@ elif pagina == "🔍 Buscar Carta por Nome":
         )
 
     if st.button(
-        "🤖 Analisar — 1 crédito",
+        t("analyze_one_credit", idioma),
         use_container_width=True,
         key="btn_analise_nome",
         disabled=(creditos <= 0),
@@ -6515,27 +6597,23 @@ elif pagina == "🔍 Buscar Carta por Nome":
 # PÁGINA 3 - PLANOS
 # ============================================================
 
-elif pagina == "👤 Minha Conta":
+elif pagina == "account":
 
-    st.header(
-        "👤 Minha Conta"
-    )
+    st.header(t("my_account", idioma))
 
-    st.caption(
-        "Consulte seus dados, saldo, segurança e histórico da conta."
-    )
+    st.caption(t("account_caption", idioma))
 
     col_email, col_creditos, col_plano = st.columns(3)
 
     with col_email:
         st.metric(
-            "E-mail confirmado",
-            "Sim ✅" if st.session_state.email_confirmado else "Não",
+            t("confirmed_email", idioma),
+            t("yes", idioma) if st.session_state.email_confirmado else t("no", idioma),
         )
 
     with col_creditos:
         st.metric(
-            "Créditos disponíveis",
+            t("available_credits", idioma),
             creditos,
         )
 
@@ -6546,7 +6624,7 @@ elif pagina == "👤 Minha Conta":
         )
 
     st.subheader(
-        "📧 Dados da conta"
+        t("account_data", idioma)
     )
 
     st.write(
@@ -6555,7 +6633,7 @@ elif pagina == "👤 Minha Conta":
 
     if st.session_state.email_confirmado:
         st.success(
-            "Seu endereço de e-mail está confirmado."
+            t("email_confirmed_ok", idioma)
         )
     else:
         st.warning(
@@ -6565,16 +6643,15 @@ elif pagina == "👤 Minha Conta":
     st.divider()
 
     st.subheader(
-        "🔐 Segurança"
+        t("security", idioma)
     )
 
     st.write(
-        "Se quiser trocar sua senha, envie um link seguro de "
-        "redefinição para o e-mail da sua conta."
+        t("security_reset_text", idioma)
     )
 
     if st.button(
-        "📨 Enviar link para redefinir senha",
+        t("send_password_reset", idioma),
         use_container_width=True,
         key="btn_conta_redefinir_senha",
     ):
@@ -6584,34 +6661,24 @@ elif pagina == "👤 Minha Conta":
                 st.session_state.user_email
             )
 
-            st.success(
-                "Se a conta estiver disponível, enviamos um link de "
-                "redefinição para o seu e-mail. ✅"
-            )
-
-            st.caption(
-                "Verifique também Spam, Lixo eletrônico e Promoções."
-            )
+            st.success(t("recovery_sent", idioma))
+            st.caption(t("check_spam", idioma))
 
         except Exception:
-            st.error(
-                "Não foi possível enviar o link agora."
-            )
-            st.info(
-                "Aguarde alguns instantes e tente novamente."
-            )
+            st.error(t("recovery_request_failed", idioma))
+            st.info(t("try_again_later", idioma))
 
     st.divider()
 
     st.subheader(
-        "🧾 Histórico de compras"
+        t("purchase_history", idioma)
     )
 
     compras = buscar_compras_usuario()
 
     if not compras:
         st.info(
-            "Nenhuma compra registrada nesta conta até o momento."
+            t("no_purchases", idioma)
         )
     else:
         linhas_compras = []
@@ -6645,11 +6712,11 @@ elif pagina == "👤 Minha Conta":
     st.divider()
 
     st.subheader(
-        "🚪 Sessão"
+        t("session", idioma)
     )
 
     if st.button(
-        "Sair da minha conta",
+        t("sign_out_account", idioma),
         use_container_width=True,
         key="btn_conta_sair",
     ):
@@ -6663,51 +6730,39 @@ elif pagina == "👤 Minha Conta":
         st.rerun()
 
 
-elif pagina == "📜 Termos de Uso":
+elif pagina == "terms":
 
     renderizar_termos_uso(
         idioma
     )
 
-    st.info(
-        "Documento beta. Antes do lançamento comercial, "
-        "vamos publicar o canal oficial de suporte e revisar "
-        "a versão jurídica final."
-    )
+    st.info(t("beta_legal_note", idioma))
 
 
-elif pagina == "🔒 Política de Privacidade":
+elif pagina == "privacy":
 
     renderizar_politica_privacidade(
         idioma
     )
 
-    st.info(
-        "Documento beta. Antes do lançamento comercial, "
-        "vamos publicar o contato oficial de privacidade e "
-        "revisar requisitos específicos das regiões atendidas."
-    )
+    st.info(t("beta_legal_note", idioma))
 
 
-elif pagina == "💳 Planos e Créditos":
+elif pagina == "plans":
 
-    st.header(
-        "💳 Planos e Créditos"
-    )
+    st.header(t("plans_title", idioma))
 
     st.metric(
-        "💎 Seu saldo atual",
-        f"{creditos} créditos",
+        t("balance", idioma),
+        f"{creditos} {t('credits_word', idioma)}",
     )
 
     st.success(
-        "🎁 Novas contas recebem "
-        "5 créditos gratuitos."
+        t("free_credits", idioma)
     )
 
     st.caption(
-        "Os pacotes abaixo são carregados diretamente "
-        "do Supabase."
+        t("packages_from_db", idioma)
     )
 
     st.divider()
@@ -6728,7 +6783,7 @@ elif pagina == "💳 Planos e Créditos":
     if not pacotes:
 
         st.warning(
-            "Nenhum pacote ativo está disponível no momento."
+            t("no_packages", idioma)
         )
 
     else:
@@ -6749,7 +6804,7 @@ elif pagina == "💳 Planos e Créditos":
         if pacotes_avulsos:
 
             st.subheader(
-                "🎒 Pacotes de Créditos"
+                t("credit_packages", idioma)
             )
 
             colunas = st.columns(
@@ -6764,15 +6819,7 @@ elif pagina == "💳 Planos e Créditos":
 
                 with coluna:
 
-                    nome = pacote.get(
-                        "name",
-                        "Pacote"
-                    )
-
-                    descricao = pacote.get(
-                        "description",
-                        ""
-                    )
+                    nome, descricao = traduzir_pacote_ui(pacote, idioma)
 
                     qtd_creditos = int(
                         pacote.get(
@@ -6808,7 +6855,7 @@ elif pagina == "💳 Planos e Créditos":
                     )
 
                     st.metric(
-                        "Preço",
+                        t("price", idioma),
                         preco,
                     )
 
@@ -6819,15 +6866,13 @@ elif pagina == "💳 Planos e Créditos":
                         )
 
                     if st.button(
-                        f"Comprar {nome}",
+                        t("buy", idioma, name=nome),
                         use_container_width=True,
                         key=f"comprar_{codigo}",
                     ):
 
                         st.info(
-                            "💳 O checkout ainda não está conectado. "
-                            "Na próxima etapa vamos vincular este botão "
-                            "a um provedor de pagamento."
+                            t("checkout_pending", idioma)
                         )
 
 
@@ -6836,20 +6881,12 @@ elif pagina == "💳 Planos e Créditos":
             st.divider()
 
             st.subheader(
-                "🏢 Assinaturas"
+                t("subscriptions", idioma)
             )
 
             for pacote in assinaturas:
 
-                nome = pacote.get(
-                    "name",
-                    "Plano"
-                )
-
-                descricao = pacote.get(
-                    "description",
-                    ""
-                )
+                nome, descricao = traduzir_pacote_ui(pacote, idioma)
 
                 qtd_creditos = int(
                     pacote.get(
@@ -6893,26 +6930,24 @@ elif pagina == "💳 Planos e Créditos":
                         )
 
                     st.write(
-                        f"**{qtd_creditos} créditos por ciclo**"
+                        f"**{t('per_cycle', idioma, n=qtd_creditos)}**"
                     )
 
                 with col2:
 
                     st.metric(
-                        "Mensalidade",
+                        t("monthly_fee", idioma),
                         preco,
                     )
 
                     if st.button(
-                        f"Assinar {nome}",
+                        t("subscribe", idioma, name=nome),
                         use_container_width=True,
                         key=f"assinar_{codigo}",
                     ):
 
                         st.info(
-                            "💳 A assinatura ainda não está conectada "
-                            "ao checkout. Faremos essa integração "
-                            "na próxima etapa."
+                            t("subscription_pending", idioma)
                         )
 
 
