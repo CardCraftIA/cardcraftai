@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.19
+# CARDCRAFTAI RELIABILITY 2.6.20
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.19"
+APP_VERSION = "2.6.20"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -112,7 +112,7 @@ ANALYSIS_STALE_MINUTES = 15
 
 
 # ============================================================
-# RELIABILITY 2.6.19 - MULTIMOEDA + CHECKOUT MERCADO PAGO SEGURO
+# RELIABILITY 2.6.20 - MATCHING EXATO DO CATALOGO + UI LOCALIZADA
 # ============================================================
 
 LANGUAGE_OPTIONS = [
@@ -460,6 +460,471 @@ UI_TEXT = {
 }
 
 
+# ============================================================
+# RELIABILITY 2.6.20 - TEXTOS LOCALIZADOS DO CATALOGO/VALIDACAO
+# ============================================================
+
+UI_TEXT["English"].update({
+    "not_confirmed": "Not confirmed",
+    "catalog_no_data_title": "Could not validate against the catalog",
+    "catalog_no_data_message": "The AI did not identify a card name confidently enough to query the catalog.",
+    "catalog_no_result_title": "Not validated by the catalog",
+    "catalog_no_result_message": "The catalog did not return a usable match for the photo identification.",
+    "catalog_validated_title": "✅ Identification validated by the catalog",
+    "catalog_validated_message": "The exact number was found, and the normalized name and set match a real Pokémon TCG catalog card.",
+    "catalog_probable_title": "🟡 Identification is probably correct",
+    "catalog_probable_image_message": "The catalog found a strong match, but the image quality prevents automatic confirmation.",
+    "catalog_probable_missing_message": "The catalog found a strong match, but at least one important identifier still needs confirmation.",
+    "catalog_inconclusive_title": "⚠️ Identification not confirmed yet",
+    "catalog_inconclusive_number_message": "The AI provided a card number, but no exact match with that number was confirmed. Cards with different numbers are shown only for comparison and are not treated as the same card.",
+    "catalog_inconclusive_message": "The catalog found similar versions, but the photo data is still insufficient to confirm the exact card.",
+    "confidence_divergence_label": "⚠️ Mismatch detected",
+    "confidence_divergence_message": "The card number read from the image differs from the catalog candidate. CardCraftAI blocked promotion to confirmed or high-confidence status.",
+    "confidence_ai_number": "Number read by AI: #{number}",
+    "confidence_catalog_number": "Catalog candidate number: #{number}",
+    "confidence_number_priority": "A number mismatch takes priority over name or set similarity.",
+    "confidence_confirmed_label": "✅ Confirmed by catalog",
+    "confidence_confirmed_message": "The card's main identity was externally confirmed by exact number, name and set.",
+    "confidence_exact_number": "Exact card number found in the Pokémon TCG catalog.",
+    "confidence_name_match": "Name matches the catalog result.",
+    "confidence_set_match": "Set matches the catalog result.",
+    "confidence_partial_label": "🟡 Partially confirmed",
+    "confidence_partial_message": "The catalog confirms relevant parts of the identification, but a decisive identifier is still missing for exact-card confirmation.",
+    "confidence_exact_candidate": "Exact number matches a catalog candidate.",
+    "confidence_name_strong": "Name strongly matches the catalog.",
+    "confidence_set_strong": "Set strongly matches the catalog.",
+    "confidence_number_missing": "The card number was not read with enough confidence.",
+    "confidence_number_not_exact": "The card number still has no exact confirmation.",
+    "confidence_set_missing": "The set was not read with enough confidence.",
+    "confidence_catalog_no_match": "The catalog was queried but did not confirm a usable match.",
+    "confidence_candidates_insufficient": "Catalog candidates exist, but the match is still insufficient.",
+    "confidence_no_external_evidence": "There is not enough external evidence to confirm the identity.",
+    "confidence_not_confirmed_label": "⚪ Not confirmed",
+    "confidence_not_confirmed_message": "The available evidence is not yet sufficient for a safe identity confirmation.",
+    "confidence_high_visual_label": "🟢 High visual confidence",
+    "confidence_high_visual_message": "The visual reading is strong and contains name, set and number, but there is no external catalog confirmation for this run yet.",
+    "confidence_fields_extracted": "Name, set and number were extracted from the image.",
+    "confidence_visual_strong": "The AI's preliminary visual reading was classified as strong.",
+    "confidence_image_quality_ok": "The image quality was classified as good or acceptable.",
+    "confidence_not_catalog_confirmation": "This level is not equivalent to catalog confirmation.",
+    "confidence_no_external": "No external confirmation is available for this classification.",
+    "confidence_missing_identifiers": "Missing or uncertain identifiers: {fields}.",
+    "confidence_image_quality_low": "The image quality does not support high visual confidence.",
+    "confidence_visual_not_strong": "The preliminary AI reading did not reach the strong visual level.",
+    "confidence_no_external_high_message": "Without external confirmation, the available visual evidence is still insufficient to classify the identity with high confidence.",
+    "field_name_short": "name",
+    "field_set_short": "set",
+    "field_number_short": "number",
+    "confidence_title": "### 🧭 CardCraftAI confidence level",
+    "confidence_why": "🧩 Why was this level assigned?",
+    "confidence_engine_note": "Confidence Engine 2.4.0 uses deterministic rules over existing evidence. It does not ask Gemini for a confidence percentage and does not invent statistical precision.",
+    "indicator_not_informed": "⚪ Not provided by the AI",
+    "indicator_compatible": "✅ Compatible",
+    "indicator_divergent": "⚠️ Mismatch",
+    "label_name": "Name",
+    "label_set": "Collection / Set",
+    "label_number": "Number",
+    "validation_explainer": "🔎 How CardCraftAI validated this identification",
+    "ai_identified": "**AI identified:** {name} • {set_name} • #{number}",
+    "catalog_best_match": "**Best catalog match:** {name} • {set_name} • #{number}",
+    "set_not_confirmed": "set not confirmed",
+    "number_not_confirmed": "number not confirmed",
+    "not_available": "not available",
+    "set_not_available": "set not available",
+    "number_not_available": "number not available",
+    "validation_disclaimer": "Validation compares structured data. It does not physically authenticate the card and does not replace professional verification.",
+    "data_origin_title": "### 🧾 Data origin and reliability",
+    "confirmed_by_catalog": "✅ Confirmed by the Pokémon TCG catalog",
+    "label_rarity": "Rarity",
+    "label_artist": "Artist",
+    "label_set_release": "Set release",
+    "set_release_note": "The date above belongs to the set in the catalog. By itself, it does not confirm this card's specific release date.",
+    "ai_visual_assessment": "🤖 AI visual assessment",
+    "label_visible_year": "Visible / estimated year on the card",
+    "label_variant": "Suggested variant",
+    "label_apparent_language": "Apparent language",
+    "ai_estimates_note": "Visible year, variant, apparent language, condition and visual authenticity remain AI estimates. The set release date does not confirm the specific year of this card.",
+    "physical_assessment_note": "Condition and authenticity require physical evaluation when professional precision is needed.",
+    "catalog_image_unavailable": "Image unavailable in the catalog.",
+    "catalog_default_card_name": "Pokémon card",
+    "catalog_gallery_no_match": "No visual match was found in the Pokémon catalog.",
+    "catalog_gallery_instruction": "Click an image to open it larger. Use ‘Select this card’ to identify the correct match.",
+    "select_this_card": "✅ Select this card",
+    "selected_catalog_title": "✅ Card selected from the catalog",
+    "click_image_larger": "Click the image to open a larger version.",
+    "catalog_data_source": "Source of the data below: Pokémon TCG catalog.",
+    "label_catalog_id": "Catalog ID",
+    "tcgplayer_live_caption": "Direct external search on TCGplayer for listings available now. Offer prices may differ from the catalog market references.",
+    "tcgplayer_live_button": "🛒 View current TCGplayer offers",
+    "validation_only_pokemon": "Automatic catalog validation in this phase is available for Pokémon TCG cards.",
+    "validation_name_missing": "⚪ The catalog could not be queried because the card name was not identified with enough confidence.",
+    "validation_title": "🛡️ Catalog identification validation",
+    "validation_caption": "CardCraftAI compares the photo identification with real Pokémon catalog cards. This validation and retry attempts are free.",
+    "validation_saved_retry": "The AI identification remains saved. The button below queries only the catalog and does not run Gemini again.",
+    "retry_validation_free": "🔄 Try catalog validation again — free",
+    "validation_spinner": "Querying the Pokémon catalog to validate the identification...",
+    "validation_preserved": "The AI identification was preserved. You can retry only the catalog validation whenever you want.",
+    "validation_unusable": "⚪ Catalog validation does not yet have a usable result.",
+    "user_selected_match_title": "✅ Match selected by the user for this analysis",
+    "best_match_title": "🎯 Best match found in the catalog",
+    "other_matches_title": "🖼️ Other matches for comparison",
+    "catalog_temp_unavailable": "The Pokémon catalog is temporarily unavailable. The photo analysis was preserved and no new credit will be required to retry validation.",
+    "catalog_http_caption": "The external service returned HTTP {status}. This does not change the identification already produced by the AI.",
+    "catalog_rate_limited": "The Pokémon catalog temporarily limited new queries. The photo analysis remains saved and can be validated again without consuming another credit.",
+    "catalog_generic_failure": "The analysis completed, but the visual catalog could not be queried right now. The AI identification remains available, but it has not yet been externally validated.",
+    "search_performed_by": "Search performed for: {query}",
+    "selected_for_analysis_title": "✅ Card selected for this analysis",
+    "selection_registered": "The selection was saved. You can keep comparing other versions or use this card in the specialized analysis.",
+    "analysis_uses_selected": "The analysis will use the catalog entry you selected.",
+    "analysis_uses_typed": "Without a selected card, the analysis will use only the name and set you entered.",
+})
+
+UI_TEXT["Português (BR)"].update({
+    "not_confirmed": "Não confirmado",
+    "catalog_no_data_title": "Não foi possível validar no catálogo",
+    "catalog_no_data_message": "A IA não conseguiu identificar um nome de carta com segurança suficiente para consultar o catálogo.",
+    "catalog_no_result_title": "Não validado no catálogo",
+    "catalog_no_result_message": "O catálogo não retornou uma correspondência utilizável para a identificação da foto.",
+    "catalog_validated_title": "✅ Identificação validada pelo catálogo",
+    "catalog_validated_message": "O número exato foi localizado e o nome e a coleção normalizados correspondem a uma carta real do catálogo Pokémon TCG.",
+    "catalog_probable_title": "🟡 Identificação provavelmente correta",
+    "catalog_probable_image_message": "O catálogo encontrou uma correspondência forte, mas a qualidade da imagem impede uma confirmação automática.",
+    "catalog_probable_missing_message": "O catálogo encontrou uma correspondência forte, mas ainda falta confirmar pelo menos um identificador importante.",
+    "catalog_inconclusive_title": "⚠️ Identificação ainda não confirmada",
+    "catalog_inconclusive_number_message": "A IA informou um número de carta, mas nenhuma correspondência com esse número exato foi confirmada. Versões com número diferente são mostradas apenas para comparação e não são tratadas como a mesma carta.",
+    "catalog_inconclusive_message": "O catálogo encontrou versões semelhantes, mas os dados extraídos da foto ainda não são suficientes para confirmar a carta exata.",
+    "confidence_divergence_label": "⚠️ Divergência detectada",
+    "confidence_divergence_message": "O número lido na carta diverge do candidato do catálogo. O CardCraftAI bloqueou qualquer promoção para confirmação ou alta confiança.",
+    "confidence_ai_number": "Número lido pela IA: #{number}",
+    "confidence_catalog_number": "Número do candidato do catálogo: #{number}",
+    "confidence_number_priority": "Divergência de número tem prioridade sobre semelhanças de nome ou coleção.",
+    "confidence_confirmed_label": "✅ Confirmado pelo catálogo",
+    "confidence_confirmed_message": "A identidade principal da carta foi confirmada externamente por número exato, nome e coleção.",
+    "confidence_exact_number": "Número exato localizado no catálogo Pokémon TCG.",
+    "confidence_name_match": "Nome compatível com a correspondência do catálogo.",
+    "confidence_set_match": "Coleção / set compatível com a correspondência do catálogo.",
+    "confidence_partial_label": "🟡 Parcialmente confirmado",
+    "confidence_partial_message": "O catálogo confirma parte relevante da identificação, mas ainda falta um identificador decisivo para confirmar a carta exata.",
+    "confidence_exact_candidate": "Número exato compatível com um candidato do catálogo.",
+    "confidence_name_strong": "Nome fortemente compatível com o catálogo.",
+    "confidence_set_strong": "Coleção / set fortemente compatível com o catálogo.",
+    "confidence_number_missing": "O número da carta não foi lido com segurança.",
+    "confidence_number_not_exact": "O número ainda não possui confirmação exata.",
+    "confidence_set_missing": "A coleção / set não foi lida com segurança.",
+    "confidence_catalog_no_match": "O catálogo foi consultado, mas não confirmou uma correspondência utilizável.",
+    "confidence_candidates_insufficient": "Há candidatos no catálogo, porém a correspondência ainda é insuficiente.",
+    "confidence_no_external_evidence": "Não há evidência externa suficiente para confirmar a identidade.",
+    "confidence_not_confirmed_label": "⚪ Não confirmado",
+    "confidence_not_confirmed_message": "As evidências disponíveis ainda não sustentam uma confirmação segura da identidade da carta.",
+    "confidence_high_visual_label": "🟢 Alta confiança visual",
+    "confidence_high_visual_message": "A leitura visual é forte e contém nome, coleção e número, mas ainda não existe confirmação externa do catálogo para esta execução.",
+    "confidence_fields_extracted": "Nome, coleção / set e número foram extraídos da imagem.",
+    "confidence_visual_strong": "A leitura visual preliminar da IA foi classificada como forte.",
+    "confidence_image_quality_ok": "A qualidade da imagem foi classificada como boa ou aceitável.",
+    "confidence_not_catalog_confirmation": "Este nível não equivale a confirmação pelo catálogo.",
+    "confidence_no_external": "Não há confirmação externa disponível para esta classificação.",
+    "confidence_missing_identifiers": "Identificadores ausentes ou inseguros: {fields}.",
+    "confidence_image_quality_low": "A qualidade da imagem não sustenta alta confiança visual.",
+    "confidence_visual_not_strong": "A leitura preliminar da IA não atingiu o nível visual forte.",
+    "confidence_no_external_high_message": "Sem confirmação externa, a evidência visual disponível ainda não é suficiente para classificar a identidade com alta confiança.",
+    "field_name_short": "nome",
+    "field_set_short": "coleção / set",
+    "field_number_short": "número",
+    "confidence_title": "### 🧭 Nível de confiança CardCraftAI",
+    "confidence_why": "🧩 Por que este nível foi atribuído?",
+    "confidence_engine_note": "O Confidence Engine 2.4.0 usa regras determinísticas sobre evidências existentes. Ele não pede ao Gemini uma porcentagem de confiança e não inventa precisão estatística.",
+    "indicator_not_informed": "⚪ Não informado pela IA",
+    "indicator_compatible": "✅ Compatível",
+    "indicator_divergent": "⚠️ Divergente",
+    "label_name": "Nome",
+    "label_set": "Coleção / Set",
+    "label_number": "Número",
+    "validation_explainer": "🔎 Como o CardCraftAI validou esta identificação",
+    "ai_identified": "**IA identificou:** {name} • {set_name} • #{number}",
+    "catalog_best_match": "**Melhor correspondência do catálogo:** {name} • {set_name} • #{number}",
+    "set_not_confirmed": "coleção não confirmada",
+    "number_not_confirmed": "número não confirmado",
+    "not_available": "não disponível",
+    "set_not_available": "set não disponível",
+    "number_not_available": "número não disponível",
+    "validation_disclaimer": "A validação compara dados estruturados. Ela não autentica fisicamente a carta e não substitui verificação profissional.",
+    "data_origin_title": "### 🧾 Origem e confiabilidade dos dados",
+    "confirmed_by_catalog": "✅ Confirmado pelo catálogo Pokémon TCG",
+    "label_rarity": "Raridade",
+    "label_artist": "Artista",
+    "label_set_release": "Lançamento do set",
+    "set_release_note": "A data acima pertence ao set no catálogo. Ela não é, por si só, a data específica de lançamento desta carta.",
+    "ai_visual_assessment": "🤖 Avaliação visual da IA",
+    "label_visible_year": "Ano visível / estimado na carta",
+    "label_variant": "Variante sugerida",
+    "label_apparent_language": "Idioma aparente",
+    "ai_estimates_note": "Ano visual, variante, idioma aparente, condição e autenticidade visual continuam sendo estimativas da IA. A data de lançamento do set não confirma o ano específico desta carta.",
+    "physical_assessment_note": "Condição e autenticidade exigem avaliação física quando precisão profissional for necessária.",
+    "catalog_image_unavailable": t("catalog_image_unavailable"),
+    "catalog_default_card_name": t("catalog_default_card_name"),
+    "catalog_gallery_no_match": "Nenhuma correspondência visual foi encontrada no catálogo Pokémon.",
+    "catalog_gallery_instruction": "Clique em uma imagem para ampliá-la. Use ‘Selecionar esta carta’ para indicar a correspondência correta.",
+    "select_this_card": "✅ Selecionar esta carta",
+    "selected_catalog_title": "✅ Carta selecionada no catálogo",
+    "click_image_larger": "Clique na imagem para abrir a versão maior.",
+    "catalog_data_source": "Fonte dos dados abaixo: catálogo Pokémon TCG.",
+    "label_catalog_id": "ID do catálogo",
+    "tcgplayer_live_caption": "Busca externa direta no TCGplayer para consultar anúncios disponíveis agora. Os valores dessas ofertas podem diferir das referências de mercado do catálogo.",
+    "tcgplayer_live_button": "🛒 Ver ofertas atuais no TCGplayer",
+    "validation_only_pokemon": "A validação automática por catálogo desta fase está disponível para cartas Pokémon TCG.",
+    "validation_name_missing": "⚪ Não foi possível consultar o catálogo porque o nome da carta não foi identificado com segurança.",
+    "validation_title": "🛡️ Validação da identificação por catálogo",
+    "validation_caption": "O CardCraftAI compara a identificação da foto com cartas reais do catálogo Pokémon. Esta validação e as novas tentativas são gratuitas.",
+    "validation_saved_retry": "A identificação feita pela IA continua salva. O botão abaixo consulta somente o catálogo e não executa o Gemini novamente.",
+    "retry_validation_free": "🔄 Tentar validar novamente — grátis",
+    "validation_spinner": "Consultando o catálogo Pokémon para validar a identificação...",
+    "validation_preserved": "A identificação feita pela IA foi mantida. Você pode tentar somente a validação do catálogo novamente quando quiser.",
+    "validation_unusable": "⚪ A validação do catálogo ainda não possui um resultado utilizável.",
+    "user_selected_match_title": "✅ Correspondência escolhida pelo usuário para esta análise",
+    "best_match_title": "🎯 Melhor correspondência encontrada no catálogo",
+    "other_matches_title": "🖼️ Outras correspondências para comparação",
+    "catalog_temp_unavailable": "O catálogo Pokémon está temporariamente indisponível. A análise da foto foi preservada e nenhum novo crédito será necessário para tentar a validação novamente.",
+    "catalog_http_caption": "Serviço externo respondeu com HTTP {status}. Isso não altera a identificação já produzida pela IA.",
+    "catalog_rate_limited": "O catálogo Pokémon limitou temporariamente novas consultas. A análise da foto continua salva e pode ser validada novamente sem consumir outro crédito.",
+    "catalog_generic_failure": "A análise foi concluída, mas o catálogo visual não pôde ser consultado agora. A identificação da IA continua disponível, mas ainda não foi validada externamente.",
+    "search_performed_by": "Busca realizada por: {query}",
+    "selected_for_analysis_title": "✅ Carta escolhida para esta análise",
+    "selection_registered": "A seleção foi registrada. Você pode continuar comparando outras versões ou usar esta carta na análise especializada.",
+    "analysis_uses_selected": "A análise usará a entrada que você selecionou no catálogo.",
+    "analysis_uses_typed": "Sem uma carta selecionada, a análise usará somente o nome e a coleção digitados.",
+})
+
+UI_TEXT["Español"].update({
+    "not_confirmed": "No confirmado",
+    "catalog_no_data_title": "No fue posible validar con el catálogo",
+    "catalog_no_data_message": "La IA no identificó un nombre de carta con suficiente seguridad para consultar el catálogo.",
+    "catalog_no_result_title": "No validado por el catálogo",
+    "catalog_no_result_message": "El catálogo no devolvió una coincidencia utilizable para la identificación de la foto.",
+    "catalog_validated_title": "✅ Identificación validada por el catálogo",
+    "catalog_validated_message": "Se encontró el número exacto y el nombre y la colección normalizados coinciden con una carta real del catálogo Pokémon TCG.",
+    "catalog_probable_title": "🟡 Identificación probablemente correcta",
+    "catalog_probable_image_message": "El catálogo encontró una coincidencia fuerte, pero la calidad de la imagen impide la confirmación automática.",
+    "catalog_probable_missing_message": "El catálogo encontró una coincidencia fuerte, pero todavía falta confirmar al menos un identificador importante.",
+    "catalog_inconclusive_title": "⚠️ Identificación aún no confirmada",
+    "catalog_inconclusive_number_message": "La IA indicó un número de carta, pero no se confirmó una coincidencia exacta con ese número. Las cartas con otros números se muestran solo para comparación.",
+    "catalog_inconclusive_message": "El catálogo encontró versiones similares, pero los datos de la foto todavía no bastan para confirmar la carta exacta.",
+    "confidence_divergence_label": "⚠️ Se detectó una divergencia",
+    "confidence_divergence_message": "El número leído en la carta difiere del candidato del catálogo. CardCraftAI bloqueó la promoción a confirmada o alta confianza.",
+    "confidence_ai_number": "Número leído por la IA: #{number}",
+    "confidence_catalog_number": "Número del candidato del catálogo: #{number}",
+    "confidence_number_priority": "Una divergencia de número tiene prioridad sobre la similitud de nombre o colección.",
+    "confidence_confirmed_label": "✅ Confirmado por el catálogo",
+    "confidence_confirmed_message": "La identidad principal de la carta fue confirmada externamente por número exacto, nombre y colección.",
+    "confidence_exact_number": "Número exacto localizado en el catálogo Pokémon TCG.",
+    "confidence_name_match": "El nombre coincide con el resultado del catálogo.",
+    "confidence_set_match": "La colección coincide con el resultado del catálogo.",
+    "confidence_partial_label": "🟡 Confirmado parcialmente",
+    "confidence_partial_message": "El catálogo confirma una parte relevante de la identificación, pero aún falta un identificador decisivo para confirmar la carta exacta.",
+    "confidence_exact_candidate": "El número exacto coincide con un candidato del catálogo.",
+    "confidence_name_strong": "El nombre coincide fuertemente con el catálogo.",
+    "confidence_set_strong": "La colección coincide fuertemente con el catálogo.",
+    "confidence_number_missing": "El número de carta no se leyó con suficiente seguridad.",
+    "confidence_number_not_exact": "El número aún no tiene confirmación exacta.",
+    "confidence_set_missing": "La colección no se leyó con suficiente seguridad.",
+    "confidence_catalog_no_match": "Se consultó el catálogo, pero no confirmó una coincidencia utilizable.",
+    "confidence_candidates_insufficient": "Hay candidatos en el catálogo, pero la coincidencia sigue siendo insuficiente.",
+    "confidence_no_external_evidence": "No hay evidencia externa suficiente para confirmar la identidad.",
+    "confidence_not_confirmed_label": "⚪ No confirmado",
+    "confidence_not_confirmed_message": "La evidencia disponible todavía no permite una confirmación segura de la identidad.",
+    "confidence_high_visual_label": "🟢 Alta confianza visual",
+    "confidence_high_visual_message": "La lectura visual es fuerte e incluye nombre, colección y número, pero todavía no hay confirmación externa del catálogo.",
+    "confidence_fields_extracted": "Nombre, colección y número fueron extraídos de la imagen.",
+    "confidence_visual_strong": "La lectura visual preliminar de la IA fue clasificada como fuerte.",
+    "confidence_image_quality_ok": "La calidad de la imagen fue clasificada como buena o aceptable.",
+    "confidence_not_catalog_confirmation": "Este nivel no equivale a una confirmación del catálogo.",
+    "confidence_no_external": "No hay confirmación externa disponible para esta clasificación.",
+    "confidence_missing_identifiers": "Identificadores ausentes o inseguros: {fields}.",
+    "confidence_image_quality_low": "La calidad de la imagen no permite alta confianza visual.",
+    "confidence_visual_not_strong": "La lectura preliminar de la IA no alcanzó el nivel visual fuerte.",
+    "confidence_no_external_high_message": "Sin confirmación externa, la evidencia visual disponible todavía no basta para clasificar la identidad con alta confianza.",
+    "field_name_short": "nombre",
+    "field_set_short": "colección / set",
+    "field_number_short": "número",
+    "confidence_title": "### 🧭 Nivel de confianza CardCraftAI",
+    "confidence_why": "🧩 ¿Por qué se asignó este nivel?",
+    "confidence_engine_note": "Confidence Engine 2.4.0 usa reglas deterministas sobre la evidencia existente. No pide a Gemini un porcentaje de confianza ni inventa precisión estadística.",
+    "indicator_not_informed": "⚪ No informado por la IA",
+    "indicator_compatible": "✅ Compatible",
+    "indicator_divergent": "⚠️ Divergente",
+    "label_name": "Nombre",
+    "label_set": "Colección / Set",
+    "label_number": "Número",
+    "validation_explainer": "🔎 Cómo validó CardCraftAI esta identificación",
+    "ai_identified": "**La IA identificó:** {name} • {set_name} • #{number}",
+    "catalog_best_match": "**Mejor coincidencia del catálogo:** {name} • {set_name} • #{number}",
+    "set_not_confirmed": "colección no confirmada",
+    "number_not_confirmed": "número no confirmado",
+    "not_available": "no disponible",
+    "set_not_available": "set no disponible",
+    "number_not_available": "número no disponible",
+    "validation_disclaimer": "La validación compara datos estructurados. No autentica físicamente la carta ni sustituye una verificación profesional.",
+    "data_origin_title": "### 🧾 Origen y fiabilidad de los datos",
+    "confirmed_by_catalog": "✅ Confirmado por el catálogo Pokémon TCG",
+    "label_rarity": "Rareza",
+    "label_artist": "Artista",
+    "label_set_release": "Lanzamiento del set",
+    "set_release_note": "La fecha anterior pertenece al set del catálogo y no confirma por sí sola la fecha específica de lanzamiento de esta carta.",
+    "ai_visual_assessment": "🤖 Evaluación visual de la IA",
+    "label_visible_year": "Año visible / estimado en la carta",
+    "label_variant": "Variante sugerida",
+    "label_apparent_language": "Idioma aparente",
+    "ai_estimates_note": "El año visible, la variante, el idioma aparente, la condición y la autenticidad visual siguen siendo estimaciones de la IA.",
+    "physical_assessment_note": "La condición y la autenticidad requieren evaluación física cuando se necesita precisión profesional.",
+    "catalog_image_unavailable": "Imagen no disponible en el catálogo.",
+    "catalog_default_card_name": "Carta Pokémon",
+    "catalog_gallery_no_match": "No se encontró ninguna coincidencia visual en el catálogo Pokémon.",
+    "catalog_gallery_instruction": "Haz clic en una imagen para ampliarla. Usa ‘Seleccionar esta carta’ para indicar la coincidencia correcta.",
+    "select_this_card": "✅ Seleccionar esta carta",
+    "selected_catalog_title": "✅ Carta seleccionada del catálogo",
+    "click_image_larger": "Haz clic en la imagen para abrir una versión más grande.",
+    "catalog_data_source": "Fuente de los datos siguientes: catálogo Pokémon TCG.",
+    "label_catalog_id": "ID del catálogo",
+    "tcgplayer_live_caption": "Búsqueda externa directa en TCGplayer para consultar anuncios disponibles ahora. Los precios pueden diferir de las referencias del catálogo.",
+    "tcgplayer_live_button": "🛒 Ver ofertas actuales en TCGplayer",
+    "validation_only_pokemon": "La validación automática por catálogo de esta fase está disponible para cartas Pokémon TCG.",
+    "validation_name_missing": "⚪ No fue posible consultar el catálogo porque el nombre de la carta no se identificó con suficiente seguridad.",
+    "validation_title": "🛡️ Validación de identificación por catálogo",
+    "validation_caption": "CardCraftAI compara la identificación de la foto con cartas reales del catálogo Pokémon. Esta validación y los reintentos son gratuitos.",
+    "validation_saved_retry": "La identificación de la IA permanece guardada. El botón siguiente consulta solo el catálogo y no ejecuta Gemini otra vez.",
+    "retry_validation_free": "🔄 Intentar validar de nuevo — gratis",
+    "validation_spinner": "Consultando el catálogo Pokémon para validar la identificación...",
+    "validation_preserved": "La identificación de la IA fue preservada. Puedes volver a intentar únicamente la validación del catálogo cuando quieras.",
+    "validation_unusable": "⚪ La validación del catálogo todavía no tiene un resultado utilizable.",
+    "user_selected_match_title": "✅ Coincidencia elegida por el usuario para este análisis",
+    "best_match_title": "🎯 Mejor coincidencia encontrada en el catálogo",
+    "other_matches_title": "🖼️ Otras coincidencias para comparar",
+    "catalog_temp_unavailable": "El catálogo Pokémon está temporalmente no disponible. El análisis de la foto se preservó y no se requerirá otro crédito para reintentar la validación.",
+    "catalog_http_caption": "El servicio externo respondió con HTTP {status}. Esto no cambia la identificación ya producida por la IA.",
+    "catalog_rate_limited": "El catálogo Pokémon limitó temporalmente nuevas consultas. El análisis de la foto permanece guardado y puede validarse de nuevo sin consumir otro crédito.",
+    "catalog_generic_failure": "El análisis se completó, pero el catálogo visual no pudo consultarse ahora. La identificación de la IA sigue disponible, pero todavía no fue validada externamente.",
+    "search_performed_by": "Búsqueda realizada por: {query}",
+    "selected_for_analysis_title": "✅ Carta elegida para este análisis",
+    "selection_registered": "La selección se guardó. Puedes seguir comparando otras versiones o usar esta carta en el análisis especializado.",
+    "analysis_uses_selected": "El análisis usará la entrada del catálogo que seleccionaste.",
+    "analysis_uses_typed": "Sin una carta seleccionada, el análisis usará solo el nombre y la colección introducidos.",
+})
+
+UI_TEXT["日本語"].update({
+    "not_confirmed": "未確認",
+    "catalog_no_data_title": "カタログで検証できませんでした",
+    "catalog_no_data_message": "AI がカタログ検索に十分な確度でカード名を特定できませんでした。",
+    "catalog_no_result_title": "カタログ未検証",
+    "catalog_no_result_message": "写真の識別結果に対して、カタログから利用可能な一致候補が返されませんでした。",
+    "catalog_validated_title": "✅ カタログで識別を確認しました",
+    "catalog_validated_message": "正確な番号が見つかり、正規化された名前とセットが Pokémon TCG カタログの実在カードと一致しました。",
+    "catalog_probable_title": "🟡 識別はおそらく正しいです",
+    "catalog_probable_image_message": "カタログで強い一致が見つかりましたが、画像品質のため自動確認できません。",
+    "catalog_probable_missing_message": "カタログで強い一致が見つかりましたが、重要な識別子が少なくとも1つ未確認です。",
+    "catalog_inconclusive_title": "⚠️ 識別はまだ確認されていません",
+    "catalog_inconclusive_number_message": "AI はカード番号を読み取りましたが、その番号との完全一致は確認できませんでした。番号が異なるカードは比較用にのみ表示されます。",
+    "catalog_inconclusive_message": "類似カードは見つかりましたが、写真の情報だけでは正確なカードを確認できません。",
+    "confidence_divergence_label": "⚠️ 不一致を検出しました",
+    "confidence_divergence_message": "画像から読み取った番号とカタログ候補の番号が一致しないため、CardCraftAI は確認済み／高信頼への昇格を停止しました。",
+    "confidence_ai_number": "AI が読み取った番号: #{number}",
+    "confidence_catalog_number": "カタログ候補の番号: #{number}",
+    "confidence_number_priority": "番号の不一致は、名前やセットの類似より優先されます。",
+    "confidence_confirmed_label": "✅ カタログ確認済み",
+    "confidence_confirmed_message": "カードの主要な識別情報は、正確な番号・名前・セットによって外部確認されました。",
+    "confidence_exact_number": "Pokémon TCG カタログで正確な番号が見つかりました。",
+    "confidence_name_match": "名前がカタログ結果と一致します。",
+    "confidence_set_match": "セットがカタログ結果と一致します。",
+    "confidence_partial_label": "🟡 一部確認済み",
+    "confidence_partial_message": "カタログは識別情報の重要な部分を確認しましたが、正確なカード確認には決定的な識別子がまだ不足しています。",
+    "confidence_exact_candidate": "正確な番号がカタログ候補と一致します。",
+    "confidence_name_strong": "名前がカタログと強く一致します。",
+    "confidence_set_strong": "セットがカタログと強く一致します。",
+    "confidence_number_missing": "カード番号を十分な確度で読み取れませんでした。",
+    "confidence_number_not_exact": "カード番号はまだ完全一致で確認されていません。",
+    "confidence_set_missing": "セットを十分な確度で読み取れませんでした。",
+    "confidence_catalog_no_match": "カタログを照会しましたが、利用可能な一致は確認できませんでした。",
+    "confidence_candidates_insufficient": "カタログ候補はありますが、一致度がまだ不十分です。",
+    "confidence_no_external_evidence": "識別を確認するための外部証拠が不足しています。",
+    "confidence_not_confirmed_label": "⚪ 未確認",
+    "confidence_not_confirmed_message": "利用可能な証拠だけでは、安全に識別を確認するにはまだ不十分です。",
+    "confidence_high_visual_label": "🟢 高い視覚的信頼度",
+    "confidence_high_visual_message": "視覚的な読み取りは強く、名前・セット・番号がありますが、この実行ではまだカタログによる外部確認がありません。",
+    "confidence_fields_extracted": "画像から名前、セット、番号を抽出しました。",
+    "confidence_visual_strong": "AI の予備的な視覚読み取りは強いと分類されました。",
+    "confidence_image_quality_ok": "画像品質は良好または許容範囲と分類されました。",
+    "confidence_not_catalog_confirmation": "このレベルはカタログ確認と同等ではありません。",
+    "confidence_no_external": "この分類には外部確認がありません。",
+    "confidence_missing_identifiers": "不足または不確かな識別子: {fields}。",
+    "confidence_image_quality_low": "画像品質は高い視覚的信頼度を支えるには不十分です。",
+    "confidence_visual_not_strong": "AI の予備的な読み取りは強い視覚レベルに達していません。",
+    "confidence_no_external_high_message": "外部確認がないため、利用可能な視覚証拠だけでは高信頼で識別するには不十分です。",
+    "field_name_short": "名前",
+    "field_set_short": "セット",
+    "field_number_short": "番号",
+    "confidence_title": "### 🧭 CardCraftAI 信頼レベル",
+    "confidence_why": "🧩 このレベルになった理由",
+    "confidence_engine_note": "Confidence Engine 2.4.0 は既存の証拠に対する決定論的ルールを使用します。Gemini に信頼度の割合を求めず、統計的精度を作りません。",
+    "indicator_not_informed": "⚪ AI 未入力",
+    "indicator_compatible": "✅ 一致",
+    "indicator_divergent": "⚠️ 不一致",
+    "label_name": "名前",
+    "label_set": "コレクション / セット",
+    "label_number": "番号",
+    "validation_explainer": "🔎 CardCraftAI の検証方法",
+    "ai_identified": "**AI の識別:** {name} • {set_name} • #{number}",
+    "catalog_best_match": "**カタログの最良一致:** {name} • {set_name} • #{number}",
+    "set_not_confirmed": "セット未確認",
+    "number_not_confirmed": "番号未確認",
+    "not_available": "利用不可",
+    "set_not_available": "セット利用不可",
+    "number_not_available": "番号利用不可",
+    "validation_disclaimer": "この検証は構造化データを比較するもので、カードを物理的に鑑定するものではなく、専門家の確認に代わるものではありません。",
+    "data_origin_title": "### 🧾 データの出所と信頼性",
+    "confirmed_by_catalog": "✅ Pokémon TCG カタログで確認済み",
+    "label_rarity": "レアリティ",
+    "label_artist": "イラストレーター",
+    "label_set_release": "セット発売日",
+    "set_release_note": "上の日付はカタログ上のセット発売日で、このカード固有の発売日を単独で確認するものではありません。",
+    "ai_visual_assessment": "🤖 AI 視覚評価",
+    "label_visible_year": "カードに見える／推定年",
+    "label_variant": "推定バリエーション",
+    "label_apparent_language": "見た目の言語",
+    "ai_estimates_note": "見える年、バリエーション、言語、状態、視覚的真正性は引き続き AI の推定です。",
+    "physical_assessment_note": "専門的な精度が必要な場合、状態と真正性は実物評価が必要です。",
+    "catalog_image_unavailable": "カタログ画像を利用できません。",
+    "catalog_default_card_name": "Pokémon カード",
+    "catalog_gallery_no_match": "Pokémon カタログで視覚的な一致が見つかりませんでした。",
+    "catalog_gallery_instruction": "画像をクリックすると拡大できます。正しい候補を指定するには「このカードを選択」を使用してください。",
+    "select_this_card": "✅ このカードを選択",
+    "selected_catalog_title": "✅ カタログからカードを選択しました",
+    "click_image_larger": "画像をクリックすると大きい画像を開きます。",
+    "catalog_data_source": "以下のデータの出典: Pokémon TCG カタログ。",
+    "label_catalog_id": "カタログ ID",
+    "tcgplayer_live_caption": "現在出品中の商品を確認するため TCGplayer を直接検索します。出品価格はカタログの市場参考値と異なる場合があります。",
+    "tcgplayer_live_button": "🛒 TCGplayer の現在の出品を見る",
+    "validation_only_pokemon": "この段階の自動カタログ検証は Pokémon TCG カードで利用できます。",
+    "validation_name_missing": "⚪ カード名を十分な確度で特定できなかったため、カタログを照会できませんでした。",
+    "validation_title": "🛡️ カタログによる識別検証",
+    "validation_caption": "CardCraftAI は写真の識別結果を Pokémon カタログの実在カードと比較します。この検証と再試行は無料です。",
+    "validation_saved_retry": "AI の識別結果は保存されています。下のボタンはカタログだけを照会し、Gemini を再実行しません。",
+    "retry_validation_free": "🔄 カタログ検証を再試行 — 無料",
+    "validation_spinner": "識別を検証するため Pokémon カタログを照会しています...",
+    "validation_preserved": "AI の識別結果は保持されています。いつでもカタログ検証だけを再試行できます。",
+    "validation_unusable": "⚪ カタログ検証にはまだ利用可能な結果がありません。",
+    "user_selected_match_title": "✅ この分析用にユーザーが選択した一致候補",
+    "best_match_title": "🎯 カタログで見つかった最良一致",
+    "other_matches_title": "🖼️ 比較用のその他の候補",
+    "catalog_temp_unavailable": "Pokémon カタログは一時的に利用できません。写真分析は保持されており、検証の再試行に追加クレジットは不要です。",
+    "catalog_http_caption": "外部サービスが HTTP {status} を返しました。AI が既に生成した識別結果には影響しません。",
+    "catalog_rate_limited": "Pokémon カタログが一時的に新規照会を制限しました。写真分析は保存され、追加クレジットなしで再検証できます。",
+    "catalog_generic_failure": "分析は完了しましたが、現在ビジュアルカタログを照会できません。AI の識別結果は利用できますが、外部検証はまだ完了していません。",
+    "search_performed_by": "検索条件: {query}",
+    "selected_for_analysis_title": "✅ この分析用にカードを選択しました",
+    "selection_registered": "選択を保存しました。他の版を比較するか、このカードを専門分析に使用できます。",
+    "analysis_uses_selected": "分析では、選択したカタログ項目を使用します。",
+    "analysis_uses_typed": "カードを選択しない場合、入力した名前とセットだけを分析に使用します。",
+})
+
+
 def idioma_interface_atual():
     if "idioma_interface" not in st.session_state:
         st.session_state.idioma_interface = "English"
@@ -717,12 +1182,11 @@ def validar_analise_estruturada(dados):
     return dados
 
 
-def texto_ou_nao_confirmado(valor):
+def texto_ou_nao_confirmado(valor, idioma=None):
     if valor is None:
-        return "Nao confirmado"
+        return t("not_confirmed", idioma)
     texto = str(valor).strip()
-    return texto if texto else "Nao confirmado"
-
+    return texto if texto else t("not_confirmed", idioma)
 
 def formatar_resultado_estruturado(dados, tipo_resultado=None):
     status = dados.get("status_identificacao", "incerta")
@@ -926,14 +1390,53 @@ def _normalizar_colecao_catalogo(valor):
 
 
 def _normalizar_numero_catalogo(valor):
-    """Normaliza o identificador impresso da carta para comparação exata."""
+    """Normaliza o identificador impresso da carta para comparação."""
     texto = str(valor or "").strip().lower()
+    texto = texto.lstrip("#").strip()
     return "".join(
         caractere
         for caractere in texto
         if caractere.isalnum() or caractere == "/"
     )
 
+
+def _numero_principal_catalogo(valor):
+    """
+    Retorna a parte principal do número impresso.
+
+    Ex.: "#SM211" -> "sm211" e "SM211/248" -> "sm211".
+    O denominador só é ignorado quando um dos lados não o fornece.
+    """
+    normalizado = _normalizar_numero_catalogo(valor)
+    if not normalizado:
+        return ""
+    return normalizado.split("/", 1)[0]
+
+
+def _numeros_catalogo_equivalentes(a, b):
+    """Compara números sem transformar denominadores conflitantes em iguais."""
+    a_norm = _normalizar_numero_catalogo(a)
+    b_norm = _normalizar_numero_catalogo(b)
+
+    if not a_norm or not b_norm:
+        return False
+
+    if a_norm == b_norm:
+        return True
+
+    a_tem_denominador = "/" in a_norm
+    b_tem_denominador = "/" in b_norm
+
+    # A API frequentemente guarda apenas o número principal, enquanto uma
+    # leitura visual pode incluir o denominador impresso. Nesse caso, aceitamos
+    # a parte principal. Se ambos trazem denominador e eles divergem, não aceitamos.
+    if a_tem_denominador != b_tem_denominador:
+        return (
+            _numero_principal_catalogo(a_norm)
+            == _numero_principal_catalogo(b_norm)
+        )
+
+    return False
 
 def _similaridade_catalogo(a, b):
     a_norm = _normalizar_texto_catalogo(a)
@@ -1289,20 +1792,47 @@ def _set_id_catalogo_por_colecao(colecao):
     return mapa.get(colecao_norm)
 
 
+def _set_id_catalogo_por_numero(numero_carta):
+    """
+    Infere alguns sets promocionais pelo prefixo impresso do número.
+
+    É apenas um fallback para quando a coleção veio com um rótulo inesperado;
+    não substitui a validação posterior de nome + coleção + número.
+    """
+    numero = _numero_principal_catalogo(numero_carta).upper()
+
+    prefixos = (
+        ("SWSH", "swshp"),
+        ("SM", "smp"),
+        ("XY", "xyp"),
+        ("BW", "bwp"),
+    )
+
+    for prefixo, set_id in prefixos:
+        if numero.startswith(prefixo) and numero[len(prefixo):].isdigit():
+            return set_id
+
+    return None
+
+
 def _consultar_catalogo_por_id_composto(colecao, numero_carta):
     """
-    Reliability 2.2.4
+    Reliability 2.6.20
 
-    Para coleções cujo ID é conhecido, consulta diretamente /cards/<id>.
+    Para coleções cujo ID é conhecido (ou números promocionais cujo prefixo
+    permite inferir o set), consulta diretamente /cards/<id>.
     Isso evita que uma busca ampla por nome substitua uma carta de número exato.
     """
-    set_id = _set_id_catalogo_por_colecao(colecao)
-    numero = str(numero_carta or "").strip()
+    set_id = (
+        _set_id_catalogo_por_colecao(colecao)
+        or _set_id_catalogo_por_numero(numero_carta)
+    )
+    numero_api = _numero_principal_catalogo(numero_carta).upper()
 
-    if not set_id or not numero:
+    if not set_id or not numero_api:
         return []
 
-    card_id = f"{set_id}-{numero}"
+    card_id = f"{set_id}-{numero_api}"
     codigos_transitorios = {500, 502, 503, 504}
 
     for tentativa in range(1, 3):
@@ -1371,26 +1901,31 @@ def _consultar_catalogo_por_id_composto(colecao, numero_carta):
 
     return []
 
-
 def consultar_catalogo_pokemon_por_numero(
     numero_carta,
     colecao="",
     cache_buster=0,
 ):
     """
-    Reliability 2.2.4
+    Reliability 2.6.20
 
     Ordem de resolução do identificador:
-    1. ID direto quando coleção + número permitem derivá-lo;
-    2. busca Lucene exata com !number:<valor>;
-    3. busca normal por number com filtro local estritamente exato.
+    1. ID direto quando coleção/prefixo + número permitem derivá-lo;
+    2. busca Lucene exata restringida ao set quando ele é conhecido;
+    3. busca Lucene exata global;
+    4. busca normal por number com filtro local estritamente equivalente.
+
+    Uma falha transitória na rota de ID direto não encerra a busca: tentamos
+    também o endpoint de pesquisa. Se nenhuma consulta exata responder de forma
+    utilizável, o erro é propagado para impedir um falso "melhor candidato" por nome.
     """
     _ = cache_buster
 
     numero = str(numero_carta or "").strip()
     numero_norm = _normalizar_numero_catalogo(numero)
+    numero_principal = _numero_principal_catalogo(numero).upper()
 
-    if not numero_norm:
+    if not numero_norm or not numero_principal:
         return []
 
     if not POKEMON_TCG_API_KEY:
@@ -1399,27 +1934,50 @@ def consultar_catalogo_pokemon_por_numero(
             "configurada nos Secrets do Streamlit."
         )
 
-    # Caminho mais determinístico: set conhecido + número impresso.
-    cartas_id = _consultar_catalogo_por_id_composto(
-        colecao,
-        numero,
-    )
+    erro_id = None
+    try:
+        cartas_id = _consultar_catalogo_por_id_composto(
+            colecao,
+            numero,
+        )
+    except RuntimeError as erro:
+        erro_id = erro
+        cartas_id = []
+
     cartas_id = [
         carta
         for carta in cartas_id
-        if _normalizar_numero_catalogo(carta.get("number")) == numero_norm
+        if _numeros_catalogo_equivalentes(
+            carta.get("number"),
+            numero,
+        )
     ]
     if cartas_id:
         return cartas_id
 
-    numero_seguro = _frase_lucene_segura(numero)
+    numero_seguro = _frase_lucene_segura(numero_principal)
+    set_id = (
+        _set_id_catalogo_por_colecao(colecao)
+        or _set_id_catalogo_por_numero(numero)
+    )
 
-    consultas = [
+    consultas = []
+    if set_id:
+        consultas.extend([
+            f"!number:{numero_seguro} set.id:{set_id}",
+            f"number:{numero_seguro} set.id:{set_id}",
+        ])
+
+    consultas.extend([
         f"!number:{numero_seguro}",
         f"number:{numero_seguro}",
-    ]
+    ])
+
+    # Remove duplicatas preservando a ordem.
+    consultas = list(dict.fromkeys(consultas))
 
     ultimo_status = None
+    alguma_consulta_exata_respondeu = False
 
     for consulta in consultas:
         resultado = _executar_requisicao_catalogo(
@@ -1435,26 +1993,42 @@ def consultar_catalogo_pokemon_por_numero(
             ultimo_status = resultado.get("status")
             continue
 
+        alguma_consulta_exata_respondeu = True
         cartas = resultado.get("data", []) or []
         exatas = [
             carta
             for carta in cartas
             if isinstance(carta, dict)
-            and _normalizar_numero_catalogo(carta.get("number")) == numero_norm
+            and _numeros_catalogo_equivalentes(
+                carta.get("number"),
+                numero,
+            )
         ]
+
+        if set_id:
+            exatas_mesmo_set = [
+                carta
+                for carta in exatas
+                if str(((carta.get("set") or {}).get("id")) or "").strip().lower()
+                == str(set_id).strip().lower()
+            ]
+            if exatas_mesmo_set:
+                return exatas_mesmo_set
 
         if exatas:
             return exatas
 
-    if ultimo_status in {500, 502, 503, 504}:
-        raise RuntimeError(
-            "O catálogo Pokémon TCG está temporariamente "
-            f"indisponível (HTTP {ultimo_status}) durante a busca pelo número."
-        )
+    if not alguma_consulta_exata_respondeu:
+        if erro_id is not None:
+            raise erro_id
+
+        if ultimo_status in {500, 502, 503, 504}:
+            raise RuntimeError(
+                "O catálogo Pokémon TCG está temporariamente "
+                f"indisponível (HTTP {ultimo_status}) durante a busca pelo número."
+            )
 
     return []
-
-
 
 def ranquear_cartas_catalogo(
     cartas,
@@ -1500,17 +2074,14 @@ def ranquear_cartas_catalogo(
                 * 30
             )
 
+        numero_exato = False
         if numero:
-            numero_norm = _normalizar_numero_catalogo(numero)
-            numero_carta_norm = _normalizar_numero_catalogo(
-                numero_carta
+            numero_exato = _numeros_catalogo_equivalentes(
+                numero,
+                numero_carta,
             )
 
-            if (
-                numero_norm
-                and
-                numero_norm == numero_carta_norm
-            ):
+            if numero_exato:
                 score += 60
             else:
                 score += (
@@ -1523,21 +2094,24 @@ def ranquear_cartas_catalogo(
 
         pontuadas.append(
             (
+                1 if (numero and numero_exato) else 0,
                 score,
                 carta,
             )
         )
 
     pontuadas.sort(
-        key=lambda item: item[0],
+        key=lambda item: (
+            item[0],
+            item[1],
+        ),
         reverse=True,
     )
 
     return [
         carta
-        for _, carta in pontuadas[:limite]
+        for _, _, carta in pontuadas[:limite]
     ]
-
 
 def buscar_cartas_catalogo_pokemon(
     nome,
@@ -1603,7 +2177,10 @@ def buscar_cartas_catalogo_pokemon(
         ids_vistos.add(chave)
         combinadas.append(carta)
 
-    if not combinadas and erro_numero is not None:
+    if erro_numero is not None and str(numero or "").strip():
+        # Se a consulta exata por número falhou tecnicamente, não usamos uma
+        # busca ampla por nome para inventar um "melhor candidato". Isso evita
+        # falsos conflitos como SM211 -> SM60 durante falhas parciais da API.
         raise erro_numero
 
     return ranquear_cartas_catalogo(
@@ -1663,13 +2240,9 @@ def _comparar_identificacao_com_carta(identificacao, carta):
     similaridade_nome = _similaridade_catalogo(nome_ia, nome_catalogo)
     similaridade_colecao = _similaridade_colecao_catalogo(colecao_ia, colecao_catalogo)
 
-    numero_ia_norm = _normalizar_numero_catalogo(numero_ia)
-    numero_catalogo_norm = _normalizar_numero_catalogo(numero_catalogo)
-
-    numero_exato = bool(
-        numero_ia_norm
-        and numero_catalogo_norm
-        and numero_ia_norm == numero_catalogo_norm
+    numero_exato = _numeros_catalogo_equivalentes(
+        numero_ia,
+        numero_catalogo,
     )
 
     similaridade_numero = _similaridade_catalogo(numero_ia, numero_catalogo)
@@ -1708,8 +2281,8 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
     if not identificacao["nome"]:
         return {
             "status": "sem_dados",
-            "titulo": "Não foi possível validar no catálogo",
-            "mensagem": "A IA não conseguiu confirmar um nome de carta suficiente para consultar o catálogo.",
+            "titulo": t("catalog_no_data_title"),
+            "mensagem": t("catalog_no_data_message"),
             "melhor": None,
             "candidatos": [],
             "identificacao": identificacao,
@@ -1732,8 +2305,8 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
     if not comparacoes:
         return {
             "status": "sem_resultado",
-            "titulo": "Não validado no catálogo",
-            "mensagem": "O catálogo não retornou uma correspondência utilizável para a identificação da foto.",
+            "titulo": t("catalog_no_result_title"),
+            "mensagem": t("catalog_no_result_message"),
             "melhor": None,
             "candidatos": [],
             "identificacao": identificacao,
@@ -1751,7 +2324,6 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
         identificacao["qualidade_imagem"]
     ) == "ruim"
 
-    # Confirmação exige os três identificadores e imagem não ruim.
     if (
         nome_forte
         and tem_colecao
@@ -1761,14 +2333,9 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
         and not imagem_ruim
     ):
         status = "confirmado"
-        titulo = "✅ Identificação validada pelo catálogo"
-        mensagem = (
-            "O número exato foi localizado e nome e coleção normalizada "
-            "correspondem a uma carta real do catálogo Pokémon TCG."
-        )
+        titulo = t("catalog_validated_title")
+        mensagem = t("catalog_validated_message")
 
-    # Se a IA forneceu um número, uma carta com número diferente nunca pode
-    # ser promovida a "provável". Isso bloqueia falsos positivos como SM211 -> SM60.
     elif (
         nome_forte
         and (
@@ -1781,32 +2348,21 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
         )
     ):
         status = "provavel"
-        titulo = "🟡 Identificação provavelmente correta"
-        if imagem_ruim:
-            mensagem = (
-                "O catálogo encontrou uma correspondência forte, mas a qualidade "
-                "da imagem impede uma confirmação automática."
-            )
-        else:
-            mensagem = (
-                "O catálogo encontrou uma correspondência forte, mas ainda falta "
-                "confirmar pelo menos um identificador importante."
-            )
+        titulo = t("catalog_probable_title")
+        mensagem = (
+            t("catalog_probable_image_message")
+            if imagem_ruim
+            else t("catalog_probable_missing_message")
+        )
 
     else:
         status = "inconclusivo"
-        titulo = "⚠️ Identificação ainda não confirmada"
-        if tem_numero and not numero_exato:
-            mensagem = (
-                "A IA informou um número de carta, mas nenhuma correspondência com "
-                "esse número exato foi confirmada. Versões com número diferente são "
-                "mostradas apenas para comparação e não são tratadas como a mesma carta."
-            )
-        else:
-            mensagem = (
-                "O catálogo encontrou versões semelhantes, mas os dados extraídos da "
-                "foto ainda não são suficientes para confirmar a carta exata."
-            )
+        titulo = t("catalog_inconclusive_title")
+        mensagem = (
+            t("catalog_inconclusive_number_message")
+            if tem_numero and not numero_exato
+            else t("catalog_inconclusive_message")
+        )
 
     return {
         "status": status,
@@ -1816,7 +2372,6 @@ def validar_identificacao_foto_catalogo(resultado, cartas):
         "candidatos": comparacoes[:8],
         "identificacao": identificacao,
     }
-
 
 # ============================================================
 # RELIABILITY 2.4 - CONFIDENCE ENGINE
@@ -1854,36 +2409,14 @@ def classificar_confianca_cardcraft(
     validacao=None,
     catalogo_disponivel=True,
 ):
-    """
-    Reliability 2.4.0
-
-    Converte evidências já existentes em um nível determinístico de confiança.
-    O Gemini não escolhe este nível e nenhuma porcentagem é inventada.
-
-    Prioridade:
-    1. divergência objetiva bloqueia promoção;
-    2. confirmação externa exige validação exata do catálogo;
-    3. alta confiança visual só existe quando não há confirmação externa
-       disponível e a leitura visual é forte, completa e com imagem utilizável;
-    4. correspondência externa incompleta vira confirmação parcial;
-    5. demais casos permanecem não confirmados.
-    """
+    """Reliability 2.4.0: confiança determinística, sem porcentagem inventada."""
     identificacao = _identificacao_para_confianca(
         dados_identificacao
     )
 
-    nome = str(
-        identificacao.get("nome")
-        or ""
-    ).strip()
-    colecao = str(
-        identificacao.get("colecao")
-        or ""
-    ).strip()
-    numero = str(
-        identificacao.get("numero")
-        or ""
-    ).strip()
+    nome = str(identificacao.get("nome") or "").strip()
+    colecao = str(identificacao.get("colecao") or "").strip()
+    numero = str(identificacao.get("numero") or "").strip()
 
     qualidade = _normalizar_texto_catalogo(
         identificacao.get("qualidade_imagem")
@@ -1892,99 +2425,58 @@ def classificar_confianca_cardcraft(
         identificacao.get("status_modelo")
     )
 
-    validacao = (
-        validacao
-        if isinstance(validacao, dict)
-        else {}
-    )
-    status_catalogo = str(
-        validacao.get("status")
-        or ""
-    ).strip().lower()
+    validacao = validacao if isinstance(validacao, dict) else {}
+    status_catalogo = str(validacao.get("status") or "").strip().lower()
     melhor = validacao.get("melhor")
-    melhor = (
-        melhor
-        if isinstance(melhor, dict)
-        else {}
-    )
+    melhor = melhor if isinstance(melhor, dict) else {}
 
     nome_forte = bool(
         melhor
-        and
-        float(
-            melhor.get("similaridade_nome")
-            or 0
-        )
-        >= 0.90
+        and float(melhor.get("similaridade_nome") or 0) >= 0.90
     )
     colecao_forte = bool(
         melhor
-        and
-        float(
-            melhor.get("similaridade_colecao")
-            or 0
-        )
-        >= 0.85
+        and float(melhor.get("similaridade_colecao") or 0) >= 0.85
     )
     numero_exato = bool(
         melhor
-        and
-        melhor.get("numero_exato")
+        and melhor.get("numero_exato")
     )
 
     numero_catalogo = str(
-        melhor.get("numero_catalogo")
-        or ""
+        melhor.get("numero_catalogo") or ""
     ).strip()
 
-    # Divergência objetiva tem prioridade absoluta.
     if (
         catalogo_disponivel
-        and
-        melhor
-        and
-        numero
-        and
-        numero_catalogo
-        and
-        not numero_exato
+        and melhor
+        and numero
+        and numero_catalogo
+        and not numero_exato
     ):
         return {
             "codigo": "divergencia",
-            "rotulo": "⚠️ Divergência detectada",
-            "mensagem": (
-                "O número lido na carta diverge do número do melhor candidato "
-                "do catálogo. O CardCraftAI bloqueou qualquer promoção para "
-                "confirmação ou alta confiança."
-            ),
+            "rotulo": t("confidence_divergence_label"),
+            "mensagem": t("confidence_divergence_message"),
             "evidencias": [
-                f"Número lido pela IA: #{numero}",
-                f"Número do melhor candidato do catálogo: #{numero_catalogo}",
-                "Divergência de número tem prioridade sobre semelhanças de nome ou coleção.",
+                t("confidence_ai_number", number=numero),
+                t("confidence_catalog_number", number=numero_catalogo),
+                t("confidence_number_priority"),
             ],
             "confirmacao_externa": False,
             "bloqueio_divergencia": True,
         }
 
-    if (
-        catalogo_disponivel
-        and
-        status_catalogo == "confirmado"
-    ):
-        evidencias = [
-            "Número exato localizado no catálogo Pokémon TCG.",
-            "Nome compatível com a correspondência do catálogo.",
-            "Coleção / set compatível com a correspondência do catálogo.",
-        ]
-
+    if catalogo_disponivel and status_catalogo == "confirmado":
         return {
             "codigo": "confirmado_catalogo",
-            "rotulo": "✅ Confirmado pelo catálogo",
-            "mensagem": (
-                "A identidade principal da carta foi confirmada externamente "
-                "por nome, coleção e número exato."
-            ),
-            "evidencias": evidencias,
+            "rotulo": t("confidence_confirmed_label"),
+            "mensagem": t("confidence_confirmed_message"),
+            "evidencias": [
+                t("confidence_exact_number"),
+                t("confidence_name_match"),
+                t("confidence_set_match"),
+            ],
             "confirmacao_externa": True,
             "bloqueio_divergencia": False,
         }
@@ -1993,127 +2485,71 @@ def classificar_confianca_cardcraft(
         evidencias_parciais = []
 
         if numero_exato:
-            evidencias_parciais.append(
-                "Número exato compatível com um candidato do catálogo."
-            )
+            evidencias_parciais.append(t("confidence_exact_candidate"))
         if nome_forte:
-            evidencias_parciais.append(
-                "Nome fortemente compatível com o catálogo."
-            )
+            evidencias_parciais.append(t("confidence_name_strong"))
         if colecao_forte:
-            evidencias_parciais.append(
-                "Coleção / set fortemente compatível com o catálogo."
-            )
+            evidencias_parciais.append(t("confidence_set_strong"))
 
         parcial = (
             status_catalogo == "provavel"
-            or
-            (
+            or (
                 status_catalogo == "inconclusivo"
-                and
-                (
+                and (
                     numero_exato
-                    or
-                    (
-                        nome_forte
-                        and
-                        colecao_forte
-                    )
+                    or (nome_forte and colecao_forte)
                 )
             )
         )
 
         if parcial:
             if not numero:
-                evidencias_parciais.append(
-                    "O número da carta não foi lido com segurança."
-                )
+                evidencias_parciais.append(t("confidence_number_missing"))
             elif not numero_exato:
-                evidencias_parciais.append(
-                    "O número ainda não possui confirmação exata."
-                )
+                evidencias_parciais.append(t("confidence_number_not_exact"))
 
             if not colecao:
-                evidencias_parciais.append(
-                    "A coleção / set não foi lida com segurança."
-                )
+                evidencias_parciais.append(t("confidence_set_missing"))
 
             return {
                 "codigo": "parcial",
-                "rotulo": "🟡 Parcialmente confirmado",
-                "mensagem": (
-                    "O catálogo confirma parte relevante da identificação, "
-                    "mas ainda falta um identificador decisivo para confirmar "
-                    "a carta exata."
-                ),
+                "rotulo": t("confidence_partial_label"),
+                "mensagem": t("confidence_partial_message"),
                 "evidencias": evidencias_parciais,
                 "confirmacao_externa": False,
                 "bloqueio_divergencia": False,
             }
 
-        evidencias = []
-        if status_catalogo in {
-            "sem_resultado",
-            "sem_dados",
-        }:
-            evidencias.append(
-                "O catálogo foi consultado, mas não confirmou uma correspondência utilizável."
-            )
+        if status_catalogo in {"sem_resultado", "sem_dados"}:
+            evidencias = [t("confidence_catalog_no_match")]
         elif melhor:
-            evidencias.append(
-                "Há candidatos no catálogo, porém a correspondência ainda é insuficiente."
-            )
+            evidencias = [t("confidence_candidates_insufficient")]
         else:
-            evidencias.append(
-                "Não há evidência externa suficiente para confirmar a identidade."
-            )
+            evidencias = [t("confidence_no_external_evidence")]
 
         return {
             "codigo": "nao_confirmado",
-            "rotulo": "⚪ Não confirmado",
-            "mensagem": (
-                "As evidências disponíveis ainda não sustentam uma confirmação "
-                "segura da identidade da carta."
-            ),
+            "rotulo": t("confidence_not_confirmed_label"),
+            "mensagem": t("confidence_not_confirmed_message"),
             "evidencias": evidencias,
             "confirmacao_externa": False,
             "bloqueio_divergencia": False,
         }
 
-    # Sem confirmação externa disponível: só a leitura visual pode ser classificada.
-    campos_completos = bool(
-        nome
-        and
-        colecao
-        and
-        numero
-    )
-    imagem_utilizavel = qualidade in {
-        "boa",
-        "aceitavel",
-    }
+    campos_completos = bool(nome and colecao and numero)
+    imagem_utilizavel = qualidade in {"boa", "aceitavel"}
     leitura_visual_forte = status_modelo == "confirmada"
 
-    if (
-        campos_completos
-        and
-        imagem_utilizavel
-        and
-        leitura_visual_forte
-    ):
+    if campos_completos and imagem_utilizavel and leitura_visual_forte:
         return {
             "codigo": "alta_visual",
-            "rotulo": "🟢 Alta confiança visual",
-            "mensagem": (
-                "A leitura visual é forte e contém nome, coleção e número, "
-                "mas ainda não existe confirmação externa do catálogo para "
-                "esta execução."
-            ),
+            "rotulo": t("confidence_high_visual_label"),
+            "mensagem": t("confidence_high_visual_message"),
             "evidencias": [
-                "Nome, coleção / set e número foram extraídos da imagem.",
-                "A leitura visual preliminar da IA foi classificada como forte.",
-                "A qualidade da imagem foi classificada como boa ou aceitável.",
-                "Este nível não equivale a confirmação pelo catálogo.",
+                t("confidence_fields_extracted"),
+                t("confidence_visual_strong"),
+                t("confidence_image_quality_ok"),
+                t("confidence_not_catalog_confirmation"),
             ],
             "confirmacao_externa": False,
             "bloqueio_divergencia": False,
@@ -2121,67 +2557,47 @@ def classificar_confianca_cardcraft(
 
     faltantes = []
     if not nome:
-        faltantes.append("nome")
+        faltantes.append(t("field_name_short"))
     if not colecao:
-        faltantes.append("coleção / set")
+        faltantes.append(t("field_set_short"))
     if not numero:
-        faltantes.append("número")
+        faltantes.append(t("field_number_short"))
 
-    evidencias = [
-        "Não há confirmação externa disponível para esta classificação."
-    ]
+    evidencias = [t("confidence_no_external")]
 
     if faltantes:
         evidencias.append(
-            "Identificadores ausentes ou inseguros: "
-            + ", ".join(faltantes)
-            + "."
+            t(
+                "confidence_missing_identifiers",
+                fields=", ".join(faltantes),
+            )
         )
 
     if not imagem_utilizavel:
-        evidencias.append(
-            "A qualidade da imagem não sustenta alta confiança visual."
-        )
+        evidencias.append(t("confidence_image_quality_low"))
 
     if not leitura_visual_forte:
-        evidencias.append(
-            "A leitura preliminar da IA não atingiu o nível visual forte."
-        )
+        evidencias.append(t("confidence_visual_not_strong"))
 
     return {
         "codigo": "nao_confirmado",
-        "rotulo": "⚪ Não confirmado",
-        "mensagem": (
-            "Sem confirmação externa, a evidência visual disponível ainda "
-            "não é suficiente para classificar a identidade com alta confiança."
-        ),
+        "rotulo": t("confidence_not_confirmed_label"),
+        "mensagem": t("confidence_no_external_high_message"),
         "evidencias": evidencias,
         "confirmacao_externa": False,
         "bloqueio_divergencia": False,
     }
-
 
 def mostrar_nivel_confianca_cardcraft(confianca):
     """Apresenta o nível sem transformar incerteza em porcentagem artificial."""
     if not isinstance(confianca, dict):
         return
 
-    codigo = confianca.get(
-        "codigo",
-        "nao_confirmado",
-    )
-    rotulo = confianca.get(
-        "rotulo",
-        "⚪ Não confirmado",
-    )
-    mensagem = confianca.get(
-        "mensagem",
-        "",
-    )
+    codigo = confianca.get("codigo", "nao_confirmado")
+    rotulo = confianca.get("rotulo", t("confidence_not_confirmed_label"))
+    mensagem = confianca.get("mensagem", "")
 
-    st.markdown(
-        "### 🧭 Nível de confiança CardCraftAI"
-    )
+    st.markdown(t("confidence_title"))
 
     if codigo == "confirmado_catalogo":
         st.success(rotulo)
@@ -2190,32 +2606,16 @@ def mostrar_nivel_confianca_cardcraft(confianca):
     elif codigo == "parcial":
         st.warning(rotulo)
     else:
-        # Alta confiança visual usa bloco informativo para não parecer
-        # equivalente a uma confirmação externa em verde.
         st.info(rotulo)
 
     if mensagem:
-        st.write(
-            mensagem
-        )
+        st.write(mensagem)
 
-    with st.expander(
-        "🧩 Por que este nível foi atribuído?"
-    ):
-        for item in (
-            confianca.get("evidencias")
-            or []
-        ):
-            st.write(
-                f"- {item}"
-            )
+    with st.expander(t("confidence_why")):
+        for item in (confianca.get("evidencias") or []):
+            st.write(f"- {item}")
 
-        st.caption(
-            "O Confidence Engine 2.4.0 usa regras determinísticas sobre "
-            "evidências existentes. Ele não pede ao Gemini uma porcentagem "
-            "de confiança e não inventa precisão estatística."
-        )
-
+        st.caption(t("confidence_engine_note"))
 
 def _indicador_correspondencia(
     valor_ia,
@@ -2226,12 +2626,12 @@ def _indicador_correspondencia(
 ):
     """Texto curto para explicar ao usuário o que coincidiu."""
     if not valor_ia:
-        return "⚪ Não informado pela IA"
+        return t("indicator_not_informed")
 
     if numero:
-        iguais = (
-            _normalizar_numero_catalogo(valor_ia)
-            == _normalizar_numero_catalogo(valor_catalogo)
+        iguais = _numeros_catalogo_equivalentes(
+            valor_ia,
+            valor_catalogo,
         )
     elif colecao:
         iguais = (
@@ -2244,13 +2644,12 @@ def _indicador_correspondencia(
     else:
         iguais = _similaridade_catalogo(valor_ia, valor_catalogo) >= limite
 
-    return "✅ Compatível" if iguais else "⚠️ Divergente"
-
+    return t("indicator_compatible") if iguais else t("indicator_divergent")
 
 def mostrar_validacao_foto_catalogo(validacao):
     """Renderiza o resultado da validação sem consumir outro crédito."""
     status = validacao.get("status")
-    titulo = validacao.get("titulo", "Validação do catálogo")
+    titulo = validacao.get("titulo", t("catalog_no_result_title"))
     mensagem = validacao.get("mensagem", "")
 
     if status == "confirmado":
@@ -2269,9 +2668,7 @@ def mostrar_validacao_foto_catalogo(validacao):
         validacao=validacao,
         catalogo_disponivel=True,
     )
-    mostrar_nivel_confianca_cardcraft(
-        confianca
-    )
+    mostrar_nivel_confianca_cardcraft(confianca)
 
     melhor = validacao.get("melhor")
     if not melhor:
@@ -2280,7 +2677,7 @@ def mostrar_validacao_foto_catalogo(validacao):
     col_nome, col_set, col_numero = st.columns(3)
 
     with col_nome:
-        st.caption("Nome")
+        st.caption(t("label_name"))
         st.write(
             _indicador_correspondencia(
                 identificacao.get("nome"),
@@ -2290,7 +2687,7 @@ def mostrar_validacao_foto_catalogo(validacao):
         )
 
     with col_set:
-        st.caption("Coleção / Set")
+        st.caption(t("label_set"))
         st.write(
             _indicador_correspondencia(
                 identificacao.get("colecao"),
@@ -2301,7 +2698,7 @@ def mostrar_validacao_foto_catalogo(validacao):
         )
 
     with col_numero:
-        st.caption("Número")
+        st.caption(t("label_number"))
         st.write(
             _indicador_correspondencia(
                 identificacao.get("numero"),
@@ -2310,97 +2707,49 @@ def mostrar_validacao_foto_catalogo(validacao):
             )
         )
 
-    with st.expander("🔎 Como o CardCraftAI validou esta identificação"):
+    with st.expander(t("validation_explainer")):
         st.write(
-            "**IA identificou:** "
-            f"{identificacao.get('nome') or 'não confirmado'} • "
-            f"{identificacao.get('colecao') or 'coleção não confirmada'} • "
-            f"#{identificacao.get('numero') or 'número não confirmado'}"
+            t(
+                "ai_identified",
+                name=identificacao.get("nome") or t("not_confirmed"),
+                set_name=identificacao.get("colecao") or t("set_not_confirmed"),
+                number=identificacao.get("numero") or t("number_not_confirmed"),
+            )
         )
         st.write(
-            "**Melhor correspondência do catálogo:** "
-            f"{melhor.get('nome_catalogo') or 'não disponível'} • "
-            f"{melhor.get('colecao_catalogo') or 'set não disponível'} • "
-            f"#{melhor.get('numero_catalogo') or 'número não disponível'}"
+            t(
+                "catalog_best_match",
+                name=melhor.get("nome_catalogo") or t("not_available"),
+                set_name=melhor.get("colecao_catalogo") or t("set_not_available"),
+                number=melhor.get("numero_catalogo") or t("number_not_available"),
+            )
         )
-        st.caption(
-            "A validação compara dados estruturados. Ela não autentica fisicamente "
-            "a carta e não substitui verificação profissional."
-        )
+        st.caption(t("validation_disclaimer"))
 
     if status == "confirmado":
         carta_confirmada = melhor.get("carta") or {}
         resumo_confirmado = _resumo_carta_catalogo(carta_confirmada)
 
-        st.markdown("### 🧾 Origem e confiabilidade dos dados")
-        col_confirmado, col_estimado = st.columns(
-            2,
-            gap="large",
-        )
+        st.markdown(t("data_origin_title"))
+        col_confirmado, col_estimado = st.columns(2, gap="large")
 
         with col_confirmado:
-            st.success("✅ Confirmado pelo catálogo Pokémon TCG")
-            st.write(
-                "**Nome:** "
-                + texto_ou_nao_confirmado(resumo_confirmado.get("nome"))
-            )
-            st.write(
-                "**Coleção / Set:** "
-                + texto_ou_nao_confirmado(resumo_confirmado.get("set"))
-            )
-            st.write(
-                "**Número:** "
-                + texto_ou_nao_confirmado(resumo_confirmado.get("numero"))
-            )
-            st.write(
-                "**Raridade:** "
-                + texto_ou_nao_confirmado(resumo_confirmado.get("raridade"))
-            )
-            st.write(
-                "**Artista:** "
-                + texto_ou_nao_confirmado(resumo_confirmado.get("artista"))
-            )
-            st.write(
-                "**Lançamento do set:** "
-                + texto_ou_nao_confirmado(
-                    resumo_confirmado.get("data_lancamento_set")
-                )
-            )
-            st.caption(
-                "A data acima pertence ao set no catálogo. Ela não é, por si só, "
-                "a data específica de lançamento desta carta."
-            )
+            st.success(t("confirmed_by_catalog"))
+            st.write(f"**{t('label_name')}:** " + texto_ou_nao_confirmado(resumo_confirmado.get("nome")))
+            st.write(f"**{t('label_set')}:** " + texto_ou_nao_confirmado(resumo_confirmado.get("set")))
+            st.write(f"**{t('label_number')}:** " + texto_ou_nao_confirmado(resumo_confirmado.get("numero")))
+            st.write(f"**{t('label_rarity')}:** " + texto_ou_nao_confirmado(resumo_confirmado.get("raridade")))
+            st.write(f"**{t('label_artist')}:** " + texto_ou_nao_confirmado(resumo_confirmado.get("artista")))
+            st.write(f"**{t('label_set_release')}:** " + texto_ou_nao_confirmado(resumo_confirmado.get("data_lancamento_set")))
+            st.caption(t("set_release_note"))
 
         with col_estimado:
-            st.info("🤖 Avaliação visual da IA")
-            st.write(
-                "**Ano visível / estimado na carta:** "
-                + texto_ou_nao_confirmado(
-                    identificacao.get("ano_visual_ia")
-                )
-            )
-            st.write(
-                "**Variante sugerida:** "
-                + texto_ou_nao_confirmado(
-                    identificacao.get("variante_ia")
-                )
-            )
-            st.write(
-                "**Idioma aparente:** "
-                + texto_ou_nao_confirmado(
-                    identificacao.get("idioma_ia")
-                )
-            )
-            st.write(
-                "Ano visual, variante, idioma aparente, condição e autenticidade "
-                "visual continuam sendo estimativas da IA. A data de lançamento "
-                "do set não confirma o ano específico desta carta."
-            )
-            st.caption(
-                "Condição e autenticidade exigem avaliação física quando precisão "
-                "profissional for necessária."
-            )
-
+            st.info(t("ai_visual_assessment"))
+            st.write(f"**{t('label_visible_year')}:** " + texto_ou_nao_confirmado(identificacao.get("ano_visual_ia")))
+            st.write(f"**{t('label_variant')}:** " + texto_ou_nao_confirmado(identificacao.get("variante_ia")))
+            st.write(f"**{t('label_apparent_language')}:** " + texto_ou_nao_confirmado(identificacao.get("idioma_ia")))
+            st.write(t("ai_estimates_note"))
+            st.caption(t("physical_assessment_note"))
 
 def _url_imagem_carta(
     carta,
@@ -2957,106 +3306,46 @@ def _mostrar_precos_referencia_catalogo(
 
 def mostrar_carta_catalogo_selecionada(
     carta,
-    titulo=(
-        "✅ Carta selecionada no catálogo"
-    ),
+    titulo=None,
 ):
     if not carta:
         return
 
-    resumo = _resumo_carta_catalogo(
-        carta
-    )
+    if titulo is None:
+        titulo = t("selected_catalog_title")
 
-    st.success(
-        titulo
-    )
+    resumo = _resumo_carta_catalogo(carta)
 
-    col_img, col_info = st.columns(
-        [1, 2],
-        gap="large",
-    )
+    st.success(titulo)
+
+    col_img, col_info = st.columns([1, 2], gap="large")
 
     with col_img:
-        _renderizar_imagem_clicavel(
-            carta
-        )
-        st.caption(
-            "Clique na imagem para abrir "
-            "a versão maior."
-        )
+        _renderizar_imagem_clicavel(carta)
+        st.caption(t("click_image_larger"))
 
     with col_info:
-        st.caption(
-            "Fonte dos dados abaixo: catálogo Pokémon TCG."
-        )
-        st.markdown(
-            f"### {texto_ou_nao_confirmado(resumo.get('nome'))}"
-        )
-        st.write(
-            "**Coleção / Set:** "
-            + texto_ou_nao_confirmado(
-                resumo.get("set")
-            )
-        )
-        st.write(
-            "**Número:** "
-            + texto_ou_nao_confirmado(
-                resumo.get("numero")
-            )
-        )
-        st.write(
-            "**Raridade:** "
-            + texto_ou_nao_confirmado(
-                resumo.get("raridade")
-            )
-        )
-        st.write(
-            "**Artista:** "
-            + texto_ou_nao_confirmado(
-                resumo.get("artista")
-            )
-        )
-        st.write(
-            "**Lançamento do set:** "
-            + texto_ou_nao_confirmado(
-                resumo.get("data_lancamento_set")
-            )
-        )
-        st.caption(
-            "Data do set no catálogo; não representa necessariamente a data "
-            "específica de lançamento desta carta."
-        )
-        st.write(
-            "**ID do catálogo:** "
-            + texto_ou_nao_confirmado(
-                resumo.get("id")
-            )
-        )
+        st.caption(t("catalog_data_source"))
+        st.markdown(f"### {texto_ou_nao_confirmado(resumo.get('nome'))}")
+        st.write(f"**{t('label_set')}:** " + texto_ou_nao_confirmado(resumo.get("set")))
+        st.write(f"**{t('label_number')}:** " + texto_ou_nao_confirmado(resumo.get("numero")))
+        st.write(f"**{t('label_rarity')}:** " + texto_ou_nao_confirmado(resumo.get("raridade")))
+        st.write(f"**{t('label_artist')}:** " + texto_ou_nao_confirmado(resumo.get("artista")))
+        st.write(f"**{t('label_set_release')}:** " + texto_ou_nao_confirmado(resumo.get("data_lancamento_set")))
+        st.caption(t("set_release_note"))
+        st.write(f"**{t('label_catalog_id')}:** " + texto_ou_nao_confirmado(resumo.get("id")))
 
-        url_tcgplayer = (
-            _url_busca_tcgplayer(
-                carta
-            )
-        )
+        url_tcgplayer = _url_busca_tcgplayer(carta)
 
         if url_tcgplayer:
-            st.caption(
-                "Busca externa direta no TCGplayer para consultar anúncios "
-                "disponíveis agora. Os valores dessas ofertas podem "
-                "diferir das referências de mercado do catálogo."
-            )
-
+            st.caption(t("tcgplayer_live_caption"))
             st.link_button(
-                "🛒 Ver ofertas atuais no TCGplayer",
+                t("tcgplayer_live_button"),
                 url_tcgplayer,
                 use_container_width=True,
             )
 
-        _mostrar_precos_referencia_catalogo(
-            carta
-        )
-
+        _mostrar_precos_referencia_catalogo(carta)
 
 def selecionar_carta_catalogo(
     contexto,
@@ -3078,105 +3367,49 @@ def mostrar_galeria_catalogo(
     contexto,
 ):
     if not cartas:
-        st.warning(
-            "Nenhuma correspondência visual foi encontrada "
-            "no catálogo Pokémon."
-        )
+        st.warning(t("catalog_gallery_no_match"))
         return
 
-    st.caption(
-        "Clique em uma imagem para ampliá-la. "
-        "Use “Selecionar esta carta” para indicar "
-        "a correspondência correta."
-    )
+    st.caption(t("catalog_gallery_instruction"))
 
     colunas_por_linha = 4
 
-    for inicio in range(
-        0,
-        len(cartas),
-        colunas_por_linha,
-    ):
-        bloco = cartas[
-            inicio:
-            inicio + colunas_por_linha
-        ]
-        colunas = st.columns(
-            colunas_por_linha,
-            gap="medium",
-        )
+    for inicio in range(0, len(cartas), colunas_por_linha):
+        bloco = cartas[inicio:inicio + colunas_por_linha]
+        colunas = st.columns(colunas_por_linha, gap="medium")
 
-        for coluna, carta in zip(
-            colunas,
-            bloco,
-        ):
+        for coluna, carta in zip(colunas, bloco):
             with coluna:
-                _renderizar_imagem_clicavel(
-                    carta
-                )
+                _renderizar_imagem_clicavel(carta)
 
-                set_nome = (
-                    (carta.get("set") or {})
-                    .get("name")
-                )
-                numero = carta.get(
-                    "number"
-                )
-                raridade = carta.get(
-                    "rarity"
-                )
+                set_nome = (carta.get("set") or {}).get("name")
+                numero = carta.get("number")
+                raridade = carta.get("rarity")
 
                 st.markdown(
                     "**"
-                    + escape(
-                        str(
-                            carta.get(
-                                "name",
-                                "Carta Pokémon",
-                            )
-                        )
-                    )
+                    + escape(str(carta.get("name", t("catalog_default_card_name"))))
                     + "**"
                 )
 
                 st.caption(
-                    (
-                        texto_ou_nao_confirmado(
-                            set_nome
-                        )
-                        + " • #"
-                        + texto_ou_nao_confirmado(
-                            numero
-                        )
-                    )
+                    texto_ou_nao_confirmado(set_nome)
+                    + " • #"
+                    + texto_ou_nao_confirmado(numero)
                 )
 
                 if raridade:
-                    st.caption(
-                        str(raridade)
-                    )
+                    st.caption(str(raridade))
 
-                carta_id = str(
-                    carta.get(
-                        "id",
-                        inicio,
-                    )
-                )
+                carta_id = str(carta.get("id", inicio))
 
                 st.button(
-                    "✅ Selecionar esta carta",
-                    key=(
-                        f"catalogo_selecionar_"
-                        f"{contexto}_{carta_id}"
-                    ),
+                    t("select_this_card"),
+                    key=f"catalogo_selecionar_{contexto}_{carta_id}",
                     use_container_width=True,
                     on_click=selecionar_carta_catalogo,
-                    args=(
-                        contexto,
-                        carta,
-                    ),
+                    args=(contexto, carta),
                 )
-
 
 def info_catalogo_para_analise(
     carta,
@@ -3332,42 +3565,17 @@ def _status_http_catalogo_erro(erro):
 
 def _mostrar_falha_validacao_catalogo_foto(erro):
     """Explica a falha externa sem invalidar a análise da IA."""
-    status = _status_http_catalogo_erro(
-        erro
-    )
+    status = _status_http_catalogo_erro(erro)
 
-    if status in {
-        500,
-        502,
-        503,
-        504,
-    }:
-        st.warning(
-            "O catálogo Pokémon está temporariamente indisponível. "
-            "A análise da foto foi preservada e nenhum novo crédito "
-            "será necessário para tentar a validação novamente."
-        )
-        st.caption(
-            f"Serviço externo respondeu com HTTP {status}. "
-            "Isso não altera a identificação já produzida pela IA."
-        )
+    if status in {500, 502, 503, 504}:
+        st.warning(t("catalog_temp_unavailable"))
+        st.caption(t("catalog_http_caption", status=status))
     elif status == 429:
-        st.warning(
-            "O catálogo Pokémon limitou temporariamente novas consultas. "
-            "A análise da foto continua salva e pode ser validada novamente "
-            "sem consumir outro crédito."
-        )
+        st.warning(t("catalog_rate_limited"))
     else:
-        st.warning(
-            "A análise foi concluída, mas o catálogo visual não pôde ser "
-            "consultado agora. A identificação da IA continua disponível, "
-            "mas ainda não foi validada externamente."
-        )
+        st.warning(t("catalog_generic_failure"))
         if erro:
-            st.caption(
-                str(erro)
-            )
-
+            st.caption(str(erro))
 
 def mostrar_catalogo_para_analise_foto(
     resultado,
@@ -3391,10 +3599,7 @@ def mostrar_catalogo_para_analise_foto(
         "pokemon" not in jogo
     ):
         st.divider()
-        st.info(
-            "A validação automática por catálogo desta fase está disponível "
-            "para cartas Pokémon TCG."
-        )
+        st.info(t("validation_only_pokemon"))
         return
 
     nome = resultado.get(
@@ -3403,10 +3608,7 @@ def mostrar_catalogo_para_analise_foto(
 
     if not nome:
         st.divider()
-        st.info(
-            "⚪ Não foi possível consultar o catálogo porque o nome da carta "
-            "não foi identificado com segurança."
-        )
+        st.info(t("validation_name_missing"))
         mostrar_nivel_confianca_cardcraft(
             classificar_confianca_cardcraft(
                 resultado,
@@ -3417,13 +3619,8 @@ def mostrar_catalogo_para_analise_foto(
         return
 
     st.divider()
-    st.subheader(
-        "🛡️ Validação da identificação por catálogo"
-    )
-    st.caption(
-        "O CardCraftAI compara a identificação da foto com cartas reais do "
-        "catálogo Pokémon. Esta validação e as novas tentativas são gratuitas."
-    )
+    st.subheader(t("validation_title"))
+    st.caption(t("validation_caption"))
 
     _preparar_estado_validacao_foto(
         resultado
@@ -3451,13 +3648,10 @@ def mostrar_catalogo_para_analise_foto(
             )
         )
 
-        st.info(
-            "A identificação feita pela IA continua salva. O botão abaixo "
-            "consulta somente o catálogo e não executa o Gemini novamente."
-        )
+        st.info(t("validation_saved_retry"))
 
         tentar_novamente = st.button(
-            "🔄 Tentar validar novamente — grátis",
+            t("retry_validation_free"),
             key="retry_validacao_catalogo_foto",
             use_container_width=True,
         )
@@ -3488,9 +3682,7 @@ def mostrar_catalogo_para_analise_foto(
         inicio_catalogo = time.perf_counter()
 
         try:
-            with st.spinner(
-                "Consultando o catálogo Pokémon para validar a identificação..."
-            ):
+            with st.spinner(t("validation_spinner")):
                 cartas = buscar_cartas_catalogo_pokemon(
                     nome=nome,
                     colecao=(
@@ -3548,13 +3740,10 @@ def mostrar_catalogo_para_analise_foto(
                 )
             )
 
-            st.info(
-                "A identificação feita pela IA foi mantida. Você pode tentar "
-                "somente a validação do catálogo novamente quando quiser."
-            )
+            st.info(t("validation_preserved"))
 
             st.button(
-                "🔄 Tentar validar novamente — grátis",
+                t("retry_validation_free"),
                 key="retry_validacao_catalogo_foto",
                 use_container_width=True,
             )
@@ -3581,9 +3770,7 @@ def mostrar_catalogo_para_analise_foto(
         validacao,
         dict,
     ):
-        st.info(
-            "⚪ A validação do catálogo ainda não possui um resultado utilizável."
-        )
+        st.info(t("validation_unusable"))
         return
 
     mostrar_validacao_foto_catalogo(
@@ -3597,10 +3784,7 @@ def mostrar_catalogo_para_analise_foto(
     if selecionada:
         mostrar_carta_catalogo_selecionada(
             selecionada,
-            titulo=(
-                "✅ Correspondência escolhida pelo usuário "
-                "para esta análise"
-            ),
+            titulo=t("user_selected_match_title"),
         )
     else:
         melhor = validacao.get("melhor")
@@ -3614,16 +3798,11 @@ def mostrar_catalogo_para_analise_foto(
         ):
             mostrar_carta_catalogo_selecionada(
                 melhor.get("carta"),
-                titulo=(
-                    "🎯 Melhor correspondência encontrada "
-                    "no catálogo"
-                ),
+                titulo=t("best_match_title"),
             )
 
     if cartas:
-        st.subheader(
-            "🖼️ Outras correspondências para comparação"
-        )
+        st.subheader(t("other_matches_title"))
         mostrar_galeria_catalogo(
             cartas,
             contexto="foto",
@@ -6834,16 +7013,10 @@ elif pagina == "search":
 
         mostrar_carta_catalogo_selecionada(
             carta_selecionada,
-            titulo=(
-                "✅ Carta escolhida para esta análise"
-            ),
+            titulo=t("selected_for_analysis_title"),
         )
 
-        st.info(
-            "A seleção foi registrada. "
-            "Você pode continuar comparando outras versões "
-            "ou usar esta carta na análise especializada."
-        )
+        st.info(t("selection_registered"))
 
     if consulta_catalogo:
         st.divider()
@@ -6852,21 +7025,15 @@ elif pagina == "search":
             t("catalog_results", idioma)
         )
 
-        st.caption(
-            "Busca realizada por: "
+        consulta_texto = (
             f"{consulta_catalogo.get('nome', '')}"
             + (
-                " • "
-                + consulta_catalogo.get(
-                    "colecao",
-                    ""
-                )
-                if consulta_catalogo.get(
-                    "colecao"
-                )
+                " • " + consulta_catalogo.get("colecao", "")
+                if consulta_catalogo.get("colecao")
                 else ""
             )
         )
+        st.caption(t("search_performed_by", query=consulta_texto))
 
         if resultados_catalogo:
             mostrar_galeria_catalogo(
@@ -6885,15 +7052,9 @@ elif pagina == "search":
     )
 
     if carta_selecionada:
-        st.caption(
-            "A análise usará a entrada que você "
-            "selecionou no catálogo."
-        )
+        st.caption(t("analysis_uses_selected"))
     else:
-        st.caption(
-            "Sem uma carta selecionada, a análise usará "
-            "somente o nome e a coleção digitados."
-        )
+        st.caption(t("analysis_uses_typed"))
 
     if creditos <= 0:
         st.warning(
