@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.15
+# CARDCRAFTAI RELIABILITY 2.6.16
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -41,7 +41,28 @@ st.markdown(
     <style>
     .block-container {
         max-width: 1200px;
-        padding-top: 2rem;
+        padding-top: 3.25rem;
+        padding-bottom: 2rem;
+    }
+
+    /* Reliability 2.6.16: evita recorte vertical de rótulos no topo. */
+    div[data-testid="stSelectbox"] label,
+    div[data-testid="stTextInput"] label,
+    div[data-testid="stFileUploader"] label,
+    div[data-testid="stCameraInput"] label,
+    div[data-testid="stCheckbox"] label {
+        overflow: visible !important;
+        line-height: 1.4 !important;
+        min-height: 1.45rem;
+    }
+
+    div[data-testid="stSelectbox"] label p,
+    div[data-testid="stTextInput"] label p,
+    div[data-testid="stFileUploader"] label p,
+    div[data-testid="stCameraInput"] label p,
+    div[data-testid="stCheckbox"] label p {
+        overflow: visible !important;
+        line-height: 1.4 !important;
     }
 
     div[data-testid="stMetric"] {
@@ -83,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.15"
+APP_VERSION = "2.6.16"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -91,7 +112,7 @@ ANALYSIS_STALE_MINUTES = 15
 
 
 # ============================================================
-# RELIABILITY 2.6.15 - INTERFACE MULTILÍNGUE
+# RELIABILITY 2.6.16 - INTERFACE MULTILÍNGUE + PERSISTÊNCIA DE UI
 # ============================================================
 
 LANGUAGE_OPTIONS = [
@@ -172,6 +193,11 @@ UI_TEXT = {
         "account": "👤 Account",
         "credits": "💎 Credits",
         "current_plan": "Current plan: {plan}",
+        "plan_label": "Current plan",
+        "plan_free": "Free",
+        "email_label": "Email",
+        "email_not_confirmed": "Your email address is not confirmed yet.",
+        "credits_label": "Credits",
         "no_credits": "You have no credits available.",
         "navigation": "Navigation",
         "nav_photo": "📸 Photo Analysis",
@@ -270,6 +296,7 @@ UI_TEXT = {
         "confirm_new_password": "Confirme a nova senha", "save_new_password": "✅ Salvar nova senha", "change_password_failed": "Não foi possível alterar a senha.",
         "cancel_login": "← Cancelar e voltar ao login", "recovery_invalid": "O link de recuperação é inválido, expirou ou já foi usado. Solicite um novo link em ‘Esqueci minha senha’.",
         "panel": "⚙️ Painel de Controle", "account": "👤 Conta", "credits": "💎 Créditos", "current_plan": "Plano atual: {plan}",
+        "plan_label": "Plano atual", "plan_free": "Gratuito", "email_label": "E-mail", "email_not_confirmed": "Seu endereço de e-mail ainda não está confirmado.", "credits_label": "Créditos",
         "no_credits": "Você não possui créditos disponíveis.", "navigation": "Navegação", "nav_photo": "📸 Análise por Foto", "nav_search": "🔍 Buscar Carta por Nome",
         "nav_plans": "💳 Planos e Créditos", "nav_account": "👤 Minha Conta", "nav_terms": "📜 Termos de Uso", "nav_privacy": "🔒 Política de Privacidade",
         "sign_out": "🚪 Sair da conta", "tagline_app": "Inteligência artificial para identificação, análise e catálogo visual de cartas TCG.", "result": "📊 Resultado da Análise",
@@ -279,7 +306,7 @@ UI_TEXT = {
         "selected_card": "Carta selecionada", "analyze_card": "🚀 Analisar Carta — 1 crédito", "analyzing_card": "🤖 Analisando a carta...",
         "send_photo_start": "👈 Envie ou tire uma foto para começar.", "analysis_complete": "✅ Análise concluída.", "search_title": "🔍 Buscar Carta por Nome",
         "catalog_free": "🖼️ Buscar e comparar imagens no catálogo Pokémon é grátis. A análise especializada consome 1 crédito.", "card_name": "Nome da carta",
-        "set_name": "Coleção / Set", "search_catalog": "🖼️ Buscar no catálogo — grátis", "enter_card_name": "Digite o nome da carta para pesquisar no catálogo.",
+        "set_name": "Coleção / Conjunto", "search_catalog": "🖼️ Buscar no catálogo — grátis", "enter_card_name": "Digite o nome da carta para pesquisar no catálogo.",
         "searching_catalog": "📚 Procurando cartas no catálogo Pokémon...", "catalog_error": "Não foi possível consultar o catálogo Pokémon agora.",
         "catalog_results": "🖼️ Resultados visuais do catálogo", "no_catalog_results": "Nenhuma carta correspondente foi encontrada.", "specialized_analysis": "🤖 Análise especializada",
         "analyze_one_credit": "🤖 Analisar — 1 crédito", "my_account": "👤 Minha Conta", "account_caption": "Consulte seus dados, saldo, segurança e histórico da conta.",
@@ -313,14 +340,15 @@ UI_TEXT = {
         "terms": "📜 Términos de Uso", "privacy": "🔒 Política de Privacidad", "new_password_title": "🔐 Crea una nueva contraseña", "new_password_intro": "Define la nueva contraseña de tu cuenta.",
         "new_password": "Nueva contraseña", "confirm_new_password": "Confirma la nueva contraseña", "save_new_password": "✅ Guardar nueva contraseña", "change_password_failed": "No se pudo cambiar la contraseña.",
         "cancel_login": "← Cancelar y volver al acceso", "recovery_invalid": "El enlace de recuperación no es válido, ha caducado o ya fue usado. Solicita uno nuevo en ‘Olvidé mi contraseña’.",
-        "panel": "⚙️ Panel de Control", "account": "👤 Cuenta", "credits": "💎 Créditos", "current_plan": "Plan actual: {plan}", "no_credits": "No tienes créditos disponibles.",
+        "panel": "⚙️ Panel de Control", "account": "👤 Cuenta", "credits": "💎 Créditos", "current_plan": "Plan actual: {plan}",
+        "plan_label": "Plan actual", "plan_free": "Gratis", "email_label": "Correo electrónico", "email_not_confirmed": "Tu correo electrónico todavía no está confirmado.", "credits_label": "Créditos", "no_credits": "No tienes créditos disponibles.",
         "navigation": "Navegación", "nav_photo": "📸 Análisis por Foto", "nav_search": "🔍 Buscar Carta por Nombre", "nav_plans": "💳 Planes y Créditos", "nav_account": "👤 Mi Cuenta",
         "nav_terms": "📜 Términos de Uso", "nav_privacy": "🔒 Política de Privacidad", "sign_out": "🚪 Cerrar sesión", "tagline_app": "Inteligencia artificial para identificación, análisis y catálogo visual de cartas TCG.",
         "result": "📊 Resultado del Análisis", "web_disabled": "🧪 La búsqueda web está temporalmente desactivada en esta versión.", "analysis_used_credit": "💎 El análisis completado consumió 1 crédito.",
         "photo_title": "📸 Análisis por Foto", "photo_intro": "Sube o toma una foto de tu carta.", "analysis_cost": "💎 Cada análisis completado consume 1 crédito.", "upload_file": "📁 Subir Archivo",
         "use_camera": "📷 Usar Cámara", "choose_image": "Elige una imagen", "take_photo": "Toma una foto de la carta", "selected_card": "Carta seleccionada", "analyze_card": "🚀 Analizar Carta — 1 crédito",
         "analyzing_card": "🤖 Analizando la carta...", "send_photo_start": "👈 Sube o toma una foto para comenzar.", "analysis_complete": "✅ Análisis completado.", "search_title": "🔍 Buscar Carta por Nombre",
-        "catalog_free": "🖼️ Buscar y comparar imágenes en el catálogo Pokémon es gratis. El análisis especializado consume 1 crédito.", "card_name": "Nombre de la carta", "set_name": "Colección / Set",
+        "catalog_free": "🖼️ Buscar y comparar imágenes en el catálogo Pokémon es gratis. El análisis especializado consume 1 crédito.", "card_name": "Nombre de la carta", "set_name": "Colección / Conjunto",
         "search_catalog": "🖼️ Buscar en el catálogo — gratis", "enter_card_name": "Escribe el nombre de la carta para buscar en el catálogo.", "searching_catalog": "📚 Buscando cartas en el catálogo Pokémon...",
         "catalog_error": "No se pudo consultar el catálogo Pokémon ahora.", "catalog_results": "🖼️ Resultados visuales del catálogo", "no_catalog_results": "No se encontró ninguna carta correspondiente.",
         "specialized_analysis": "🤖 Análisis especializado", "analyze_one_credit": "🤖 Analizar — 1 crédito", "my_account": "👤 Mi Cuenta", "account_caption": "Consulta tus datos, saldo, seguridad e historial de la cuenta.",
@@ -351,7 +379,8 @@ UI_TEXT = {
         "terms": "📜 利用規約", "privacy": "🔒 プライバシーポリシー", "new_password_title": "🔐 新しいパスワードを作成", "new_password_intro": "アカウントの新しいパスワードを設定します。",
         "new_password": "新しいパスワード", "confirm_new_password": "新しいパスワードを確認", "save_new_password": "✅ 新しいパスワードを保存", "change_password_failed": "パスワードを変更できませんでした。",
         "cancel_login": "← キャンセルしてログインへ戻る", "recovery_invalid": "復旧リンクは無効、期限切れ、または既に使用されています。「パスワードを忘れた」から新しいリンクを取得してください。",
-        "panel": "⚙️ コントロールパネル", "account": "👤 アカウント", "credits": "💎 クレジット", "current_plan": "現在のプラン: {plan}", "no_credits": "利用可能なクレジットがありません。",
+        "panel": "⚙️ コントロールパネル", "account": "👤 アカウント", "credits": "💎 クレジット", "current_plan": "現在のプラン: {plan}",
+        "plan_label": "現在のプラン", "plan_free": "無料", "email_label": "メールアドレス", "email_not_confirmed": "メールアドレスはまだ確認されていません。", "credits_label": "クレジット", "no_credits": "利用可能なクレジットがありません。",
         "navigation": "ナビゲーション", "nav_photo": "📸 写真で分析", "nav_search": "🔍 カード名で検索", "nav_plans": "💳 プランとクレジット", "nav_account": "👤 マイアカウント",
         "nav_terms": "📜 利用規約", "nav_privacy": "🔒 プライバシーポリシー", "sign_out": "🚪 ログアウト", "tagline_app": "TCGカードの識別・分析・ビジュアルカタログを支援するAI。",
         "result": "📊 分析結果", "web_disabled": "🧪 このバージョンではWeb検索を一時的に無効化しています。", "analysis_used_credit": "💎 完了した分析で1クレジットを使用しました。",
@@ -391,6 +420,78 @@ def t(chave, idioma=None, **kwargs):
         except Exception:
             return texto
     return texto
+
+
+# Widgets usam chaves próprias; idioma_interface é o estado persistente.
+# Isso evita que o idioma se perca ao trocar login <-> app autenticado.
+LANGUAGE_WIDGET_KEYS = (
+    "idioma_login_widget",
+    "idioma_sidebar_widget",
+    "idioma_recovery_widget",
+    "idioma_legal_widget",
+)
+
+NAVIGATION_OPTIONS = [
+    "photo",
+    "search",
+    "plans",
+    "account",
+    "terms",
+    "privacy",
+]
+
+
+def _sincronizar_idioma_widget(widget_key):
+    selecionado = st.session_state.get(widget_key)
+    if selecionado not in LANGUAGE_OPTIONS:
+        return
+
+    st.session_state.idioma_interface = selecionado
+
+    # Mantém os seletores das outras telas prontos com a mesma escolha.
+    for outra_chave in LANGUAGE_WIDGET_KEYS:
+        if outra_chave != widget_key:
+            st.session_state[outra_chave] = selecionado
+
+
+def renderizar_seletor_idioma(container, widget_key):
+    idioma_atual = idioma_interface_atual()
+
+    # Antes de criar o widget, sincroniza sua chave com o estado persistente.
+    if st.session_state.get(widget_key) != idioma_atual:
+        st.session_state[widget_key] = idioma_atual
+
+    container.selectbox(
+        t("language", idioma_atual),
+        LANGUAGE_OPTIONS,
+        key=widget_key,
+        on_change=_sincronizar_idioma_widget,
+        args=(widget_key,),
+    )
+
+    return idioma_interface_atual()
+
+
+def pagina_interface_atual():
+    pagina = st.session_state.get("pagina_interface", "photo")
+    if pagina not in NAVIGATION_OPTIONS:
+        pagina = "photo"
+        st.session_state.pagina_interface = pagina
+    return pagina
+
+
+def _sincronizar_pagina_widget():
+    pagina = st.session_state.get("pagina_navegacao_widget")
+    if pagina in NAVIGATION_OPTIONS:
+        st.session_state.pagina_interface = pagina
+
+
+def traduzir_plano_ui(plano, idioma=None):
+    idioma = idioma or idioma_interface_atual()
+    valor = str(plano or "free").strip()
+    if valor.lower() == "free":
+        return t("plan_free", idioma)
+    return valor
 
 # O catálogo visual é um recurso adicional. Se a chave estiver ausente,
 # login, créditos e análise por IA continuam funcionando.
@@ -3747,6 +3848,11 @@ def limpar_sessao():
 
     st.session_state.modo_recuperacao_senha = False
 
+    # Ao encerrar a sessão, a próxima entrada começa na página principal.
+    # O idioma é preservado propositalmente.
+    st.session_state.pagina_interface = "photo"
+    st.session_state.pagina_navegacao_widget = "photo"
+
 
 def usuario_logado():
 
@@ -3873,14 +3979,10 @@ def processar_link_recuperacao_senha():
 
 
 def tela_redefinir_senha():
-    idioma = idioma_interface_atual()
-
-    st.selectbox(
-        t("language", idioma),
-        LANGUAGE_OPTIONS,
-        key="idioma_interface",
+    idioma = renderizar_seletor_idioma(
+        st,
+        "idioma_recovery_widget",
     )
-    idioma = idioma_interface_atual()
 
     st.title("🃏 CardCraftAI")
     st.header(t("new_password_title", idioma))
@@ -5627,10 +5729,9 @@ def tela_aceite_legal_pendente():
     st.title("🃏 CardCraftAI")
     st.header("📜 Atualização dos documentos legais")
 
-    idioma_legal = st.selectbox(
-        "🌐 Idioma / Language",
-        LANGUAGE_OPTIONS,
-        key="idioma_interface",
+    idioma_legal = renderizar_seletor_idioma(
+        st,
+        "idioma_legal_widget",
     )
 
     if idioma_legal == "English":
@@ -5744,12 +5845,10 @@ def tela_aceite_legal_pendente():
 # ============================================================
 
 def tela_login():
-    st.selectbox(
-        "🌐 Language / Idioma",
-        LANGUAGE_OPTIONS,
-        key="idioma_interface",
+    idioma = renderizar_seletor_idioma(
+        st,
+        "idioma_login_widget",
     )
-    idioma = idioma_interface_atual()
 
     st.title("🃏 CardCraftAI")
     st.subheader(t("tagline_login", idioma))
@@ -6049,7 +6148,8 @@ st.sidebar.success(
 
 st.sidebar.metric(t("credits", idioma), creditos)
 
-st.sidebar.caption(t("current_plan", idioma, plan=plano))
+plano_exibicao = traduzir_plano_ui(plano, idioma)
+st.sidebar.caption(t("current_plan", idioma, plan=plano_exibicao))
 
 if creditos == 0:
 
@@ -6059,18 +6159,20 @@ if creditos == 0:
 st.sidebar.divider()
 
 
-idioma = st.sidebar.selectbox(
-    t("language", idioma),
-    LANGUAGE_OPTIONS,
-    key="idioma_interface",
+idioma = renderizar_seletor_idioma(
+    st.sidebar,
+    "idioma_sidebar_widget",
 )
-idioma = idioma_interface_atual()
 
 st.sidebar.divider()
 
-pagina = st.sidebar.radio(
+pagina_atual = pagina_interface_atual()
+if st.session_state.get("pagina_navegacao_widget") != pagina_atual:
+    st.session_state.pagina_navegacao_widget = pagina_atual
+
+st.sidebar.radio(
     t("navigation", idioma),
-    ["photo", "search", "plans", "account", "terms", "privacy"],
+    NAVIGATION_OPTIONS,
     format_func=lambda pagina_id: t({
         "photo": "nav_photo",
         "search": "nav_search",
@@ -6079,7 +6181,10 @@ pagina = st.sidebar.radio(
         "terms": "nav_terms",
         "privacy": "nav_privacy",
     }[pagina_id], idioma),
+    key="pagina_navegacao_widget",
+    on_change=_sincronizar_pagina_widget,
 )
+pagina = pagina_interface_atual()
 
 
 st.sidebar.divider()
@@ -6619,8 +6724,8 @@ elif pagina == "account":
 
     with col_plano:
         st.metric(
-            "Plano atual",
-            str(plano or "free").capitalize(),
+            t("plan_label", idioma),
+            traduzir_plano_ui(plano, idioma),
         )
 
     st.subheader(
@@ -6628,7 +6733,7 @@ elif pagina == "account":
     )
 
     st.write(
-        f"**E-mail:** {st.session_state.user_email}"
+        f"**{t('email_label', idioma)}:** {st.session_state.user_email}"
     )
 
     if st.session_state.email_confirmado:
@@ -6637,7 +6742,7 @@ elif pagina == "account":
         )
     else:
         st.warning(
-            "Seu endereço de e-mail ainda não está confirmado."
+            t("email_not_confirmed", idioma)
         )
 
     st.divider()
@@ -6850,7 +6955,7 @@ elif pagina == "plans":
                     )
 
                     st.metric(
-                        "Créditos",
+                        t("credits_label", idioma),
                         qtd_creditos,
                     )
 
