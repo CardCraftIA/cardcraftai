@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.16
+# CARDCRAFTAI RELIABILITY 2.6.17
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.16"
+APP_VERSION = "2.6.17"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -112,7 +112,7 @@ ANALYSIS_STALE_MINUTES = 15
 
 
 # ============================================================
-# RELIABILITY 2.6.16 - INTERFACE MULTILÍNGUE + PERSISTÊNCIA DE UI
+# RELIABILITY 2.6.17 - INTERFACE MULTILÍNGUE + LOGOUT SEGURO
 # ============================================================
 
 LANGUAGE_OPTIONS = [
@@ -3849,9 +3849,11 @@ def limpar_sessao():
     st.session_state.modo_recuperacao_senha = False
 
     # Ao encerrar a sessão, a próxima entrada começa na página principal.
-    # O idioma é preservado propositalmente.
+    # O idioma é preservado propositalmente. Não alteramos diretamente a
+    # chave do widget de navegação aqui porque, no logout, esse widget já
+    # foi instanciado nesta execução do Streamlit. A sincronização ocorrerá
+    # antes de o widget ser criado na próxima sessão autenticada.
     st.session_state.pagina_interface = "photo"
-    st.session_state.pagina_navegacao_widget = "photo"
 
 
 def usuario_logado():
@@ -5889,6 +5891,13 @@ def tela_login():
                         "password": senha_login,
                     })
                     if salvar_sessao(resposta):
+                        # Garante que a primeira renderização autenticada use
+                        # exatamente o idioma escolhido antes do login. A chave
+                        # do seletor da sidebar ainda não foi instanciada nesta
+                        # execução, portanto pode ser preparada com segurança.
+                        st.session_state.idioma_interface = idioma
+                        st.session_state.idioma_sidebar_widget = idioma
+                        st.session_state.pagina_interface = "photo"
                         st.success(t("login_success", idioma))
                         st.rerun()
                     else:
