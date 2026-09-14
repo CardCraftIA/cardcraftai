@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.17
+# CARDCRAFTAI RELIABILITY 2.6.18
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.17"
+APP_VERSION = "2.6.18"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -112,7 +112,7 @@ ANALYSIS_STALE_MINUTES = 15
 
 
 # ============================================================
-# RELIABILITY 2.6.17 - INTERFACE MULTILÍNGUE + LOGOUT SEGURO
+# RELIABILITY 2.6.18 - CHECKOUT MERCADO PAGO + RETORNO SEGURO
 # ============================================================
 
 LANGUAGE_OPTIONS = [
@@ -258,12 +258,21 @@ UI_TEXT = {
         "credit_packages": "🎒 Credit Packages",
         "price": "Price",
         "buy": "Buy {name}",
-        "checkout_pending": "💳 Checkout is not connected yet. In the next step we will connect this button to a payment provider.",
+        "checkout_pending": "💳 Checkout is not connected yet.",
+        "checkout_creating": "Creating secure checkout...",
+        "checkout_ready": "Secure checkout created. Continue to Mercado Pago to complete your purchase.",
+        "checkout_open": "🔐 Continue to Mercado Pago",
+        "checkout_error": "Could not start the checkout.",
+        "secure_checkout_note": "Payments are processed securely by Mercado Pago. CardCraftAI does not receive or store your card details.",
+        "payment_success_return": "✅ Mercado Pago returned the payment as approved. Credits are released only after server confirmation. If the balance has not updated yet, wait a few seconds and refresh.",
+        "payment_pending_return": "⏳ The payment is still pending. Credits will be released automatically after Mercado Pago confirms approval.",
+        "payment_failure_return": "❌ The payment was not completed. No credits were added.",
+        "refresh_balance": "🔄 Refresh balance",
         "subscriptions": "🏢 Subscriptions",
         "per_cycle": "{n} credits per cycle",
         "monthly_fee": "Monthly fee",
         "subscribe": "Subscribe to {name}",
-        "subscription_pending": "💳 The subscription is not connected to checkout yet. We will integrate it in a later step.",
+        "subscription_pending": "💳 Recurring subscription checkout is not enabled yet. This plan cannot be purchased until recurring billing is connected.",
         "beta_legal_note": "Beta document. Before commercial launch, we will publish the official support/privacy contact and complete the final legal review.",
     },
     "Português (BR)": {
@@ -315,9 +324,16 @@ UI_TEXT = {
         "send_password_reset": "📨 Enviar link para redefinir senha", "purchase_history": "🧾 Histórico de compras", "no_purchases": "Nenhuma compra registrada nesta conta até o momento.",
         "session": "🚪 Sessão", "sign_out_account": "Sair da minha conta", "plans_title": "💳 Planos e Créditos", "balance": "💎 Seu saldo atual", "credits_word": "créditos",
         "packages_from_db": "Os pacotes abaixo são carregados diretamente do Supabase.", "no_packages": "Nenhum pacote ativo está disponível no momento.", "credit_packages": "🎒 Pacotes de Créditos",
-        "price": "Preço", "buy": "Comprar {name}", "checkout_pending": "💳 O checkout ainda não está conectado. Na próxima etapa vamos vincular este botão a um provedor de pagamento.",
+        "price": "Preço", "buy": "Comprar {name}", "checkout_pending": "💳 O checkout ainda não está conectado.",
+        "checkout_creating": "Criando checkout seguro...", "checkout_ready": "Checkout seguro criado. Continue no Mercado Pago para concluir a compra.",
+        "checkout_open": "🔐 Continuar para o Mercado Pago", "checkout_error": "Não foi possível iniciar o checkout.",
+        "secure_checkout_note": "O pagamento é processado com segurança pelo Mercado Pago. O CardCraftAI não recebe nem armazena os dados do seu cartão.",
+        "payment_success_return": "✅ O Mercado Pago retornou o pagamento como aprovado. Os créditos só são liberados após a confirmação do servidor. Se o saldo ainda não atualizou, aguarde alguns segundos e atualize.",
+        "payment_pending_return": "⏳ O pagamento ainda está pendente. Os créditos serão liberados automaticamente quando o Mercado Pago confirmar a aprovação.",
+        "payment_failure_return": "❌ O pagamento não foi concluído. Nenhum crédito foi adicionado.",
+        "refresh_balance": "🔄 Atualizar saldo",
         "subscriptions": "🏢 Assinaturas", "per_cycle": "{n} créditos por ciclo", "monthly_fee": "Mensalidade", "subscribe": "Assinar {name}",
-        "subscription_pending": "💳 A assinatura ainda não está conectada ao checkout. Faremos essa integração na próxima etapa.",
+        "subscription_pending": "💳 O checkout recorrente da assinatura ainda não está habilitado. Este plano não pode ser comprado até integrarmos a cobrança recorrente.",
         "beta_legal_note": "Documento beta. Antes do lançamento comercial, vamos publicar o canal oficial de suporte/privacidade e concluir a revisão jurídica final.",
     },
     "Español": {
@@ -356,8 +372,15 @@ UI_TEXT = {
         "security": "🔐 Seguridad", "security_reset_text": "Para cambiar tu contraseña, envía un enlace seguro de restablecimiento al correo de tu cuenta.", "send_password_reset": "📨 Enviar enlace para restablecer contraseña",
         "purchase_history": "🧾 Historial de compras", "no_purchases": "Todavía no hay compras registradas en esta cuenta.", "session": "🚪 Sesión", "sign_out_account": "Cerrar mi sesión", "plans_title": "💳 Planes y Créditos",
         "balance": "💎 Tu saldo actual", "credits_word": "créditos", "packages_from_db": "Los paquetes siguientes se cargan directamente desde Supabase.", "no_packages": "No hay paquetes activos disponibles en este momento.",
-        "credit_packages": "🎒 Paquetes de Créditos", "price": "Precio", "buy": "Comprar {name}", "checkout_pending": "💳 El checkout aún no está conectado. En el siguiente paso vincularemos este botón a un proveedor de pagos.",
-        "subscriptions": "🏢 Suscripciones", "per_cycle": "{n} créditos por ciclo", "monthly_fee": "Mensualidad", "subscribe": "Suscribirse a {name}", "subscription_pending": "💳 La suscripción aún no está conectada al checkout. La integraremos en una etapa posterior.",
+        "credit_packages": "🎒 Paquetes de Créditos", "price": "Precio", "buy": "Comprar {name}", "checkout_pending": "💳 El checkout aún no está conectado.",
+        "checkout_creating": "Creando checkout seguro...", "checkout_ready": "Checkout seguro creado. Continúa en Mercado Pago para completar la compra.",
+        "checkout_open": "🔐 Continuar a Mercado Pago", "checkout_error": "No se pudo iniciar el checkout.",
+        "secure_checkout_note": "El pago se procesa de forma segura por Mercado Pago. CardCraftAI no recibe ni almacena los datos de tu tarjeta.",
+        "payment_success_return": "✅ Mercado Pago devolvió el pago como aprobado. Los créditos solo se liberan después de la confirmación del servidor. Si el saldo aún no se actualizó, espera unos segundos y actualiza.",
+        "payment_pending_return": "⏳ El pago todavía está pendiente. Los créditos se liberarán automáticamente cuando Mercado Pago confirme la aprobación.",
+        "payment_failure_return": "❌ El pago no se completó. No se añadieron créditos.",
+        "refresh_balance": "🔄 Actualizar saldo",
+        "subscriptions": "🏢 Suscripciones", "per_cycle": "{n} créditos por ciclo", "monthly_fee": "Mensualidad", "subscribe": "Suscribirse a {name}", "subscription_pending": "💳 El checkout recurrente de la suscripción aún no está habilitado. Este plan no puede comprarse hasta conectar la facturación recurrente.",
         "beta_legal_note": "Documento beta. Antes del lanzamiento comercial, publicaremos el contacto oficial de soporte/privacidad y completaremos la revisión jurídica final.",
     },
     "日本語": {
@@ -395,8 +418,15 @@ UI_TEXT = {
         "security_reset_text": "パスワードを変更するには、アカウントのメールに安全な再設定リンクを送信してください。", "send_password_reset": "📨 パスワード再設定リンクを送信", "purchase_history": "🧾 購入履歴",
         "no_purchases": "このアカウントにはまだ購入履歴がありません。", "session": "🚪 セッション", "sign_out_account": "アカウントからログアウト", "plans_title": "💳 プランとクレジット",
         "balance": "💎 現在の残高", "credits_word": "クレジット", "packages_from_db": "以下のパッケージはSupabaseから直接読み込まれます。", "no_packages": "現在利用可能なパッケージはありません。",
-        "credit_packages": "🎒 クレジットパッケージ", "price": "価格", "buy": "{name} を購入", "checkout_pending": "💳 チェックアウトはまだ接続されていません。次の段階で決済プロバイダーに接続します。",
-        "subscriptions": "🏢 サブスクリプション", "per_cycle": "1サイクルあたり{n}クレジット", "monthly_fee": "月額", "subscribe": "{name} に登録", "subscription_pending": "💳 サブスクリプションはまだチェックアウトに接続されていません。後の段階で統合します。",
+        "credit_packages": "🎒 クレジットパッケージ", "price": "価格", "buy": "{name} を購入", "checkout_pending": "💳 チェックアウトはまだ接続されていません。",
+        "checkout_creating": "安全なチェックアウトを作成しています...", "checkout_ready": "安全なチェックアウトを作成しました。Mercado Pago で購入を完了してください。",
+        "checkout_open": "🔐 Mercado Pago に進む", "checkout_error": "チェックアウトを開始できませんでした。",
+        "secure_checkout_note": "支払いは Mercado Pago が安全に処理します。CardCraftAI はカード情報を受信・保存しません。",
+        "payment_success_return": "✅ Mercado Pago では支払いが承認済みとして戻りました。クレジットはサーバー確認後にのみ付与されます。残高がまだ更新されていない場合は、数秒待って更新してください。",
+        "payment_pending_return": "⏳ 支払いはまだ保留中です。Mercado Pago が承認を確認すると、クレジットは自動的に付与されます。",
+        "payment_failure_return": "❌ 支払いは完了しませんでした。クレジットは追加されていません。",
+        "refresh_balance": "🔄 残高を更新",
+        "subscriptions": "🏢 サブスクリプション", "per_cycle": "1サイクルあたり{n}クレジット", "monthly_fee": "月額", "subscribe": "{name} に登録", "subscription_pending": "💳 定期課金のチェックアウトはまだ有効化されていません。定期請求の接続が完了するまで、このプランは購入できません。",
         "beta_legal_note": "ベータ版文書です。商用公開前に公式サポート／プライバシー窓口を公開し、最終的な法務レビューを完了します。",
     },
 }
@@ -3678,6 +3708,12 @@ if "erro_recuperacao_senha" not in st.session_state:
 if "senha_redefinida_sucesso" not in st.session_state:
     st.session_state.senha_redefinida_sucesso = False
 
+if "checkout_preference" not in st.session_state:
+    st.session_state.checkout_preference = None
+
+if "payment_return_status" not in st.session_state:
+    st.session_state.payment_return_status = None
+
 
 # ============================================================
 # AUTENTICAÇÃO - CONFIRMAÇÃO DE E-MAIL
@@ -3845,6 +3881,9 @@ def limpar_sessao():
     st.session_state.aviso_auditoria = None
     st.session_state.aviso_recuperacao = None
     st.session_state.ultima_recuperacao_runs = None
+
+    st.session_state.checkout_preference = None
+    st.session_state.payment_return_status = None
 
     st.session_state.modo_recuperacao_senha = False
 
@@ -4210,6 +4249,167 @@ def formatar_preco_brl(
     )
 
     return f"R$ {texto}"
+
+
+# ============================================================
+# RELIABILITY 2.6.18 - CHECKOUT MERCADO PAGO
+# ============================================================
+
+def criar_preferencia_mercadopago(package_code):
+    """Cria uma preferência de Checkout Pro usando a Edge Function autenticada.
+
+    O navegador nunca envia preço, quantidade de créditos ou user_id. O app
+    manda somente o código do pacote e o backend valida todo o restante.
+    """
+
+    if not usuario_logado():
+        raise RuntimeError(
+            "Sua sessão não está autenticada. Entre novamente na conta."
+        )
+
+    access_token = str(
+        st.session_state.get("access_token")
+        or ""
+    ).strip()
+
+    codigo = str(
+        package_code
+        or ""
+    ).strip().upper()
+
+    if not access_token:
+        raise RuntimeError(
+            "A sessão autenticada não possui um token de acesso válido."
+        )
+
+    if not codigo:
+        raise RuntimeError(
+            "O pacote selecionado é inválido."
+        )
+
+    endpoint = (
+        SUPABASE_URL.rstrip("/")
+        + "/functions/v1/mercadopago-create-preference"
+    )
+
+    try:
+        resposta = requests.post(
+            endpoint,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "apikey": SUPABASE_KEY,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json={
+                "package_code": codigo,
+            },
+            timeout=20,
+        )
+
+    except requests.RequestException as erro:
+        raise RuntimeError(
+            "Não foi possível conectar ao serviço seguro de pagamento."
+        ) from erro
+
+    try:
+        payload = resposta.json()
+    except ValueError:
+        payload = {}
+
+    if resposta.status_code in {401, 403}:
+        raise RuntimeError(
+            "Sua sessão não foi aceita pelo serviço de pagamento. "
+            "Saia da conta, entre novamente e tente outra vez."
+        )
+
+    if not resposta.ok:
+        detalhe = (
+            payload.get("error")
+            if isinstance(payload, dict)
+            else None
+        )
+
+        if detalhe:
+            raise RuntimeError(str(detalhe))
+
+        raise RuntimeError(
+            f"O serviço de pagamento respondeu com HTTP {resposta.status_code}."
+        )
+
+    if not isinstance(payload, dict) or not payload.get("ok"):
+        raise RuntimeError(
+            "O serviço de pagamento retornou uma resposta inválida."
+        )
+
+    checkout_url = str(
+        payload.get("checkout_url")
+        or ""
+    ).strip()
+
+    preference_id = str(
+        payload.get("preference_id")
+        or ""
+    ).strip()
+
+    pacote_retorno = payload.get("package")
+    if not isinstance(pacote_retorno, dict):
+        pacote_retorno = {}
+
+    codigo_retorno = str(
+        pacote_retorno.get("code")
+        or ""
+    ).strip().upper()
+
+    if codigo_retorno and codigo_retorno != codigo:
+        raise RuntimeError(
+            "O checkout retornou um pacote diferente do solicitado."
+        )
+
+    if not preference_id:
+        raise RuntimeError(
+            "O checkout foi criado sem identificador de preferência."
+        )
+
+    if not checkout_url.startswith("https://"):
+        raise RuntimeError(
+            "O serviço de pagamento não retornou uma URL HTTPS válida."
+        )
+
+    return {
+        "package_code": codigo,
+        "preference_id": preference_id,
+        "checkout_url": checkout_url,
+    }
+
+
+def processar_retorno_mercadopago():
+    """Registra o retorno visual do Checkout Pro sem conceder créditos.
+
+    A query string serve apenas para UX. O saldo continua sendo alterado
+    exclusivamente pelo webhook/backend após validação do pagamento.
+    """
+
+    status = str(
+        st.query_params.get("payment", "")
+        or ""
+    ).strip().lower()
+
+    if status not in {
+        "success",
+        "pending",
+        "failure",
+    }:
+        return
+
+    st.session_state.payment_return_status = status
+    st.session_state.checkout_preference = None
+    st.session_state.pagina_interface = "plans"
+    st.session_state.pagina_navegacao_widget = "plans"
+
+    # Remove parâmetros devolvidos pelo checkout para que a mensagem não seja
+    # reprocessada indefinidamente em cada rerun do Streamlit.
+    st.query_params.clear()
 
 
 # ============================================================
@@ -6111,7 +6311,10 @@ plano = perfil.get(
     "free"
 )
 
-
+# Se o usuário voltou do Checkout Pro, direciona a interface para Planos e
+# registra somente o status visual. A confirmação financeira continua sendo
+# responsabilidade exclusiva do webhook autenticado.
+processar_retorno_mercadopago()
 
 
 def traduzir_pacote_ui(pacote, idioma):
@@ -6866,6 +7069,37 @@ elif pagina == "plans":
 
     st.header(t("plans_title", idioma))
 
+    retorno_pagamento = st.session_state.get(
+        "payment_return_status"
+    )
+
+    if retorno_pagamento == "success":
+        st.success(
+            t("payment_success_return", idioma)
+        )
+
+    elif retorno_pagamento == "pending":
+        st.info(
+            t("payment_pending_return", idioma)
+        )
+
+    elif retorno_pagamento == "failure":
+        st.error(
+            t("payment_failure_return", idioma)
+        )
+
+    if retorno_pagamento in {
+        "success",
+        "pending",
+    }:
+        if st.button(
+            t("refresh_balance", idioma),
+            use_container_width=True,
+            key="btn_atualizar_saldo_pagamento",
+        ):
+            st.session_state.payment_return_status = None
+            st.rerun()
+
     st.metric(
         t("balance", idioma),
         f"{creditos} {t('credits_word', idioma)}",
@@ -6877,6 +7111,10 @@ elif pagina == "plans":
 
     st.caption(
         t("packages_from_db", idioma)
+    )
+
+    st.info(
+        t("secure_checkout_note", idioma)
     )
 
     st.divider()
@@ -6949,15 +7187,17 @@ elif pagina == "plans":
                         )
                     )
 
-                    codigo = pacote.get(
-                        "code",
-                        str(
-                            pacote.get(
-                                "id",
-                                "pacote"
+                    codigo = str(
+                        pacote.get(
+                            "code",
+                            str(
+                                pacote.get(
+                                    "id",
+                                    "pacote"
+                                )
                             )
                         )
-                    )
+                    ).strip().upper()
 
                     st.subheader(
                         f"💎 {nome}"
@@ -6985,8 +7225,44 @@ elif pagina == "plans":
                         key=f"comprar_{codigo}",
                     ):
 
-                        st.info(
-                            t("checkout_pending", idioma)
+                        st.session_state.checkout_preference = None
+
+                        with st.spinner(
+                            t("checkout_creating", idioma)
+                        ):
+                            try:
+                                preferencia = criar_preferencia_mercadopago(
+                                    codigo
+                                )
+                                st.session_state.checkout_preference = preferencia
+
+                            except Exception as erro:
+                                st.error(
+                                    t("checkout_error", idioma)
+                                )
+                                st.caption(
+                                    str(erro)
+                                )
+
+                    checkout_atual = st.session_state.get(
+                        "checkout_preference"
+                    )
+
+                    if (
+                        isinstance(checkout_atual, dict)
+                        and
+                        checkout_atual.get("package_code") == codigo
+                        and
+                        checkout_atual.get("checkout_url")
+                    ):
+                        st.success(
+                            t("checkout_ready", idioma)
+                        )
+
+                        st.link_button(
+                            t("checkout_open", idioma),
+                            checkout_atual.get("checkout_url"),
+                            use_container_width=True,
                         )
 
 
@@ -7054,15 +7330,16 @@ elif pagina == "plans":
                         preco,
                     )
 
-                    if st.button(
+                    st.button(
                         t("subscribe", idioma, name=nome),
                         use_container_width=True,
                         key=f"assinar_{codigo}",
-                    ):
+                        disabled=True,
+                    )
 
-                        st.info(
-                            t("subscription_pending", idioma)
-                        )
+                    st.caption(
+                        t("subscription_pending", idioma)
+                    )
 
 
 # ============================================================
