@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.22
+# CARDCRAFTAI RELIABILITY 2.6.23
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,11 +104,14 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.22"
+APP_VERSION = "2.6.23"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
 ANALYSIS_STALE_MINUTES = 15
+MAX_UPLOAD_MB = 15
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+IMAGE_PREVIEW_WIDTH = 460
 
 
 # ============================================================
@@ -938,6 +941,122 @@ UI_TEXT["日本語"].update({
 })
 
 
+
+
+# ============================================================
+# RELIABILITY 2.6.23 - RESULTADOS, HISTORICO E UPLOAD LOCALIZADOS
+# ============================================================
+
+UI_TEXT["English"].update({
+    "result_status_strong": "🟢 Strong preliminary identification",
+    "result_status_probable": "🟡 Probable identification",
+    "result_status_uncertain": "🔴 Uncertain identification",
+    "quality_good": "Good", "quality_acceptable": "Acceptable", "quality_poor": "Poor", "quality_na": "Not applicable",
+    "result_structured_title": "## 🃏 Structured AI identification",
+    "result_preliminary_title": "## 🃏 Preliminary AI identification",
+    "result_analysis_status": "Analysis status", "result_visual_status": "Visual reading status",
+    "result_text_intro": "The data below was processed by the AI from the text input and, when a card was selected, from Pokémon TCG catalog data. No image analysis was performed in this flow.",
+    "result_photo_intro": "The data below was extracted from the image by the AI. Name, set and number can be compared with the Pokémon catalog when it is available.",
+    "label_game": "Game", "label_analyzed_name": "Analyzed name", "label_read_name": "Name read",
+    "label_analyzed_set": "Analyzed set", "label_read_set": "Set read", "label_analyzed_number": "Analyzed number", "label_read_number": "Number read",
+    "result_ai_dependent": "### 🤖 Data still dependent on AI interpretation",
+    "label_suggested_rarity": "Suggested rarity", "label_suggested_variant": "Suggested variant", "label_read_year": "Read / estimated year",
+    "input_quality_title": "### 🧾 Input quality", "photo_quality_title": "### 📸 Input quality", "input_label": "Input", "image_label": "Image", "text_catalog_input": "Text / catalog data",
+    "evidence_used_title": "### 🔎 Evidence used", "needs_confirmation_title": "### ⚠️ Data that still needs confirmation", "general_info_title": "## 📊 General information",
+    "condition_no_photo_title": "## 🔎 Apparent condition — not evaluated without a photo", "condition_visual_title": "## 🔎 Apparent condition — AI visual estimate",
+    "estimate_label": "Estimate", "visual_estimate_label": "Visual estimate",
+    "auth_no_photo_title": "## ⚠️ Visual authenticity — not evaluated without a photo", "auth_triage_title": "## ⚠️ Visual authenticity — AI screening", "status_label": "Status",
+    "auth_no_obvious": "No obvious signs in the image, but not certified", "auth_requires_check": "There are signs that deserve additional verification", "auth_indeterminate": "Could not be evaluated from the image", "auth_na": "Not applicable",
+    "auth_disclaimer": "This visual assessment does not replace in-person professional authentication.",
+    "market_title": "## 💰 Market", "market_note": "The AI does not invent market prices. When the Pokémon catalog is available, market references and source freshness appear in the validation below.",
+    "conservation_title": "## 🛡️ Preservation", "listing_base_title": "## 📝 Listing draft",
+    "result_preliminary_disclaimer": "The AI reading is preliminary. When the Pokémon catalog is available, external validation appears below without using another credit. Only fields explicitly marked as catalog-confirmed should be treated as externally validated.",
+    "upload_limit_help": "Maximum image size: {max_mb} MB. Accepted formats: JPG, PNG and WEBP.",
+    "upload_too_large": "The selected image is larger than {max_mb} MB. Please use a smaller image.",
+    "image_open_failed": "The selected image could not be opened. Try another JPG, PNG or WEBP file.",
+    "analysis_failed_safe": "The analysis could not be completed. CardCraftAI applies its credit recovery rules automatically; refresh your balance before trying again.",
+    "no_credits_new_analysis": "💎 You do not have credits available for a new analysis.",
+    "free_catalog_still_available": "The visual catalog search above remains free.",
+    "enter_card_name_short": "Enter the card name.",
+    "analyzing_generic": "🤖 Analyzing...",
+    "analysis_history": "🗂️ Analysis history",
+    "analysis_history_caption": "Completed analyses are saved so you can reopen the AI result later without spending another credit.",
+    "no_analysis_history": "No completed analyses have been saved for this account yet.",
+    "analysis_history_error": "Analysis history could not be loaded right now.",
+    "analysis_type_photo": "Photo analysis", "analysis_type_name": "Name analysis",
+    "analysis_status_completed": "Completed", "analysis_status_processing": "Processing", "analysis_status_failed": "Failed",
+    "history_card_unknown": "Card not identified", "history_open": "📂 Reopen saved analysis",
+    "history_payload_missing": "This historical record does not contain a reopenable AI result.",
+    "saved_analysis_reopened": "📂 Saved analysis reopened. No new credit was used.",
+    "saved_analysis_note": "This is a saved result. Catalog validation is not rerun automatically so the historical result is not changed silently.",
+    "history_revalidate_free": "🔄 Revalidate catalog — free",
+    "history_saved_catalog": "Saved catalog status: {status} • confidence: {confidence}",
+    "purchase_col_date": "Date", "purchase_col_status": "Status", "purchase_col_credits": "Credits", "purchase_col_value": "Amount", "purchase_col_currency": "Currency", "purchase_col_provider": "Provider",
+    "purchase_status_pending": "Pending", "purchase_status_approved": "Approved", "purchase_status_completed": "Completed", "purchase_status_refunded": "Refunded", "purchase_status_cancelled": "Cancelled", "purchase_status_rejected": "Rejected",
+})
+
+UI_TEXT["Português (BR)"].update({
+    "result_status_strong": "🟢 Identificação preliminar forte", "result_status_probable": "🟡 Identificação provável", "result_status_uncertain": "🔴 Identificação incerta",
+    "quality_good": "Boa", "quality_acceptable": "Aceitável", "quality_poor": "Ruim", "quality_na": "Não aplicável",
+    "result_structured_title": "## 🃏 Identificação estruturada da IA", "result_preliminary_title": "## 🃏 Identificação preliminar da IA",
+    "result_analysis_status": "Status da análise", "result_visual_status": "Status da leitura visual",
+    "result_text_intro": "Os dados abaixo foram processados pela IA a partir da entrada textual e, quando uma carta foi selecionada, dos dados do catálogo Pokémon TCG. Não houve análise de imagem neste fluxo.",
+    "result_photo_intro": "Os dados abaixo foram extraídos da imagem pela IA. Nome, coleção e número podem ser comparados com o catálogo Pokémon quando ele estiver disponível.",
+    "label_game": "Jogo", "label_analyzed_name": "Nome analisado", "label_read_name": "Nome lido", "label_analyzed_set": "Coleção / Set analisada", "label_read_set": "Coleção / Set lido", "label_analyzed_number": "Número analisado", "label_read_number": "Número lido",
+    "result_ai_dependent": "### 🤖 Dados ainda dependentes de interpretação da IA", "label_suggested_rarity": "Raridade sugerida", "label_suggested_variant": "Variante sugerida", "label_read_year": "Ano lido / estimado",
+    "input_quality_title": "### 🧾 Qualidade da entrada", "photo_quality_title": "### 📸 Qualidade da entrada", "input_label": "Entrada", "image_label": "Imagem", "text_catalog_input": "Dados textuais / catálogo",
+    "evidence_used_title": "### 🔎 Evidências usadas", "needs_confirmation_title": "### ⚠️ Dados que precisam de confirmação", "general_info_title": "## 📊 Informações gerais",
+    "condition_no_photo_title": "## 🔎 Condição aparente — não avaliada sem foto", "condition_visual_title": "## 🔎 Condição aparente — estimativa visual da IA", "estimate_label": "Estimativa", "visual_estimate_label": "Estimativa visual",
+    "auth_no_photo_title": "## ⚠️ Autenticidade visual — não avaliada sem foto", "auth_triage_title": "## ⚠️ Autenticidade visual — triagem da IA", "status_label": "Status",
+    "auth_no_obvious": "Sem sinais óbvios na imagem, mas não certificada", "auth_requires_check": "Há sinais que merecem verificação adicional", "auth_indeterminate": "Não foi possível avaliar pela imagem", "auth_na": "Não aplicável",
+    "auth_disclaimer": "Esta avaliação visual não substitui autenticação profissional presencial.",
+    "market_title": "## 💰 Mercado", "market_note": "A IA não inventa valores de mercado. Quando o catálogo Pokémon estiver disponível, as referências de mercado e a atualidade da fonte aparecem na validação abaixo.",
+    "conservation_title": "## 🛡️ Conservação", "listing_base_title": "## 📝 Base para anúncio",
+    "result_preliminary_disclaimer": "A leitura da IA é preliminar. Quando o catálogo Pokémon estiver disponível, a validação externa aparece abaixo sem consumir outro crédito. Somente campos explicitamente marcados como confirmados pelo catálogo devem ser tratados como validados externamente.",
+    "upload_limit_help": "Tamanho máximo da imagem: {max_mb} MB. Formatos aceitos: JPG, PNG e WEBP.", "upload_too_large": "A imagem selecionada ultrapassa {max_mb} MB. Use uma imagem menor.", "image_open_failed": "Não foi possível abrir a imagem selecionada. Tente outro arquivo JPG, PNG ou WEBP.",
+    "analysis_failed_safe": "A análise não pôde ser concluída. O CardCraftAI aplica automaticamente as regras de recuperação de créditos; atualize o saldo antes de tentar novamente.",
+    "no_credits_new_analysis": "💎 Você não possui créditos disponíveis para uma nova análise.", "free_catalog_still_available": "A busca visual no catálogo acima continua gratuita.", "enter_card_name_short": "Digite o nome da carta.", "analyzing_generic": "🤖 Analisando...",
+    "analysis_history": "🗂️ Histórico de análises", "analysis_history_caption": "As análises concluídas ficam salvas para que você possa reabrir o resultado da IA depois sem gastar outro crédito.", "no_analysis_history": "Ainda não há análises concluídas salvas nesta conta.", "analysis_history_error": "Não foi possível carregar o histórico de análises agora.",
+    "analysis_type_photo": "Análise por foto", "analysis_type_name": "Análise por nome", "analysis_status_completed": "Concluída", "analysis_status_processing": "Processando", "analysis_status_failed": "Falhou", "history_card_unknown": "Carta não identificada", "history_open": "📂 Reabrir análise salva", "history_payload_missing": "Este registro histórico não contém um resultado da IA que possa ser reaberto.",
+    "saved_analysis_reopened": "📂 Análise salva reaberta. Nenhum novo crédito foi usado.", "saved_analysis_note": "Este é um resultado salvo. A validação do catálogo não é executada automaticamente para evitar alterar silenciosamente o resultado histórico.", "history_revalidate_free": "🔄 Validar catálogo novamente — grátis", "history_saved_catalog": "Status salvo do catálogo: {status} • confiança: {confidence}",
+    "purchase_col_date": "Data", "purchase_col_status": "Status", "purchase_col_credits": "Créditos", "purchase_col_value": "Valor", "purchase_col_currency": "Moeda", "purchase_col_provider": "Provedor",
+    "purchase_status_pending": "Pendente", "purchase_status_approved": "Aprovada", "purchase_status_completed": "Concluída", "purchase_status_refunded": "Reembolsada", "purchase_status_cancelled": "Cancelada", "purchase_status_rejected": "Recusada",
+})
+
+UI_TEXT["Español"].update({
+    "result_status_strong": "🟢 Identificación preliminar sólida", "result_status_probable": "🟡 Identificación probable", "result_status_uncertain": "🔴 Identificación incierta",
+    "quality_good": "Buena", "quality_acceptable": "Aceptable", "quality_poor": "Mala", "quality_na": "No aplicable",
+    "result_structured_title": "## 🃏 Identificación estructurada de la IA", "result_preliminary_title": "## 🃏 Identificación preliminar de la IA", "result_analysis_status": "Estado del análisis", "result_visual_status": "Estado de la lectura visual",
+    "result_text_intro": "Los datos siguientes fueron procesados por la IA a partir de la entrada textual y, cuando se seleccionó una carta, de los datos del catálogo Pokémon TCG. En este flujo no se analizó ninguna imagen.", "result_photo_intro": "Los datos siguientes fueron extraídos de la imagen por la IA. El nombre, la colección y el número pueden compararse con el catálogo Pokémon cuando esté disponible.",
+    "label_game": "Juego", "label_analyzed_name": "Nombre analizado", "label_read_name": "Nombre leído", "label_analyzed_set": "Colección analizada", "label_read_set": "Colección leída", "label_analyzed_number": "Número analizado", "label_read_number": "Número leído",
+    "result_ai_dependent": "### 🤖 Datos que aún dependen de la interpretación de la IA", "label_suggested_rarity": "Rareza sugerida", "label_suggested_variant": "Variante sugerida", "label_read_year": "Año leído / estimado",
+    "input_quality_title": "### 🧾 Calidad de la entrada", "photo_quality_title": "### 📸 Calidad de la entrada", "input_label": "Entrada", "image_label": "Imagen", "text_catalog_input": "Datos textuales / catálogo",
+    "evidence_used_title": "### 🔎 Evidencias utilizadas", "needs_confirmation_title": "### ⚠️ Datos que aún necesitan confirmación", "general_info_title": "## 📊 Información general",
+    "condition_no_photo_title": "## 🔎 Estado aparente — no evaluado sin foto", "condition_visual_title": "## 🔎 Estado aparente — estimación visual de la IA", "estimate_label": "Estimación", "visual_estimate_label": "Estimación visual",
+    "auth_no_photo_title": "## ⚠️ Autenticidad visual — no evaluada sin foto", "auth_triage_title": "## ⚠️ Autenticidad visual — cribado de IA", "status_label": "Estado", "auth_no_obvious": "Sin señales obvias en la imagen, pero no certificada", "auth_requires_check": "Hay señales que merecen verificación adicional", "auth_indeterminate": "No se pudo evaluar a partir de la imagen", "auth_na": "No aplicable", "auth_disclaimer": "Esta evaluación visual no sustituye una autenticación profesional presencial.",
+    "market_title": "## 💰 Mercado", "market_note": "La IA no inventa precios de mercado. Cuando el catálogo Pokémon está disponible, las referencias de mercado y la actualidad de la fuente aparecen en la validación inferior.", "conservation_title": "## 🛡️ Conservación", "listing_base_title": "## 📝 Base para anuncio", "result_preliminary_disclaimer": "La lectura de la IA es preliminar. Cuando el catálogo Pokémon está disponible, la validación externa aparece abajo sin usar otro crédito. Solo los campos marcados explícitamente como confirmados por el catálogo deben tratarse como validados externamente.",
+    "upload_limit_help": "Tamaño máximo de imagen: {max_mb} MB. Formatos aceptados: JPG, PNG y WEBP.", "upload_too_large": "La imagen seleccionada supera {max_mb} MB. Usa una imagen más pequeña.", "image_open_failed": "No se pudo abrir la imagen seleccionada. Prueba con otro archivo JPG, PNG o WEBP.", "analysis_failed_safe": "No se pudo completar el análisis. CardCraftAI aplica automáticamente las reglas de recuperación de créditos; actualiza el saldo antes de intentarlo de nuevo.", "no_credits_new_analysis": "💎 No tienes créditos disponibles para un nuevo análisis.", "free_catalog_still_available": "La búsqueda visual del catálogo anterior sigue siendo gratuita.", "enter_card_name_short": "Introduce el nombre de la carta.", "analyzing_generic": "🤖 Analizando...",
+    "analysis_history": "🗂️ Historial de análisis", "analysis_history_caption": "Los análisis completados se guardan para que puedas volver a abrir el resultado de la IA más tarde sin gastar otro crédito.", "no_analysis_history": "Todavía no hay análisis completados guardados en esta cuenta.", "analysis_history_error": "No se pudo cargar el historial de análisis ahora.", "analysis_type_photo": "Análisis por foto", "analysis_type_name": "Análisis por nombre", "analysis_status_completed": "Completado", "analysis_status_processing": "Procesando", "analysis_status_failed": "Fallido", "history_card_unknown": "Carta no identificada", "history_open": "📂 Volver a abrir análisis guardado", "history_payload_missing": "Este registro histórico no contiene un resultado de IA que pueda reabrirse.", "saved_analysis_reopened": "📂 Análisis guardado reabierto. No se usó ningún crédito nuevo.", "saved_analysis_note": "Este es un resultado guardado. La validación del catálogo no se ejecuta automáticamente para no cambiar silenciosamente el resultado histórico.", "history_revalidate_free": "🔄 Validar catálogo de nuevo — gratis", "history_saved_catalog": "Estado guardado del catálogo: {status} • confianza: {confidence}",
+    "purchase_col_date": "Fecha", "purchase_col_status": "Estado", "purchase_col_credits": "Créditos", "purchase_col_value": "Importe", "purchase_col_currency": "Moneda", "purchase_col_provider": "Proveedor", "purchase_status_pending": "Pendiente", "purchase_status_approved": "Aprobado", "purchase_status_completed": "Completado", "purchase_status_refunded": "Reembolsado", "purchase_status_cancelled": "Cancelado", "purchase_status_rejected": "Rechazado",
+})
+
+UI_TEXT["日本語"].update({
+    "result_status_strong": "🟢 強い暫定識別", "result_status_probable": "🟡 識別の可能性あり", "result_status_uncertain": "🔴 識別不確実",
+    "quality_good": "良好", "quality_acceptable": "許容", "quality_poor": "不良", "quality_na": "該当なし",
+    "result_structured_title": "## 🃏 AIによる構造化識別", "result_preliminary_title": "## 🃏 AIによる暫定識別", "result_analysis_status": "分析ステータス", "result_visual_status": "画像読取ステータス",
+    "result_text_intro": "以下のデータはテキスト入力と、カードが選択されている場合はPokémon TCGカタログのデータをもとにAIが処理したものです。このフローでは画像分析は行っていません。", "result_photo_intro": "以下のデータはAIが画像から抽出したものです。名前、セット、番号はカタログが利用可能な場合にPokémonカタログと照合できます。",
+    "label_game": "ゲーム", "label_analyzed_name": "分析した名前", "label_read_name": "読み取った名前", "label_analyzed_set": "分析したセット", "label_read_set": "読み取ったセット", "label_analyzed_number": "分析した番号", "label_read_number": "読み取った番号",
+    "result_ai_dependent": "### 🤖 まだAI解釈に依存するデータ", "label_suggested_rarity": "推定レアリティ", "label_suggested_variant": "推定バリアント", "label_read_year": "読取 / 推定年",
+    "input_quality_title": "### 🧾 入力品質", "photo_quality_title": "### 📸 入力品質", "input_label": "入力", "image_label": "画像", "text_catalog_input": "テキスト / カタログデータ",
+    "evidence_used_title": "### 🔎 使用した根拠", "needs_confirmation_title": "### ⚠️ 追加確認が必要なデータ", "general_info_title": "## 📊 一般情報",
+    "condition_no_photo_title": "## 🔎 外観状態 — 写真なしでは未評価", "condition_visual_title": "## 🔎 外観状態 — AIによる画像推定", "estimate_label": "推定", "visual_estimate_label": "画像推定",
+    "auth_no_photo_title": "## ⚠️ 外観上の真正性 — 写真なしでは未評価", "auth_triage_title": "## ⚠️ 外観上の真正性 — AIスクリーニング", "status_label": "ステータス", "auth_no_obvious": "画像上で明らかな兆候はないが、認証済みではありません", "auth_requires_check": "追加確認が必要な兆候があります", "auth_indeterminate": "画像から評価できませんでした", "auth_na": "該当なし", "auth_disclaimer": "この画像評価は対面での専門的な真贋鑑定に代わるものではありません。",
+    "market_title": "## 💰 市場", "market_note": "AIは市場価格を捏造しません。Pokémonカタログが利用可能な場合、市場参考値と情報の新しさは下の検証欄に表示されます。", "conservation_title": "## 🛡️ 保存状態", "listing_base_title": "## 📝 出品文案", "result_preliminary_disclaimer": "AIの読取は暫定的です。Pokémonカタログが利用可能な場合、追加クレジットを使わずに外部検証が下に表示されます。カタログで明示的に確認済みとされた項目のみ、外部検証済みとして扱ってください。",
+    "upload_limit_help": "画像の最大サイズ: {max_mb} MB。対応形式: JPG、PNG、WEBP。", "upload_too_large": "選択した画像は{max_mb} MBを超えています。より小さい画像を使用してください。", "image_open_failed": "選択した画像を開けませんでした。別のJPG、PNG、WEBPファイルをお試しください。", "analysis_failed_safe": "分析を完了できませんでした。CardCraftAIはクレジット回復ルールを自動適用します。再試行前に残高を更新してください。", "no_credits_new_analysis": "💎 新しい分析に利用できるクレジットがありません。", "free_catalog_still_available": "上のカタログ画像検索は引き続き無料です。", "enter_card_name_short": "カード名を入力してください。", "analyzing_generic": "🤖 分析しています...",
+    "analysis_history": "🗂️ 分析履歴", "analysis_history_caption": "完了した分析は保存され、追加クレジットなしで後からAI結果を再表示できます。", "no_analysis_history": "このアカウントにはまだ完了済み分析が保存されていません。", "analysis_history_error": "現在、分析履歴を読み込めません。", "analysis_type_photo": "写真分析", "analysis_type_name": "名前分析", "analysis_status_completed": "完了", "analysis_status_processing": "処理中", "analysis_status_failed": "失敗", "history_card_unknown": "カード未特定", "history_open": "📂 保存済み分析を開く", "history_payload_missing": "この履歴レコードには再表示可能なAI結果が含まれていません。", "saved_analysis_reopened": "📂 保存済み分析を開きました。新しいクレジットは使用していません。", "saved_analysis_note": "これは保存済みの結果です。履歴結果を無断で変更しないため、カタログ検証は自動では再実行されません。", "history_revalidate_free": "🔄 カタログを再検証 — 無料", "history_saved_catalog": "保存済みカタログ状態: {status} • 信頼度: {confidence}",
+    "purchase_col_date": "日付", "purchase_col_status": "ステータス", "purchase_col_credits": "クレジット", "purchase_col_value": "金額", "purchase_col_currency": "通貨", "purchase_col_provider": "決済業者", "purchase_status_pending": "保留", "purchase_status_approved": "承認済み", "purchase_status_completed": "完了", "purchase_status_refunded": "返金済み", "purchase_status_cancelled": "キャンセル", "purchase_status_rejected": "拒否",
+})
+
 def idioma_interface_atual():
     if "idioma_interface" not in st.session_state:
         st.session_state.idioma_interface = "English"
@@ -1201,72 +1320,65 @@ def texto_ou_nao_confirmado(valor, idioma=None):
     texto = str(valor).strip()
     return texto if texto else t("not_confirmed", idioma)
 
-def formatar_resultado_estruturado(dados, tipo_resultado=None):
+def formatar_resultado_estruturado(dados, tipo_resultado=None, idioma=None):
+    idioma = idioma or idioma_interface_atual()
     status = dados.get("status_identificacao", "incerta")
     analise_por_nome = str(tipo_resultado or "").strip().lower() == "nome"
     rotulos_status = {
-        "confirmada": "🟢 Identificacao preliminar forte",
-        "provavel": "🟡 Identificacao provavel",
-        "incerta": "🔴 Identificacao incerta",
+        "confirmada": t("result_status_strong", idioma),
+        "provavel": t("result_status_probable", idioma),
+        "incerta": t("result_status_uncertain", idioma),
     }
 
     qualidade = dados.get("qualidade_imagem", "nao_aplicavel")
     rotulos_qualidade = {
-        "boa": "Boa",
-        "aceitavel": "Aceitavel",
-        "ruim": "Ruim",
-        "nao_aplicavel": "Nao aplicavel",
+        "boa": t("quality_good", idioma),
+        "aceitavel": t("quality_acceptable", idioma),
+        "ruim": t("quality_poor", idioma),
+        "nao_aplicavel": t("quality_na", idioma),
     }
 
     if analise_por_nome:
         linhas = [
-            "## 🃏 Identificacao estruturada da IA",
-            f"**Status da analise:** {rotulos_status.get(status, '🔴 Identificacao incerta')}",
+            t("result_structured_title", idioma),
+            f"**{t('result_analysis_status', idioma)}:** {rotulos_status.get(status, t('result_status_uncertain', idioma))}",
             "",
-            (
-                "Os dados abaixo foram processados pela IA a partir da entrada textual "
-                "e, quando uma carta foi selecionada, dos dados do catalogo Pokemon TCG. "
-                "Nao houve analise de imagem neste fluxo."
-            ),
+            t("result_text_intro", idioma),
             "",
-            f"- **Jogo:** {texto_ou_nao_confirmado(dados.get('jogo'))}",
-            f"- **Nome analisado:** {texto_ou_nao_confirmado(dados.get('nome_carta'))}",
-            f"- **Colecao / Set analisada:** {texto_ou_nao_confirmado(dados.get('colecao_set'))}",
-            f"- **Numero analisado:** {texto_ou_nao_confirmado(dados.get('numero_carta'))}",
+            f"- **{t('label_game', idioma)}:** {texto_ou_nao_confirmado(dados.get('jogo'), idioma)}",
+            f"- **{t('label_analyzed_name', idioma)}:** {texto_ou_nao_confirmado(dados.get('nome_carta'), idioma)}",
+            f"- **{t('label_analyzed_set', idioma)}:** {texto_ou_nao_confirmado(dados.get('colecao_set'), idioma)}",
+            f"- **{t('label_analyzed_number', idioma)}:** {texto_ou_nao_confirmado(dados.get('numero_carta'), idioma)}",
             "",
-            "### 🤖 Dados ainda dependentes de interpretacao da IA",
-            f"- **Raridade sugerida:** {texto_ou_nao_confirmado(dados.get('raridade'))}",
-            f"- **Variante sugerida:** {texto_ou_nao_confirmado(dados.get('variante'))}",
-            f"- **Idioma aparente:** {texto_ou_nao_confirmado(dados.get('idioma_carta'))}",
-            f"- **Ano lido / estimado:** {texto_ou_nao_confirmado(dados.get('ano'))}",
+            t("result_ai_dependent", idioma),
+            f"- **{t('label_suggested_rarity', idioma)}:** {texto_ou_nao_confirmado(dados.get('raridade'), idioma)}",
+            f"- **{t('label_suggested_variant', idioma)}:** {texto_ou_nao_confirmado(dados.get('variante'), idioma)}",
+            f"- **{t('label_apparent_language', idioma)}:** {texto_ou_nao_confirmado(dados.get('idioma_carta'), idioma)}",
+            f"- **{t('label_read_year', idioma)}:** {texto_ou_nao_confirmado(dados.get('ano'), idioma)}",
             "",
-            "### 🧾 Qualidade da entrada",
-            "**Entrada:** Dados textuais / catalogo",
+            t("input_quality_title", idioma),
+            f"**{t('input_label', idioma)}:** {t('text_catalog_input', idioma)}",
         ]
     else:
         linhas = [
-            "## 🃏 Identificacao preliminar da IA",
-            f"**Status da leitura visual:** {rotulos_status.get(status, '🔴 Identificacao incerta')}",
+            t("result_preliminary_title", idioma),
+            f"**{t('result_visual_status', idioma)}:** {rotulos_status.get(status, t('result_status_uncertain', idioma))}",
             "",
-            (
-                "Os dados abaixo foram extraidos da imagem pela IA. "
-                "Nome, colecao e numero serao comparados com o catalogo "
-                "Pokemon quando ele estiver disponivel."
-            ),
+            t("result_photo_intro", idioma),
             "",
-            f"- **Jogo:** {texto_ou_nao_confirmado(dados.get('jogo'))}",
-            f"- **Nome lido:** {texto_ou_nao_confirmado(dados.get('nome_carta'))}",
-            f"- **Colecao / Set lido:** {texto_ou_nao_confirmado(dados.get('colecao_set'))}",
-            f"- **Numero lido:** {texto_ou_nao_confirmado(dados.get('numero_carta'))}",
+            f"- **{t('label_game', idioma)}:** {texto_ou_nao_confirmado(dados.get('jogo'), idioma)}",
+            f"- **{t('label_read_name', idioma)}:** {texto_ou_nao_confirmado(dados.get('nome_carta'), idioma)}",
+            f"- **{t('label_read_set', idioma)}:** {texto_ou_nao_confirmado(dados.get('colecao_set'), idioma)}",
+            f"- **{t('label_read_number', idioma)}:** {texto_ou_nao_confirmado(dados.get('numero_carta'), idioma)}",
             "",
-            "### 🤖 Dados ainda dependentes de interpretacao da IA",
-            f"- **Raridade sugerida:** {texto_ou_nao_confirmado(dados.get('raridade'))}",
-            f"- **Variante sugerida:** {texto_ou_nao_confirmado(dados.get('variante'))}",
-            f"- **Idioma aparente:** {texto_ou_nao_confirmado(dados.get('idioma_carta'))}",
-            f"- **Ano lido / estimado:** {texto_ou_nao_confirmado(dados.get('ano'))}",
+            t("result_ai_dependent", idioma),
+            f"- **{t('label_suggested_rarity', idioma)}:** {texto_ou_nao_confirmado(dados.get('raridade'), idioma)}",
+            f"- **{t('label_suggested_variant', idioma)}:** {texto_ou_nao_confirmado(dados.get('variante'), idioma)}",
+            f"- **{t('label_apparent_language', idioma)}:** {texto_ou_nao_confirmado(dados.get('idioma_carta'), idioma)}",
+            f"- **{t('label_read_year', idioma)}:** {texto_ou_nao_confirmado(dados.get('ano'), idioma)}",
             "",
-            "### 📸 Qualidade da entrada",
-            f"**Imagem:** {rotulos_qualidade.get(qualidade, 'Nao aplicavel')}",
+            t("photo_quality_title", idioma),
+            f"**{t('image_label', idioma)}:** {rotulos_qualidade.get(qualidade, t('quality_na', idioma))}",
         ]
 
     motivo = dados.get("motivo_qualidade_imagem")
@@ -1275,85 +1387,54 @@ def formatar_resultado_estruturado(dados, tipo_resultado=None):
 
     evidencias = dados.get("evidencias_visuais") or []
     if evidencias:
-        linhas.extend(["", "### 🔎 Evidencias usadas"])
+        linhas.extend(["", t("evidence_used_title", idioma)])
         linhas.extend([f"- {item}" for item in evidencias])
 
     incertos = dados.get("campos_incertos") or []
     if incertos:
-        linhas.extend(["", "### ⚠️ Dados que precisam de confirmacao"])
+        linhas.extend(["", t("needs_confirmation_title", idioma)])
         linhas.extend([f"- {item}" for item in incertos])
 
     gerais = dados.get("informacoes_gerais") or []
     if gerais:
-        linhas.extend(["", "## 📊 Informacoes gerais"])
+        linhas.extend(["", t("general_info_title", idioma)])
         linhas.extend([f"- {item}" for item in gerais])
 
     condicao = dados.get("condicao_aparente") or {}
     if analise_por_nome:
-        linhas.extend([
-            "",
-            "## 🔎 Condicao aparente — nao avaliada sem foto",
-            f"**Estimativa:** {condicao.get('estimativa', 'nao_aplicavel')}",
-        ])
+        linhas.extend(["", t("condition_no_photo_title", idioma), f"**{t('estimate_label', idioma)}:** {condicao.get('estimativa', 'nao_aplicavel')}"])
     else:
-        linhas.extend([
-            "",
-            "## 🔎 Condicao aparente — estimativa visual da IA",
-            f"**Estimativa visual:** {condicao.get('estimativa', 'indeterminada')}",
-        ])
+        linhas.extend(["", t("condition_visual_title", idioma), f"**{t('visual_estimate_label', idioma)}:** {condicao.get('estimativa', 'indeterminada')}"])
     for item in condicao.get("observacoes") or []:
         linhas.append(f"- {item}")
 
     autenticidade = dados.get("autenticidade_visual") or {}
     rotulos_autenticidade = {
-        "sem_sinais_obvios": "Sem sinais obvios na imagem, mas nao certificada",
-        "requer_verificacao": "Ha sinais que merecem verificacao adicional",
-        "indeterminada": "Nao foi possivel avaliar pela imagem",
-        "nao_aplicavel": "Nao aplicavel",
+        "sem_sinais_obvios": t("auth_no_obvious", idioma),
+        "requer_verificacao": t("auth_requires_check", idioma),
+        "indeterminada": t("auth_indeterminate", idioma),
+        "nao_aplicavel": t("auth_na", idioma),
     }
     if analise_por_nome:
-        linhas.extend([
-            "",
-            "## ⚠️ Autenticidade visual — nao avaliada sem foto",
-            f"**Status:** {rotulos_autenticidade.get(autenticidade.get('status'), 'Nao aplicavel')}",
-        ])
+        linhas.extend(["", t("auth_no_photo_title", idioma), f"**{t('status_label', idioma)}:** {rotulos_autenticidade.get(autenticidade.get('status'), t('auth_na', idioma))}"])
     else:
-        linhas.extend([
-            "",
-            "## ⚠️ Autenticidade visual — triagem da IA",
-            f"**Status:** {rotulos_autenticidade.get(autenticidade.get('status'), 'Indeterminada')}",
-        ])
+        linhas.extend(["", t("auth_triage_title", idioma), f"**{t('status_label', idioma)}:** {rotulos_autenticidade.get(autenticidade.get('status'), t('auth_indeterminate', idioma))}"])
     for item in autenticidade.get("observacoes") or []:
         linhas.append(f"- {item}")
-    linhas.append(
-        "\nEsta avaliacao visual nao substitui autenticacao profissional presencial."
-    )
+    linhas.append("\n" + t("auth_disclaimer", idioma))
 
-    linhas.extend([
-        "",
-        "## 💰 Mercado",
-        "A IA nao inventa valores de mercado. Quando o catalogo Pokemon estiver disponivel, "
-        "as referencias de mercado e a atualidade da fonte aparecem na validacao abaixo.",
-    ])
+    linhas.extend(["", t("market_title", idioma), t("market_note", idioma)])
 
     conservacao = dados.get("conservacao") or []
     if conservacao:
-        linhas.extend(["", "## 🛡️ Conservacao"])
+        linhas.extend(["", t("conservation_title", idioma)])
         linhas.extend([f"- {item}" for item in conservacao])
 
     anuncio = dados.get("anuncio_venda")
     if anuncio:
-        linhas.extend(["", "## 📝 Base para anuncio", anuncio])
+        linhas.extend(["", t("listing_base_title", idioma), anuncio])
 
-    linhas.extend([
-        "",
-        "---",
-        "*A leitura da IA e preliminar. Quando o catalogo Pokemon estiver disponivel, "
-        "a validacao externa aparece logo abaixo sem consumir outro credito. "
-        "Somente os campos explicitamente marcados como confirmados pelo catalogo "
-        "devem ser tratados como validados externamente.*",
-    ])
-
+    linhas.extend(["", "---", f"*{t('result_preliminary_disclaimer', idioma)}*"])
     return "\n".join(linhas)
 
 
@@ -3913,6 +3994,18 @@ if "aviso_recuperacao" not in st.session_state:
 if "ultima_recuperacao_runs" not in st.session_state:
     st.session_state.ultima_recuperacao_runs = None
 
+if "analise_reaberta_historico" not in st.session_state:
+    st.session_state.analise_reaberta_historico = False
+
+if "historico_catalog_status" not in st.session_state:
+    st.session_state.historico_catalog_status = None
+
+if "historico_confidence_level" not in st.session_state:
+    st.session_state.historico_confidence_level = None
+
+if "aviso_analise_reaberta" not in st.session_state:
+    st.session_state.aviso_analise_reaberta = False
+
 if "mostrar_recuperacao_senha" not in st.session_state:
     st.session_state.mostrar_recuperacao_senha = False
 
@@ -4107,6 +4200,10 @@ def limpar_sessao():
     st.session_state.aviso_auditoria = None
     st.session_state.aviso_recuperacao = None
     st.session_state.ultima_recuperacao_runs = None
+    st.session_state.analise_reaberta_historico = False
+    st.session_state.historico_catalog_status = None
+    st.session_state.historico_confidence_level = None
+    st.session_state.aviso_analise_reaberta = False
 
     st.session_state.checkout_preference = None
     st.session_state.payment_return_status = None
@@ -4393,23 +4490,19 @@ def formatar_data_conta(valor):
         return str(valor)
 
 
-def rotulo_status_compra(status):
+def rotulo_status_compra(status, idioma=None):
+    idioma = idioma or idioma_interface_atual()
     status = str(status or "").strip().lower()
-
     mapa = {
-        "pending": "Pendente",
-        "approved": "Aprovada",
-        "completed": "Concluída",
-        "refunded": "Reembolsada",
-        "cancelled": "Cancelada",
-        "canceled": "Cancelada",
-        "rejected": "Recusada",
+        "pending": t("purchase_status_pending", idioma),
+        "approved": t("purchase_status_approved", idioma),
+        "completed": t("purchase_status_completed", idioma),
+        "refunded": t("purchase_status_refunded", idioma),
+        "cancelled": t("purchase_status_cancelled", idioma),
+        "canceled": t("purchase_status_cancelled", idioma),
+        "rejected": t("purchase_status_rejected", idioma),
     }
-
-    return mapa.get(
-        status,
-        status.capitalize() if status else "—",
-    )
+    return mapa.get(status, status.capitalize() if status else "—")
 
 
 def buscar_creditos():
@@ -5811,6 +5904,76 @@ def executar_analise_com_credito(
     return resultado
 
 
+
+# ============================================================
+# RELIABILITY 2.6.23 - HISTORICO REABRIVEL PELO USUARIO
+# ============================================================
+
+def buscar_historico_analises_usuario(limite=10):
+    user_id = st.session_state.get("user_id")
+    if not user_id:
+        return []
+    try:
+        resposta = (
+            supabase_service
+            .table("analysis_runs")
+            .select("*")
+            .eq("user_id", str(user_id))
+            .eq("status", "completed")
+            .order("created_at", desc=True)
+            .limit(int(limite))
+            .execute()
+        )
+        return resposta.data or []
+    except Exception:
+        return None
+
+
+def _payload_historico_analise(registro):
+    payload = (registro or {}).get("ai_payload")
+    if isinstance(payload, dict):
+        return payload
+    if isinstance(payload, str):
+        try:
+            convertido = json.loads(payload)
+            return convertido if isinstance(convertido, dict) else None
+        except Exception:
+            return None
+    return None
+
+
+def reabrir_analise_historico(registro):
+    payload = _payload_historico_analise(registro)
+    if not payload:
+        return False
+
+    tipo_db = str((registro or {}).get("analysis_type") or "photo").strip().lower()
+    tipo_resultado = "nome" if tipo_db == "name" else "foto"
+    pagina_destino = "search" if tipo_db == "name" else "photo"
+
+    st.session_state.resultado_analise = payload
+    st.session_state.resultado_tipo = tipo_resultado
+    st.session_state.resultado_novo = False
+    st.session_state.analysis_run_id_atual = str((registro or {}).get("id") or "") or None
+    st.session_state.analysis_request_id_atual = (registro or {}).get("usage_request_id")
+    st.session_state.analysis_tipo_atual = tipo_db
+
+    st.session_state.catalogo_selecionada_foto = None
+    st.session_state.catalogo_validacao_foto_chave = None
+    st.session_state.catalogo_validacao_foto_estado = "novo"
+    st.session_state.catalogo_validacao_foto_cartas = []
+    st.session_state.catalogo_validacao_foto_resultado = None
+    st.session_state.catalogo_validacao_foto_erro = None
+    st.session_state.catalogo_validacao_foto_retry = 0
+
+    st.session_state.analise_reaberta_historico = True
+    st.session_state.historico_catalog_status = (registro or {}).get("catalog_status")
+    st.session_state.historico_confidence_level = (registro or {}).get("confidence_level")
+    st.session_state.aviso_analise_reaberta = True
+    st.session_state.pagina_interface = pagina_destino
+    return True
+
+
 # ============================================================
 # DOCUMENTOS LEGAIS - BETA 2.6.15
 # ============================================================
@@ -6724,6 +6887,10 @@ if st.session_state.aviso_recuperacao:
     )
     st.session_state.aviso_recuperacao = None
 
+if st.session_state.aviso_analise_reaberta:
+    st.success(t("saved_analysis_reopened", idioma))
+    st.session_state.aviso_analise_reaberta = False
+
 
 # ============================================================
 # EXIBIR RESULTADO
@@ -6741,6 +6908,7 @@ def mostrar_resultado(
         conteudo = formatar_resultado_estruturado(
             resultado,
             tipo_resultado=st.session_state.get("resultado_tipo"),
+            idioma=idioma,
         )
     else:
         # Compatibilidade defensiva com resultados de sessoes antigas.
@@ -6804,6 +6972,7 @@ if pagina == "photo":
                         "png",
                         "webp",
                     ],
+                    help=t("upload_limit_help", idioma, max_mb=MAX_UPLOAD_MB),
                 )
             )
 
@@ -6825,80 +6994,50 @@ if pagina == "photo":
 
         if uploaded_file is not None:
 
-            try:
+            tamanho_arquivo = int(getattr(uploaded_file, "size", 0) or 0)
+            if tamanho_arquivo > MAX_UPLOAD_BYTES:
+                st.error(t("upload_too_large", idioma, max_mb=MAX_UPLOAD_MB))
+            else:
+                try:
+                    imagem = Image.open(uploaded_file)
+                    imagem.load()
 
-                imagem = Image.open(
-                    uploaded_file
-                )
-
-                imagem.load()
-
-                st.image(
-                    imagem,
-                    caption=t("selected_card", idioma),
-                    use_container_width=True,
-                )
-
-                if creditos <= 0:
-
-                    st.error(
-                        "💎 Você não possui "
-                        "créditos disponíveis."
+                    st.image(
+                        imagem,
+                        caption=t("selected_card", idioma),
+                        width=IMAGE_PREVIEW_WIDTH,
                     )
 
-                else:
-
-                    if st.button(
-                        t("analyze_card", idioma),
-                        use_container_width=True,
-                        key="btn_analise_foto",
-                    ):
-
-                        st.session_state.catalogo_selecionada_foto = None
-                        st.session_state.analysis_run_id_atual = None
-                        st.session_state.analysis_request_id_atual = None
-                        st.session_state.analysis_tipo_atual = None
-
-                        with st.spinner(
-                            t("analyzing_card", idioma)
+                    if creditos <= 0:
+                        st.error(t("no_credits_new_analysis", idioma))
+                    else:
+                        if st.button(
+                            t("analyze_card", idioma),
+                            use_container_width=True,
+                            key="btn_analise_foto",
                         ):
+                            st.session_state.catalogo_selecionada_foto = None
+                            st.session_state.analysis_run_id_atual = None
+                            st.session_state.analysis_request_id_atual = None
+                            st.session_state.analysis_tipo_atual = None
+                            st.session_state.analise_reaberta_historico = False
 
-                            try:
-
-                                resultado = (
-                                    executar_analise_com_credito(
+                            with st.spinner(t("analyzing_card", idioma)):
+                                try:
+                                    resultado = executar_analise_com_credito(
                                         idioma=idioma,
                                         imagem_pil=imagem,
                                         tipo_acao="analise_foto",
                                     )
-                                )
+                                    st.session_state.resultado_analise = resultado
+                                    st.session_state.resultado_tipo = "foto"
+                                    st.session_state.resultado_novo = True
+                                    st.rerun()
+                                except Exception:
+                                    st.error(t("analysis_failed_safe", idioma))
 
-                                st.session_state.resultado_analise = (
-                                    resultado
-                                )
-
-                                st.session_state.resultado_tipo = (
-                                    "foto"
-                                )
-
-                                st.session_state.resultado_novo = (
-                                    True
-                                )
-
-                                st.rerun()
-
-                            except Exception as erro:
-
-                                st.error(
-                                    f"Erro: {erro}"
-                                )
-
-            except Exception as erro:
-
-                st.error(
-                    "Não foi possível abrir "
-                    f"a imagem: {erro}"
-                )
+                except Exception:
+                    st.error(t("image_open_failed", idioma))
 
         else:
 
@@ -6929,9 +7068,28 @@ if pagina == "photo":
             st.session_state.resultado_analise
         )
 
-        mostrar_catalogo_para_analise_foto(
-            st.session_state.resultado_analise
-        )
+        if st.session_state.get("analise_reaberta_historico"):
+            st.info(t("saved_analysis_note", idioma))
+            status_salvo = st.session_state.get("historico_catalog_status") or "—"
+            confianca_salva = st.session_state.get("historico_confidence_level") or "—"
+            st.caption(t("history_saved_catalog", idioma, status=status_salvo, confidence=confianca_salva))
+            if st.button(
+                t("history_revalidate_free", idioma),
+                use_container_width=True,
+                key="btn_revalidar_historico_foto",
+            ):
+                st.session_state.analise_reaberta_historico = False
+                st.session_state.catalogo_validacao_foto_chave = None
+                st.session_state.catalogo_validacao_foto_estado = "novo"
+                st.session_state.catalogo_validacao_foto_cartas = []
+                st.session_state.catalogo_validacao_foto_resultado = None
+                st.session_state.catalogo_validacao_foto_erro = None
+                st.session_state.catalogo_validacao_foto_retry = 0
+                st.rerun()
+        else:
+            mostrar_catalogo_para_analise_foto(
+                st.session_state.resultado_analise
+            )
 
 
 # ============================================================
@@ -7084,13 +7242,8 @@ elif pagina == "search":
         st.caption(t("analysis_uses_typed"))
 
     if creditos <= 0:
-        st.warning(
-            "💎 Você não possui créditos disponíveis "
-            "para gerar uma nova análise."
-        )
-        st.info(
-            "A busca visual acima continua gratuita."
-        )
+        st.warning(t("no_credits_new_analysis", idioma))
+        st.info(t("free_catalog_still_available", idioma))
 
     if st.button(
         t("analyze_one_credit", idioma),
@@ -7101,6 +7254,7 @@ elif pagina == "search":
         st.session_state.analysis_run_id_atual = None
         st.session_state.analysis_request_id_atual = None
         st.session_state.analysis_tipo_atual = None
+        st.session_state.analise_reaberta_historico = False
 
         termo = termo_busca.strip()
         colecao = colecao_busca.strip()
@@ -7111,9 +7265,7 @@ elif pagina == "search":
             )
         else:
             if not termo:
-                st.warning(
-                    "Digite o nome da carta."
-                )
+                st.warning(t("enter_card_name_short", idioma))
                 st.stop()
 
             if colecao:
@@ -7127,9 +7279,7 @@ elif pagina == "search":
                     "Coleção/Set: não informada"
                 )
 
-        with st.spinner(
-            "🤖 Analisando..."
-        ):
+        with st.spinner(t("analyzing_generic", idioma)):
             try:
                 resultado = (
                     executar_analise_com_credito(
@@ -7167,10 +7317,8 @@ elif pagina == "search":
 
                 st.rerun()
 
-            except Exception as erro:
-                st.error(
-                    f"Erro: {erro}"
-                )
+            except Exception:
+                st.error(t("analysis_failed_safe", idioma))
 
     # --------------------------------------------------------
     # MOSTRAR RESULTADO APÓS RERUN
@@ -7182,9 +7330,7 @@ elif pagina == "search":
         st.session_state.resultado_tipo == "nome"
     ):
         if st.session_state.resultado_novo:
-            st.success(
-                "✅ Análise concluída."
-            )
+            st.success(t("analysis_complete", idioma))
             st.session_state.resultado_novo = False
 
         mostrar_resultado(
@@ -7269,6 +7415,42 @@ elif pagina == "account":
 
     st.divider()
 
+    st.subheader(t("analysis_history", idioma))
+    st.caption(t("analysis_history_caption", idioma))
+
+    historico_analises = buscar_historico_analises_usuario(limite=10)
+    if historico_analises is None:
+        st.warning(t("analysis_history_error", idioma))
+    elif not historico_analises:
+        st.info(t("no_analysis_history", idioma))
+    else:
+        for registro in historico_analises:
+            tipo_db = str(registro.get("analysis_type") or "photo").strip().lower()
+            tipo_rotulo = t("analysis_type_name", idioma) if tipo_db == "name" else t("analysis_type_photo", idioma)
+            nome_hist = registro.get("ai_name") or t("history_card_unknown", idioma)
+            numero_hist = registro.get("ai_number") or ""
+            data_hist = formatar_data_conta(registro.get("created_at"))
+            titulo_hist = f"{data_hist} • {tipo_rotulo} • {nome_hist}" + (f" #{numero_hist}" if numero_hist else "")
+
+            with st.expander(titulo_hist):
+                set_hist = registro.get("ai_set") or t("not_confirmed", idioma)
+                st.write(f"**{t('label_set', idioma)}:** {set_hist}")
+                status_cat = registro.get("catalog_status") or "—"
+                conf_hist = registro.get("confidence_level") or "—"
+                st.caption(t("history_saved_catalog", idioma, status=status_cat, confidence=conf_hist))
+
+                if st.button(
+                    t("history_open", idioma),
+                    key=f"reabrir_analise_{registro.get('id')}",
+                    use_container_width=True,
+                ):
+                    if reabrir_analise_historico(registro):
+                        st.rerun()
+                    else:
+                        st.warning(t("history_payload_missing", idioma))
+
+    st.divider()
+
     st.subheader(
         t("purchase_history", idioma)
     )
@@ -7285,21 +7467,21 @@ elif pagina == "account":
         for compra in compras:
             linhas_compras.append(
                 {
-                    "Data": formatar_data_conta(
+                    t("purchase_col_date", idioma): formatar_data_conta(
                         compra.get("created_at")
                     ),
-                    "Status": rotulo_status_compra(
-                        compra.get("status")
+                    t("purchase_col_status", idioma): rotulo_status_compra(
+                        compra.get("status"), idioma
                     ),
-                    "Créditos": int(
+                    t("purchase_col_credits", idioma): int(
                         compra.get("credits_purchased") or 0
                     ),
-                    "Valor": formatar_preco(
+                    t("purchase_col_value", idioma): formatar_preco(
                         compra.get("amount_cents") or 0,
                         compra.get("currency") or "BRL",
                     ),
-                    "Moeda": compra.get("currency") or "BRL",
-                    "Provedor": compra.get("provider") or "—",
+                    t("purchase_col_currency", idioma): compra.get("currency") or "BRL",
+                    t("purchase_col_provider", idioma): compra.get("provider") or "—",
                 }
             )
 
