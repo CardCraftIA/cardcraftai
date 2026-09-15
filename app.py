@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.23
+# CARDCRAFTAI RELIABILITY 2.6.24
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.23"
+APP_VERSION = "2.6.24"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -1055,6 +1055,133 @@ UI_TEXT["日本語"].update({
     "upload_limit_help": "画像の最大サイズ: {max_mb} MB。対応形式: JPG、PNG、WEBP。", "upload_too_large": "選択した画像は{max_mb} MBを超えています。より小さい画像を使用してください。", "image_open_failed": "選択した画像を開けませんでした。別のJPG、PNG、WEBPファイルをお試しください。", "analysis_failed_safe": "分析を完了できませんでした。CardCraftAIはクレジット回復ルールを自動適用します。再試行前に残高を更新してください。", "no_credits_new_analysis": "💎 新しい分析に利用できるクレジットがありません。", "free_catalog_still_available": "上のカタログ画像検索は引き続き無料です。", "enter_card_name_short": "カード名を入力してください。", "analyzing_generic": "🤖 分析しています...",
     "analysis_history": "🗂️ 分析履歴", "analysis_history_caption": "完了した分析は保存され、追加クレジットなしで後からAI結果を再表示できます。", "no_analysis_history": "このアカウントにはまだ完了済み分析が保存されていません。", "analysis_history_error": "現在、分析履歴を読み込めません。", "analysis_type_photo": "写真分析", "analysis_type_name": "名前分析", "analysis_status_completed": "完了", "analysis_status_processing": "処理中", "analysis_status_failed": "失敗", "history_card_unknown": "カード未特定", "history_open": "📂 保存済み分析を開く", "history_payload_missing": "この履歴レコードには再表示可能なAI結果が含まれていません。", "saved_analysis_reopened": "📂 保存済み分析を開きました。新しいクレジットは使用していません。", "saved_analysis_note": "これは保存済みの結果です。履歴結果を無断で変更しないため、カタログ検証は自動では再実行されません。", "history_revalidate_free": "🔄 カタログを再検証 — 無料", "history_saved_catalog": "保存済みカタログ状態: {status} • 信頼度: {confidence}",
     "purchase_col_date": "日付", "purchase_col_status": "ステータス", "purchase_col_credits": "クレジット", "purchase_col_value": "金額", "purchase_col_currency": "通貨", "purchase_col_provider": "決済業者", "purchase_status_pending": "保留", "purchase_status_approved": "承認済み", "purchase_status_completed": "完了", "purchase_status_refunded": "返金済み", "purchase_status_cancelled": "キャンセル", "purchase_status_rejected": "拒否",
+})
+
+
+# ============================================================
+# RELIABILITY 2.6.24 - MARKET / SOURCE FRESHNESS LOCALIZATION
+# ============================================================
+# These labels are rendered inside the catalog market-reference expander.
+# Keeping them in UI_TEXT prevents a selected interface language from leaking
+# Portuguese strings through freshness/status helpers.
+UI_TEXT["English"].update({
+    "market_sources_expander": "💰 Market and source freshness",
+    "market_sources_caption": "The values below are references supplied by the Pokémon TCG catalog. They do not guarantee stock, condition, language, shipping or final price.",
+    "market_metric_note": "Market price and lowest listing are different metrics. To see what is actually available now, use the current marketplace offers button.",
+    "freshness_no_date": "Date unavailable",
+    "freshness_future": "Future date to verify",
+    "freshness_current": "Current",
+    "freshness_attention": "Attention",
+    "freshness_outdated": "Outdated",
+    "freshness_age_unknown": "age unknown",
+    "freshness_age_future": "future date reported by the source",
+    "freshness_age_today": "updated today",
+    "freshness_age_one_day": "updated 1 day ago",
+    "freshness_age_days": "updated {days} days ago",
+    "freshness_reported_date": "reported date: {date}",
+    "freshness_attention_note": "Confirm against current listings before trading.",
+    "freshness_outdated_note": "Treat these values only as historical reference.",
+    "freshness_unknown_note": "The freshness of this source cannot be measured.",
+    "market_outdated_context": "The values below remain visible for historical context, but should not be treated as the card's current price.",
+    "market_price_label": "market price",
+    "market_low_label": "lowest reference",
+    "market_tcg_no_values": "The catalog did not provide usable TCGplayer values for this card.",
+    "market_cm_outdated_context": "This source is too old to be used as the primary reference. The values below are shown only as historical context.",
+    "market_cm_low": "Lowest price",
+    "market_cm_trend": "Trend",
+    "market_cm_avg7": "7-day average",
+    "market_cm_avg30": "30-day average",
+    "market_cm_no_values": "The catalog did not provide usable Cardmarket values for this card.",
+})
+
+UI_TEXT["Português (BR)"].update({
+    "market_sources_expander": "💰 Mercado e atualidade das fontes",
+    "market_sources_caption": "Os valores abaixo são referências fornecidas pelo catálogo Pokémon TCG. Eles não garantem estoque, condição, idioma, frete ou preço final.",
+    "market_metric_note": "Preço de mercado e menor anúncio são métricas diferentes. Para saber o que está realmente disponível agora, use o botão de ofertas atuais do marketplace.",
+    "freshness_no_date": "Data não disponível",
+    "freshness_future": "Data futura a verificar",
+    "freshness_current": "Atualizado",
+    "freshness_attention": "Atenção",
+    "freshness_outdated": "Desatualizado",
+    "freshness_age_unknown": "idade desconhecida",
+    "freshness_age_future": "data futura informada pela fonte",
+    "freshness_age_today": "atualizado hoje",
+    "freshness_age_one_day": "atualizado há 1 dia",
+    "freshness_age_days": "atualizado há {days} dias",
+    "freshness_reported_date": "data informada: {date}",
+    "freshness_attention_note": "Confirme nas ofertas atuais antes de negociar.",
+    "freshness_outdated_note": "Trate estes valores apenas como referência histórica.",
+    "freshness_unknown_note": "Não é possível medir a atualidade desta fonte.",
+    "market_outdated_context": "Os números abaixo ficam visíveis para contexto histórico, mas não devem ser tratados como preço atual da carta.",
+    "market_price_label": "preço de mercado",
+    "market_low_label": "menor referência",
+    "market_tcg_no_values": "O catálogo não trouxe valores TCGplayer utilizáveis para esta carta.",
+    "market_cm_outdated_context": "Esta fonte está antiga demais para ser usada como referência principal. Os valores abaixo são exibidos somente como contexto histórico.",
+    "market_cm_low": "Menor preço",
+    "market_cm_trend": "Tendência",
+    "market_cm_avg7": "Média 7 dias",
+    "market_cm_avg30": "Média 30 dias",
+    "market_cm_no_values": "O catálogo não trouxe valores Cardmarket utilizáveis para esta carta.",
+})
+
+UI_TEXT["Español"].update({
+    "market_sources_expander": "💰 Mercado y actualidad de las fuentes",
+    "market_sources_caption": "Los valores siguientes son referencias proporcionadas por el catálogo Pokémon TCG. No garantizan stock, estado, idioma, envío ni precio final.",
+    "market_metric_note": "El precio de mercado y el anuncio más bajo son métricas diferentes. Para ver qué está realmente disponible ahora, usa el botón de ofertas actuales del marketplace.",
+    "freshness_no_date": "Fecha no disponible",
+    "freshness_future": "Fecha futura por verificar",
+    "freshness_current": "Actualizado",
+    "freshness_attention": "Atención",
+    "freshness_outdated": "Desactualizado",
+    "freshness_age_unknown": "antigüedad desconocida",
+    "freshness_age_future": "fecha futura informada por la fuente",
+    "freshness_age_today": "actualizado hoy",
+    "freshness_age_one_day": "actualizado hace 1 día",
+    "freshness_age_days": "actualizado hace {days} días",
+    "freshness_reported_date": "fecha informada: {date}",
+    "freshness_attention_note": "Confirma con las ofertas actuales antes de negociar.",
+    "freshness_outdated_note": "Trata estos valores solo como referencia histórica.",
+    "freshness_unknown_note": "No es posible medir la actualidad de esta fuente.",
+    "market_outdated_context": "Los valores siguientes se mantienen visibles como contexto histórico, pero no deben tratarse como el precio actual de la carta.",
+    "market_price_label": "precio de mercado",
+    "market_low_label": "referencia más baja",
+    "market_tcg_no_values": "El catálogo no proporcionó valores utilizables de TCGplayer para esta carta.",
+    "market_cm_outdated_context": "Esta fuente es demasiado antigua para usarse como referencia principal. Los valores siguientes se muestran solo como contexto histórico.",
+    "market_cm_low": "Precio más bajo",
+    "market_cm_trend": "Tendencia",
+    "market_cm_avg7": "Promedio de 7 días",
+    "market_cm_avg30": "Promedio de 30 días",
+    "market_cm_no_values": "El catálogo no proporcionó valores utilizables de Cardmarket para esta carta.",
+})
+
+UI_TEXT["日本語"].update({
+    "market_sources_expander": "💰 市場情報と情報源の更新状況",
+    "market_sources_caption": "以下の値は Pokémon TCG カタログが提供する参考情報です。在庫、状態、言語、送料、最終価格を保証するものではありません。",
+    "market_metric_note": "市場価格と最安出品価格は異なる指標です。現在実際に購入できる出品を確認するには、マーケットプレイスの現在の出品ボタンを使用してください。",
+    "freshness_no_date": "日付情報なし",
+    "freshness_future": "確認が必要な未来の日付",
+    "freshness_current": "更新済み",
+    "freshness_attention": "注意",
+    "freshness_outdated": "古い情報",
+    "freshness_age_unknown": "更新時期不明",
+    "freshness_age_future": "情報源が未来の日付を報告",
+    "freshness_age_today": "本日更新",
+    "freshness_age_one_day": "1日前に更新",
+    "freshness_age_days": "{days}日前に更新",
+    "freshness_reported_date": "情報源の日付: {date}",
+    "freshness_attention_note": "取引前に現在の出品で確認してください。",
+    "freshness_outdated_note": "これらの値は過去の参考情報としてのみ扱ってください。",
+    "freshness_unknown_note": "この情報源の新しさを判定できません。",
+    "market_outdated_context": "以下の値は過去の参考情報として表示されますが、現在のカード価格として扱わないでください。",
+    "market_price_label": "市場価格",
+    "market_low_label": "最安参考値",
+    "market_tcg_no_values": "このカードについて利用可能な TCGplayer の価格データがカタログから提供されませんでした。",
+    "market_cm_outdated_context": "この情報源は主要な参考値として使用するには古すぎます。以下の値は過去の参考情報としてのみ表示されます。",
+    "market_cm_low": "最安価格",
+    "market_cm_trend": "トレンド",
+    "market_cm_avg7": "7日平均",
+    "market_cm_avg30": "30日平均",
+    "market_cm_no_values": "このカードについて利用可能な Cardmarket の価格データがカタログから提供されませんでした。",
 })
 
 def idioma_interface_atual():
@@ -3010,7 +3137,7 @@ def _avaliar_frescor_catalogo(
         return {
             "nivel": "desconhecido",
             "emoji": "⚪",
-            "rotulo": "Data não disponível",
+            "rotulo": t("freshness_no_date"),
             "dias": None,
             "data": None,
         }
@@ -3027,7 +3154,7 @@ def _avaliar_frescor_catalogo(
         return {
             "nivel": "desconhecido",
             "emoji": "⚪",
-            "rotulo": "Data futura a verificar",
+            "rotulo": t("freshness_future"),
             "dias": dias,
             "data": data_fonte,
         }
@@ -3035,15 +3162,15 @@ def _avaliar_frescor_catalogo(
     if dias <= FRESCOR_MERCADO_ATUAL_DIAS:
         nivel = "atualizado"
         emoji = "🟢"
-        rotulo = "Atualizado"
+        rotulo = t("freshness_current")
     elif dias <= FRESCOR_MERCADO_ATENCAO_DIAS:
         nivel = "atencao"
         emoji = "🟡"
-        rotulo = "Atenção"
+        rotulo = t("freshness_attention")
     else:
         nivel = "desatualizado"
         emoji = "🔴"
-        rotulo = "Desatualizado"
+        rotulo = t("freshness_outdated")
 
     return {
         "nivel": nivel,
@@ -3058,18 +3185,21 @@ def _texto_idade_fonte(
     dias,
 ):
     if dias is None:
-        return "idade desconhecida"
+        return t("freshness_age_unknown")
 
     if dias < 0:
-        return "data futura informada pela fonte"
+        return t("freshness_age_future")
 
     if dias == 0:
-        return "atualizado hoje"
+        return t("freshness_age_today")
 
     if dias == 1:
-        return "atualizado há 1 dia"
+        return t("freshness_age_one_day")
 
-    return f"atualizado há {dias} dias"
+    return t(
+        "freshness_age_days",
+        days=dias,
+    )
 
 
 def _mostrar_frescor_fonte(
@@ -3088,8 +3218,11 @@ def _mostrar_frescor_fonte(
 
     if atualizado:
         texto += (
-            " • data informada: "
-            + str(atualizado)
+            " • "
+            + t(
+                "freshness_reported_date",
+                date=str(atualizado),
+            )
         )
 
     if frescor["nivel"] == "atualizado":
@@ -3097,17 +3230,20 @@ def _mostrar_frescor_fonte(
     elif frescor["nivel"] == "atencao":
         st.warning(
             texto
-            + ". Confirme nas ofertas atuais antes de negociar."
+            + ". "
+            + t("freshness_attention_note")
         )
     elif frescor["nivel"] == "desatualizado":
         st.error(
             texto
-            + ". Trate estes valores apenas como referência histórica."
+            + ". "
+            + t("freshness_outdated_note")
         )
     else:
         st.info(
             texto
-            + ". Não é possível medir a atualidade desta fonte."
+            + ". "
+            + t("freshness_unknown_note")
         )
 
     return frescor
@@ -3230,19 +3366,15 @@ def _mostrar_precos_referencia_catalogo(
         return
 
     with st.expander(
-        "💰 Mercado e atualidade das fontes",
+        t("market_sources_expander"),
         expanded=False,
     ):
         st.caption(
-            "Os valores abaixo são referências fornecidas pelo "
-            "catálogo Pokémon TCG. Eles não garantem estoque, "
-            "condição, idioma, frete ou preço final."
+            t("market_sources_caption")
         )
 
         st.info(
-            "Preço de mercado e menor anúncio são métricas diferentes. "
-            "Para saber o que está realmente disponível agora, use "
-            "o botão de ofertas atuais do marketplace."
+            t("market_metric_note")
         )
 
         if tcg_prices:
@@ -3261,9 +3393,7 @@ def _mostrar_precos_referencia_catalogo(
 
             if frescor_tcg["nivel"] == "desatualizado":
                 st.caption(
-                    "Os números abaixo ficam visíveis para contexto "
-                    "histórico, mas não devem ser tratados como preço "
-                    "atual da carta."
+                    t("market_outdated_context")
                 )
 
             prioridade = [
@@ -3305,12 +3435,12 @@ def _mostrar_precos_referencia_catalogo(
 
                 if mercado:
                     partes.append(
-                        f"preço de mercado {mercado}"
+                        f"{t('market_price_label')} {mercado}"
                     )
 
                 if minimo:
                     partes.append(
-                        f"menor referência {minimo}"
+                        f"{t('market_low_label')} {minimo}"
                     )
 
                 if partes:
@@ -3329,8 +3459,7 @@ def _mostrar_precos_referencia_catalogo(
 
             if not mostrou_tcg:
                 st.caption(
-                    "O catálogo não trouxe valores TCGplayer "
-                    "utilizáveis para esta carta."
+                    t("market_tcg_no_values")
                 )
 
         if cm_prices:
@@ -3351,26 +3480,24 @@ def _mostrar_precos_referencia_catalogo(
 
             if frescor_cm["nivel"] == "desatualizado":
                 st.caption(
-                    "Esta fonte está antiga demais para ser usada como "
-                    "referência principal. Os valores abaixo são exibidos "
-                    "somente como contexto histórico."
+                    t("market_cm_outdated_context")
                 )
 
             campos = [
                 (
-                    "Menor preço",
+                    t("market_cm_low"),
                     "lowPrice",
                 ),
                 (
-                    "Tendência",
+                    t("market_cm_trend"),
                     "trendPrice",
                 ),
                 (
-                    "Média 7 dias",
+                    t("market_cm_avg7"),
                     "avg7",
                 ),
                 (
-                    "Média 30 dias",
+                    t("market_cm_avg30"),
                     "avg30",
                 ),
             ]
@@ -3393,8 +3520,7 @@ def _mostrar_precos_referencia_catalogo(
 
             if not mostrou_cm:
                 st.caption(
-                    "O catálogo não trouxe valores Cardmarket "
-                    "utilizáveis para esta carta."
+                    t("market_cm_no_values")
                 )
 
 
