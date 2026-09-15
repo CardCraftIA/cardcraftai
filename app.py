@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.21
+# CARDCRAFTAI RELIABILITY 2.6.22
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.21"
+APP_VERSION = "2.6.22"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -239,6 +239,9 @@ UI_TEXT = {
         "enter_card_name": "Enter the card name to search the catalog.",
         "searching_catalog": "📚 Searching the Pokémon catalog...",
         "catalog_error": "Could not query the Pokémon catalog right now.",
+        "catalog_search_http_detail": "The external Pokémon catalog returned HTTP {status}. No credit was consumed. Please try the free search again later.",
+        "catalog_search_rate_detail": "The external Pokémon catalog temporarily limited queries. No credit was consumed. Please try the free search again later.",
+        "catalog_search_generic_detail": "The external Pokémon catalog could not complete this request. No credit was consumed.",
         "catalog_results": "🖼️ Visual catalog results",
         "no_catalog_results": "No matching card was found.",
         "specialized_analysis": "🤖 Specialized analysis",
@@ -330,6 +333,9 @@ UI_TEXT = {
         "catalog_free": "🖼️ Buscar e comparar imagens no catálogo Pokémon é grátis. A análise especializada consome 1 crédito.", "card_name": "Nome da carta",
         "set_name": "Coleção / Conjunto", "search_catalog": "🖼️ Buscar no catálogo — grátis", "enter_card_name": "Digite o nome da carta para pesquisar no catálogo.",
         "searching_catalog": "📚 Procurando cartas no catálogo Pokémon...", "catalog_error": "Não foi possível consultar o catálogo Pokémon agora.",
+        "catalog_search_http_detail": "O catálogo Pokémon externo respondeu com HTTP {status}. Nenhum crédito foi consumido. Tente novamente mais tarde usando a busca gratuita.",
+        "catalog_search_rate_detail": "O catálogo Pokémon externo limitou temporariamente as consultas. Nenhum crédito foi consumido. Tente novamente mais tarde usando a busca gratuita.",
+        "catalog_search_generic_detail": "O catálogo Pokémon externo não conseguiu concluir esta solicitação. Nenhum crédito foi consumido.",
         "catalog_results": "🖼️ Resultados visuais do catálogo", "no_catalog_results": "Nenhuma carta correspondente foi encontrada.", "specialized_analysis": "🤖 Análise especializada",
         "analyze_one_credit": "🤖 Analisar — 1 crédito", "my_account": "👤 Minha Conta", "account_caption": "Consulte seus dados, saldo, segurança e histórico da conta.",
         "confirmed_email": "E-mail confirmado", "yes": "Sim ✅", "no": "Não", "available_credits": "Créditos disponíveis", "account_data": "📧 Dados da conta",
@@ -384,7 +390,11 @@ UI_TEXT = {
         "analyzing_card": "🤖 Analizando la carta...", "send_photo_start": "👈 Sube o toma una foto para comenzar.", "analysis_complete": "✅ Análisis completado.", "search_title": "🔍 Buscar Carta por Nombre",
         "catalog_free": "🖼️ Buscar y comparar imágenes en el catálogo Pokémon es gratis. El análisis especializado consume 1 crédito.", "card_name": "Nombre de la carta", "set_name": "Colección / Conjunto",
         "search_catalog": "🖼️ Buscar en el catálogo — gratis", "enter_card_name": "Escribe el nombre de la carta para buscar en el catálogo.", "searching_catalog": "📚 Buscando cartas en el catálogo Pokémon...",
-        "catalog_error": "No se pudo consultar el catálogo Pokémon ahora.", "catalog_results": "🖼️ Resultados visuales del catálogo", "no_catalog_results": "No se encontró ninguna carta correspondiente.",
+        "catalog_error": "No se pudo consultar el catálogo Pokémon ahora.",
+        "catalog_search_http_detail": "El catálogo Pokémon externo respondió con HTTP {status}. No se consumió ningún crédito. Intenta nuevamente más tarde usando la búsqueda gratuita.",
+        "catalog_search_rate_detail": "El catálogo Pokémon externo limitó temporalmente las consultas. No se consumió ningún crédito. Intenta nuevamente más tarde usando la búsqueda gratuita.",
+        "catalog_search_generic_detail": "El catálogo Pokémon externo no pudo completar esta solicitud. No se consumió ningún crédito.",
+        "catalog_results": "🖼️ Resultados visuales del catálogo", "no_catalog_results": "No se encontró ninguna carta correspondiente.",
         "specialized_analysis": "🤖 Análisis especializado", "analyze_one_credit": "🤖 Analizar — 1 crédito", "my_account": "👤 Mi Cuenta", "account_caption": "Consulta tus datos, saldo, seguridad e historial de la cuenta.",
         "confirmed_email": "Correo confirmado", "yes": "Sí ✅", "no": "No", "available_credits": "Créditos disponibles", "account_data": "📧 Datos de la cuenta", "email_confirmed_ok": "Tu correo electrónico está confirmado.",
         "security": "🔐 Seguridad", "security_reset_text": "Para cambiar tu contraseña, envía un enlace seguro de restablecimiento al correo de tu cuenta.", "send_password_reset": "📨 Enviar enlace para restablecer contraseña",
@@ -435,6 +445,9 @@ UI_TEXT = {
         "analyzing_card": "🤖 カードを分析しています...", "send_photo_start": "👈 写真をアップロードまたは撮影して開始してください。", "analysis_complete": "✅ 分析が完了しました。", "search_title": "🔍 カード名で検索",
         "catalog_free": "🖼️ Pokémonカタログの画像検索・比較は無料です。専門分析は1クレジットを使用します。", "card_name": "カード名", "set_name": "コレクション / セット",
         "search_catalog": "🖼️ カタログを検索 — 無料", "enter_card_name": "検索するカード名を入力してください。", "searching_catalog": "📚 Pokémonカタログを検索しています...", "catalog_error": "現在Pokémonカタログを検索できません。",
+        "catalog_search_http_detail": "外部 Pokémon カタログが HTTP {status} を返しました。クレジットは消費されていません。無料検索を後でもう一度お試しください。",
+        "catalog_search_rate_detail": "外部 Pokémon カタログが一時的に照会を制限しました。クレジットは消費されていません。無料検索を後でもう一度お試しください。",
+        "catalog_search_generic_detail": "外部 Pokémon カタログはこのリクエストを完了できませんでした。クレジットは消費されていません。",
         "catalog_results": "🖼️ カタログの画像結果", "no_catalog_results": "一致するカードが見つかりませんでした。", "specialized_analysis": "🤖 専門分析", "analyze_one_credit": "🤖 分析 — 1クレジット",
         "my_account": "👤 マイアカウント", "account_caption": "アカウント情報、残高、セキュリティ、履歴を確認します。", "confirmed_email": "確認済みメール", "yes": "はい ✅", "no": "いいえ",
         "available_credits": "利用可能クレジット", "account_data": "📧 アカウント情報", "email_confirmed_ok": "メールアドレスは確認済みです。", "security": "🔐 セキュリティ",
@@ -6991,9 +7004,23 @@ elif pagina == "search":
                     st.error(
                         t("catalog_error", idioma)
                     )
-                    st.caption(
-                        str(erro)
-                    )
+                    status_catalogo = _status_http_catalogo_erro(erro)
+                    if status_catalogo in {500, 502, 503, 504}:
+                        st.caption(
+                            t(
+                                "catalog_search_http_detail",
+                                idioma,
+                                status=status_catalogo,
+                            )
+                        )
+                    elif status_catalogo == 429:
+                        st.caption(
+                            t("catalog_search_rate_detail", idioma)
+                        )
+                    else:
+                        st.caption(
+                            t("catalog_search_generic_detail", idioma)
+                        )
 
     resultados_catalogo = (
         st.session_state.catalogo_resultados_nome
