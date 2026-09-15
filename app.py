@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.20
+# CARDCRAFTAI RELIABILITY 2.6.21
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.20"
+APP_VERSION = "2.6.21"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -660,8 +660,8 @@ UI_TEXT["Português (BR)"].update({
     "label_apparent_language": "Idioma aparente",
     "ai_estimates_note": "Ano visual, variante, idioma aparente, condição e autenticidade visual continuam sendo estimativas da IA. A data de lançamento do set não confirma o ano específico desta carta.",
     "physical_assessment_note": "Condição e autenticidade exigem avaliação física quando precisão profissional for necessária.",
-    "catalog_image_unavailable": t("catalog_image_unavailable"),
-    "catalog_default_card_name": t("catalog_default_card_name"),
+    "catalog_image_unavailable": "Imagem não disponível no catálogo.",
+    "catalog_default_card_name": "Carta Pokémon",
     "catalog_gallery_no_match": "Nenhuma correspondência visual foi encontrada no catálogo Pokémon.",
     "catalog_gallery_instruction": "Clique em uma imagem para ampliá-la. Use ‘Selecionar esta carta’ para indicar a correspondência correta.",
     "select_this_card": "✅ Selecionar esta carta",
