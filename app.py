@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.31
+# CARDCRAFTAI RELIABILITY 2.6.32
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.31"
+APP_VERSION = "2.6.32"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -481,6 +481,8 @@ UI_TEXT = {
 # ============================================================
 
 UI_TEXT["English"].update({
+    "analysis_selected_summary": "Selected for analysis: **{name}** • {set_name} • #{number}",
+    "analysis_recovered_notice": "♻️ CardCraftAI recovered {count} interrupted analysis run(s) and automatically returned the pending credit.",
     "not_confirmed": "Not confirmed",
     "catalog_no_data_title": "Could not validate against the catalog",
     "catalog_no_data_message": "The AI did not identify a card name confidently enough to query the catalog.",
@@ -596,6 +598,8 @@ UI_TEXT["English"].update({
 })
 
 UI_TEXT["Português (BR)"].update({
+    "analysis_selected_summary": "Selecionada para análise: **{name}** • {set_name} • #{number}",
+    "analysis_recovered_notice": "♻️ O CardCraftAI recuperou {count} análise(s) interrompida(s) e devolveu o crédito pendente automaticamente.",
     "not_confirmed": "Não confirmado",
     "catalog_no_data_title": "Não foi possível validar no catálogo",
     "catalog_no_data_message": "A IA não conseguiu identificar um nome de carta com segurança suficiente para consultar o catálogo.",
@@ -711,6 +715,8 @@ UI_TEXT["Português (BR)"].update({
 })
 
 UI_TEXT["Español"].update({
+    "analysis_selected_summary": "Seleccionada para el análisis: **{name}** • {set_name} • #{number}",
+    "analysis_recovered_notice": "♻️ CardCraftAI recuperó {count} análisis interrumpido(s) y devolvió automáticamente el crédito pendiente.",
     "not_confirmed": "No confirmado",
     "catalog_no_data_title": "No fue posible validar con el catálogo",
     "catalog_no_data_message": "La IA no identificó un nombre de carta con suficiente seguridad para consultar el catálogo.",
@@ -826,6 +832,8 @@ UI_TEXT["Español"].update({
 })
 
 UI_TEXT["日本語"].update({
+    "analysis_selected_summary": "分析対象として選択済み: **{name}** • {set_name} • #{number}",
+    "analysis_recovered_notice": "♻️ CardCraftAI は中断された分析 {count} 件を復旧し、保留中のクレジットを自動的に返却しました。",
     "not_confirmed": "未確認",
     "catalog_no_data_title": "カタログで検証できませんでした",
     "catalog_no_data_message": "AI がカタログ検索に十分な確度でカード名を特定できませんでした。",
@@ -3780,14 +3788,14 @@ def _renderizar_imagem_clicavel(
 
     if not url_pequena:
         st.info(
-            "Imagem não disponível no catálogo."
+            t("catalog_image_unavailable")
         )
         return
 
     destino = url_grande or url_pequena
     nome = carta.get(
         "name",
-        "Carta Pokémon",
+        t("catalog_default_card_name"),
     )
 
     st.markdown(
@@ -4435,6 +4443,276 @@ def info_catalogo_para_analise(
         f"Data de lançamento do set: {resumo.get('data_lancamento_set')}"
     )
 
+
+
+def ancorar_resultado_na_carta_selecionada(
+    resultado,
+    carta,
+    idioma="English",
+):
+    """
+    Reliability 2.6.32
+
+    Quando o usuário escolhe explicitamente uma carta no catálogo, nome, set,
+    número e demais dados objetivos dessa identidade deixam de ser inferências
+    da IA. A resposta é ancorada deterministicamente na carta selecionada antes
+    de persistir o histórico e antes de confirmar o consumo do crédito.
+    """
+    if not isinstance(resultado, dict):
+        raise RuntimeError(
+            "O resultado da IA não estava em formato estruturado."
+        )
+
+    if not isinstance(carta, dict) or not carta:
+        return resultado
+
+    dados = json.loads(
+        json.dumps(
+            resultado,
+            ensure_ascii=False,
+        )
+    )
+
+    resumo = _resumo_carta_catalogo(carta)
+
+    nome = str(resumo.get("nome") or "").strip()
+    set_nome = str(resumo.get("set") or "").strip()
+    numero = str(resumo.get("numero") or "").strip()
+    raridade = str(resumo.get("raridade") or "").strip()
+    artista = str(resumo.get("artista") or "").strip()
+    data_set = str(
+        resumo.get("data_lancamento_set") or ""
+    ).strip()
+
+    dados["jogo"] = "Pokémon TCG"
+
+    if nome:
+        dados["nome_carta"] = nome
+    if set_nome:
+        dados["colecao_set"] = set_nome
+    if numero:
+        dados["numero_carta"] = numero
+    if raridade:
+        dados["raridade"] = raridade
+
+    # Sem foto, estes campos não devem ser inventados.
+    dados["variante"] = None
+    dados["idioma_carta"] = None
+    dados["ano"] = None
+    dados["qualidade_imagem"] = "nao_aplicavel"
+    dados["evidencias_visuais"] = []
+
+    # A identidade objetiva veio da carta escolhida no catálogo.
+    dados["status_identificacao"] = "confirmada"
+
+    incertos = [
+        str(item)
+        for item in (dados.get("campos_incertos") or [])
+        if str(item).strip()
+    ]
+
+    identidade_confirmada = {
+        "nome_carta",
+        "colecao_set",
+        "numero_carta",
+        "raridade",
+        "nome",
+        "colecao",
+        "set",
+        "numero",
+    }
+
+    incertos = [
+        item
+        for item in incertos
+        if item.strip().lower() not in identidade_confirmada
+    ]
+
+    for campo in [
+        "variante",
+        "idioma_carta",
+        "ano",
+    ]:
+        if campo not in incertos:
+            incertos.append(campo)
+
+    dados["campos_incertos"] = incertos
+
+    if idioma == "Português (BR)":
+        dados["motivo_qualidade_imagem"] = (
+            "Nenhuma imagem física foi fornecida; a análise usa a entrada "
+            "selecionada no catálogo."
+        )
+        dados["informacoes_gerais"] = [
+            f"Nome da carta: {nome}" if nome else "",
+            f"Coleção / Set: {set_nome}" if set_nome else "",
+            f"Número da carta: {numero}" if numero else "",
+            f"Raridade: {raridade}" if raridade else "",
+            f"Ilustrador: {artista}" if artista else "",
+            f"Data de lançamento do set: {data_set}" if data_set else "",
+        ]
+        dados["anuncio_venda"] = " • ".join(
+            parte for parte in [
+                "Pokémon TCG",
+                nome,
+                set_nome,
+                numero,
+                raridade,
+            ]
+            if parte
+        )
+        dados["mercado"] = {
+            "dados_atualizados_disponiveis": False,
+            "observacao": (
+                "Preços atuais não são inventados pela IA. Consulte as "
+                "referências e ofertas externas exibidas pelo CardCraftAI."
+            ),
+        }
+        cond_obs = [
+            "A condição física não pode ser avaliada sem uma foto da carta."
+        ]
+        auth_obs = [
+            "A autenticidade visual não pode ser avaliada sem uma foto física."
+        ]
+        conservacao = [
+            "Nenhuma imagem física foi fornecida para avaliação de conservação."
+        ]
+
+    elif idioma == "Español":
+        dados["motivo_qualidade_imagem"] = (
+            "No se proporcionó una imagen física; el análisis utiliza la "
+            "entrada seleccionada del catálogo."
+        )
+        dados["informacoes_gerais"] = [
+            f"Nombre de la carta: {nome}" if nome else "",
+            f"Colección / Set: {set_nome}" if set_nome else "",
+            f"Número de carta: {numero}" if numero else "",
+            f"Rareza: {raridade}" if raridade else "",
+            f"Ilustrador: {artista}" if artista else "",
+            f"Fecha de lanzamiento del set: {data_set}" if data_set else "",
+        ]
+        dados["anuncio_venda"] = " • ".join(
+            parte for parte in [
+                "Pokémon TCG",
+                nome,
+                set_nome,
+                numero,
+                raridade,
+            ]
+            if parte
+        )
+        dados["mercado"] = {
+            "dados_atualizados_disponiveis": False,
+            "observacao": (
+                "La IA no inventa precios actuales. Consulta las referencias "
+                "y ofertas externas mostradas por CardCraftAI."
+            ),
+        }
+        cond_obs = [
+            "El estado físico no puede evaluarse sin una foto de la carta."
+        ]
+        auth_obs = [
+            "La autenticidad visual no puede evaluarse sin una foto física."
+        ]
+        conservacao = [
+            "No se proporcionó una imagen física para evaluar la conservación."
+        ]
+
+    elif idioma == "日本語":
+        dados["motivo_qualidade_imagem"] = (
+            "現物画像は提供されていません。分析はカタログで選択したカード情報を使用します。"
+        )
+        dados["informacoes_gerais"] = [
+            f"カード名: {nome}" if nome else "",
+            f"セット: {set_nome}" if set_nome else "",
+            f"カード番号: {numero}" if numero else "",
+            f"レアリティ: {raridade}" if raridade else "",
+            f"イラストレーター: {artista}" if artista else "",
+            f"セット発売日: {data_set}" if data_set else "",
+        ]
+        dados["anuncio_venda"] = " • ".join(
+            parte for parte in [
+                "Pokémon TCG",
+                nome,
+                set_nome,
+                numero,
+                raridade,
+            ]
+            if parte
+        )
+        dados["mercado"] = {
+            "dados_atualizados_disponiveis": False,
+            "observacao": (
+                "AI は現在価格を推測しません。CardCraftAI に表示される外部の参考値・出品を確認してください。"
+            ),
+        }
+        cond_obs = [
+            "現物写真がないため、カードの状態は評価できません。"
+        ]
+        auth_obs = [
+            "現物写真がないため、視覚的な真贋評価はできません。"
+        ]
+        conservacao = [
+            "保存状態を評価するための現物画像は提供されていません。"
+        ]
+
+    else:
+        dados["motivo_qualidade_imagem"] = (
+            "No physical image was provided; the analysis uses the catalog "
+            "entry explicitly selected by the user."
+        )
+        dados["informacoes_gerais"] = [
+            f"Card Name: {nome}" if nome else "",
+            f"Set Name: {set_nome}" if set_nome else "",
+            f"Card Number: {numero}" if numero else "",
+            f"Rarity: {raridade}" if raridade else "",
+            f"Illustrated by: {artista}" if artista else "",
+            f"Set Release Date: {data_set}" if data_set else "",
+        ]
+        dados["anuncio_venda"] = " • ".join(
+            parte for parte in [
+                "Pokémon TCG",
+                nome,
+                set_nome,
+                numero,
+                raridade,
+            ]
+            if parte
+        )
+        dados["mercado"] = {
+            "dados_atualizados_disponiveis": False,
+            "observacao": (
+                "The AI does not invent current prices. Check the external "
+                "references and live offers shown by CardCraftAI."
+            ),
+        }
+        cond_obs = [
+            "Physical condition cannot be evaluated without a photo of the card."
+        ]
+        auth_obs = [
+            "Visual authenticity cannot be assessed without a physical-card image."
+        ]
+        conservacao = [
+            "No physical image was provided for conservation assessment."
+        ]
+
+    dados["informacoes_gerais"] = [
+        item
+        for item in dados["informacoes_gerais"]
+        if item
+    ]
+
+    dados["condicao_aparente"] = {
+        "estimativa": "nao_aplicavel",
+        "observacoes": cond_obs,
+    }
+    dados["autenticidade_visual"] = {
+        "status": "nao_aplicavel",
+        "observacoes": auth_obs,
+    }
+    dados["conservacao"] = conservacao
+
+    return validar_analise_estruturada(dados)
 
 def validar_carta_selecionada_catalogo(
     resultado,
@@ -6391,9 +6669,9 @@ def recuperar_analises_interrompidas_usuario():
             recuperados += 1
 
     if recuperados:
-        st.session_state.aviso_recuperacao = (
-            f"♻️ O CardCraftAI recuperou {recuperados} análise(s) "
-            "interrompida(s) e devolveu o crédito pendente automaticamente."
+        st.session_state.aviso_recuperacao = t(
+            "analysis_recovered_notice",
+            count=recuperados,
         )
 
     return recuperados
@@ -6645,6 +6923,7 @@ def executar_analise_com_credito(
     imagem_pil=None,
     nome_carta_info=None,
     tipo_acao="analise",
+    resultado_transformer=None,
 ):
 
     # Cada análise recebe um identificador único, compartilhado entre
@@ -6713,6 +6992,36 @@ def executar_analise_com_credito(
             (time.perf_counter() - inicio_ia)
             * 1000
         )
+
+        # Reliability 2.6.32:
+        # se a análise nasceu de uma carta escolhida no catálogo, travamos
+        # a identidade exata antes do histórico e antes da confirmação do crédito.
+        if callable(resultado_transformer):
+            try:
+                resultado = resultado_transformer(
+                    resultado
+                )
+            except Exception as erro_transformacao:
+                falhar_registro_analise(
+                    run_id,
+                    "selected_catalog_identity_lock_failed",
+                    _sanitizar_detalhe_tecnico(
+                        erro_transformacao
+                    ),
+                )
+
+                try:
+                    devolver_credito(
+                        request_id
+                    )
+                except Exception:
+                    pass
+
+                raise RuntimeError(
+                    "A análise não pôde preservar com segurança a carta "
+                    "selecionada no catálogo. O crédito foi devolvido "
+                    "automaticamente."
+                ) from erro_transformacao
 
     except Exception as erro_gemini:
         ai_latency_ms = int(
@@ -8200,6 +8509,24 @@ elif pagina == "search":
 
     if carta_selecionada:
         st.caption(t("analysis_uses_selected"))
+
+        resumo_selecionada = _resumo_carta_catalogo(
+            carta_selecionada
+        )
+        st.success(
+            t(
+                "analysis_selected_summary",
+                name=texto_ou_nao_confirmado(
+                    resumo_selecionada.get("nome")
+                ),
+                set_name=texto_ou_nao_confirmado(
+                    resumo_selecionada.get("set")
+                ),
+                number=texto_ou_nao_confirmado(
+                    resumo_selecionada.get("numero")
+                ),
+            )
+        )
     else:
         st.caption(t("analysis_uses_typed"))
 
@@ -8248,6 +8575,18 @@ elif pagina == "search":
                         idioma=idioma,
                         nome_carta_info=info_texto,
                         tipo_acao="analise_nome",
+                        resultado_transformer=(
+                            (
+                                lambda dados:
+                                ancorar_resultado_na_carta_selecionada(
+                                    dados,
+                                    carta_selecionada,
+                                    idioma=idioma,
+                                )
+                            )
+                            if carta_selecionada
+                            else None
+                        ),
                     )
                 )
 
