@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.28
+# CARDCRAFTAI RELIABILITY 2.6.29
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.28"
+APP_VERSION = "2.6.29"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -2252,31 +2252,32 @@ def consultar_catalogo_pokemon_por_numero(
     return []
 
 
+@st.cache_data(
+    ttl=3600,
+    show_spinner=False,
+)
 def consultar_catalogo_pokemon_por_nome_e_colecao(
     nome_carta,
     colecao,
     cache_buster=0,
 ):
     """
-    Reliability 2.6.28
+    Reliability 2.6.29
 
-    Consulta nome + coleção e UNE os resultados das estratégias específicas.
+    Busca nome + coleção sem depender de uma única consulta textual do provedor.
 
-    Correção importante:
-    na 2.6.26 a função retornava assim que a primeira consulta encontrava
-    qualquer carta. Em alguns casos isso fazia a busca parar em SM60 e nunca
-    executar a consulta alternativa capaz de trazer SM211, embora ambas
-    pertencessem ao mesmo set e tivessem o mesmo nome normalizado.
+    Estratégia:
+    1. tenta consultas textuais específicas com payload pequeno;
+    2. para coleções conhecidas, pagina o set em blocos de 100;
+    3. filtra nome e coleção localmente;
+    4. se uma página do fallback falhar, preserva os resultados já obtidos
+       em vez de derrubar toda a busca gratuita.
 
-    Agora:
-    1. executa todas as consultas específicas de nome + coleção;
-    2. combina os resultados sem duplicatas;
-    3. mantém apenas cartas compatíveis com a coleção informada;
-    4. mantém apenas nomes razoavelmente compatíveis com o nome pesquisado.
-
-    A ordem final continua sendo decidida pelo ranking local do CardCraftAI.
-    Sem número da carta, duas versões com mesmo nome e mesmo set são tratadas
-    como alternativas igualmente plausíveis, em vez de inventar uma preferência.
+    Motivo da mudança:
+    a 2.6.28 solicitava até 250 cartas completas em uma única resposta.
+    Embora esse tamanho seja permitido pela documentação da API, o provedor
+    passou a responder HTTP 500 de forma repetida nesse fluxo. A 2.6.29 reduz
+    o tamanho de cada resposta e torna o fallback tolerante a falhas.
     """
     _ = cache_buster
 
@@ -2297,62 +2298,11 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
     token = _token_fallback_catalogo(nome)
     set_id = _set_id_catalogo_por_colecao(colecao)
 
-    consultas = []
-
-    if set_id:
-        consultas.append(
-            f'name:"{nome_seguro}" set.id:{set_id}'
-        )
-        if token:
-            consultas.append(
-                f"name:{token}* set.id:{set_id}"
-            )
-
-        # Reliability 2.6.28:
-        # fallback definitivo para coleções com ID conhecido.
-        # Algumas buscas textuais do provedor não retornam todas as versões
-        # relevantes do mesmo nome. Então consultamos também o set inteiro e
-        # fazemos o filtro de nome localmente no CardCraftAI.
-        consultas.append(
-            f"set.id:{set_id}"
-        )
-    else:
-        consultas.append(
-            f'name:"{nome_seguro}" set.name:"{colecao_segura}"'
-        )
-        if token:
-            consultas.append(
-                f'name:{token}* set.name:"{colecao_segura}"'
-            )
-
-        # Mesmo princípio para coleções sem alias determinístico:
-        # busca a coleção inteira e aplica a compatibilidade de nome localmente.
-        consultas.append(
-            f'set.name:"{colecao_segura}"'
-        )
-
-    consultas = list(dict.fromkeys(consultas))
-
     combinadas = []
     ids_vistos = set()
 
-    for consulta in consultas:
-        resultado = _executar_requisicao_catalogo(
-            params={
-                "q": consulta,
-                "page": 1,
-                # O endpoint v2 aceita até 250 itens por página.
-                # Isso é importante para sets promocionais grandes, pois SM211
-                # pode ficar depois dos primeiros 100 registros.
-                "pageSize": 250,
-            },
-            tentativas=2,
-        )
-
-        if not resultado.get("ok"):
-            continue
-
-        for carta in resultado.get("data", []) or []:
+    def adicionar_cartas(cartas):
+        for carta in cartas or []:
             if not isinstance(carta, dict):
                 continue
 
@@ -2360,21 +2310,24 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
             set_nome = str(set_dados.get("name") or "")
             set_id_carta = str(set_dados.get("id") or "").strip().lower()
 
-            # A consulta já restringe o set, mas repetimos a validação local
-            # para não depender apenas do comportamento do provedor externo.
             if set_id:
                 if set_id_carta != str(set_id).strip().lower():
                     continue
             else:
-                if _similaridade_colecao_catalogo(colecao, set_nome) < 0.90:
+                if _similaridade_colecao_catalogo(
+                    colecao,
+                    set_nome,
+                ) < 0.90:
                     continue
 
-            # Evita incluir cartas apenas vagamente relacionadas quando o
-            # wildcard por token é usado como cobertura adicional.
-            if _similaridade_catalogo(nome, carta.get("name", "")) < 0.88:
+            if _similaridade_catalogo(
+                nome,
+                carta.get("name", ""),
+            ) < 0.88:
                 continue
 
             chave = str(carta.get("id") or "").strip()
+
             if not chave:
                 chave = "|".join([
                     str(carta.get("name") or ""),
@@ -2388,8 +2341,97 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
             ids_vistos.add(chave)
             combinadas.append(carta)
 
-    return combinadas
+    # --------------------------------------------------------
+    # 1. Consultas textuais pequenas
+    # --------------------------------------------------------
+    consultas_textuais = []
 
+    if set_id:
+        consultas_textuais.append(
+            f'name:"{nome_seguro}" set.id:{set_id}'
+        )
+
+        if token:
+            consultas_textuais.append(
+                f"name:{token}* set.id:{set_id}"
+            )
+
+    else:
+        consultas_textuais.append(
+            f'name:"{nome_seguro}" set.name:"{colecao_segura}"'
+        )
+
+        if token:
+            consultas_textuais.append(
+                f'name:{token}* set.name:"{colecao_segura}"'
+            )
+
+    for consulta in list(dict.fromkeys(consultas_textuais)):
+        resultado = _executar_requisicao_catalogo(
+            params={
+                "q": consulta,
+                "page": 1,
+                "pageSize": 50,
+            },
+            tentativas=2,
+        )
+
+        if resultado.get("ok"):
+            adicionar_cartas(
+                resultado.get("data", []) or []
+            )
+
+    # --------------------------------------------------------
+    # 2. Fallback paginado do set
+    # --------------------------------------------------------
+    # A resposta é limitada aos campos realmente usados na galeria,
+    # seleção da carta, links/preços e resumo da análise.
+    select_campos = ",".join([
+        "id",
+        "name",
+        "number",
+        "rarity",
+        "artist",
+        "set",
+        "images",
+        "tcgplayer",
+        "cardmarket",
+    ])
+
+    if set_id:
+        consulta_set = f"set.id:{set_id}"
+    else:
+        consulta_set = f'set.name:"{colecao_segura}"'
+
+    # 100 por página reduz bastante o payload em relação à 2.6.28.
+    # Até 4 páginas cobrem com margem os sets promocionais atuais
+    # sem uma resposta única excessivamente grande.
+    for pagina in range(1, 5):
+        resultado = _executar_requisicao_catalogo(
+            params={
+                "q": consulta_set,
+                "page": pagina,
+                "pageSize": 100,
+                "select": select_campos,
+                "orderBy": "number",
+            },
+            tentativas=2,
+        )
+
+        if not resultado.get("ok"):
+            # Não transforma falha de uma página complementar em erro global.
+            break
+
+        cartas_pagina = resultado.get("data", []) or []
+
+        adicionar_cartas(
+            cartas_pagina
+        )
+
+        if len(cartas_pagina) < 100:
+            break
+
+    return combinadas
 
 def ranquear_cartas_catalogo(
     cartas,
@@ -2505,7 +2547,7 @@ def buscar_cartas_catalogo_pokemon(
         except RuntimeError as erro:
             erro_numero = erro
 
-    # Reliability 2.6.28:
+    # Reliability 2.6.29:
     # se o usuário informou a coleção, consultamos nome + coleção antes da
     # busca ampla por nome. Assim uma carta correta (por exemplo SM211) não
     # desaparece por estar fora da primeira página global de resultados.
