@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.29
+# CARDCRAFTAI RELIABILITY 2.6.30
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.29"
+APP_VERSION = "2.6.30"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -1282,6 +1282,7 @@ POKEMON_TCG_API_KEY = st.secrets.get(
     "",
 )
 POKEMON_TCG_API_URL = "https://api.pokemontcg.io/v2/cards"
+TCGDEX_API_BASE = "https://api.tcgdex.net/v2/en"
 
 
 # ============================================================
@@ -2516,6 +2517,541 @@ def ranquear_cartas_catalogo(
         for _, _, carta in pontuadas[:limite]
     ]
 
+
+@st.cache_data(
+    ttl=3600,
+    show_spinner=False,
+)
+def _executar_requisicao_tcgdex(
+    caminho,
+    params=None,
+    tentativas=2,
+):
+    """
+    Reliability 2.6.30
+
+    Cliente mínimo e sem chave para a API pública TCGdex.
+    É o provedor principal do catálogo nesta versão porque o
+    pokemontcg.io está depreciado e apresentou HTTP 5xx repetidos
+    durante a bateria final de testes.
+
+    Retorna:
+    - None para 404;
+    - dict/list para respostas JSON válidas;
+    - RuntimeError para indisponibilidade operacional.
+    """
+    url = (
+        TCGDEX_API_BASE.rstrip("/")
+        + "/"
+        + str(caminho or "").lstrip("/")
+    )
+
+    ultimo_erro = None
+
+    for tentativa in range(1, tentativas + 1):
+        try:
+            resposta = requests.get(
+                url,
+                params=params or {},
+                headers={
+                    "Accept": "application/json",
+                },
+                timeout=12,
+            )
+        except requests.RequestException as erro:
+            ultimo_erro = erro
+
+            if tentativa < tentativas:
+                time.sleep(0.6 * tentativa)
+                continue
+
+            raise RuntimeError(
+                "Não foi possível conectar ao catálogo TCGdex "
+                "após novas tentativas."
+            ) from erro
+
+        if resposta.status_code == 404:
+            return None
+
+        if resposta.status_code == 429:
+            if tentativa < tentativas:
+                time.sleep(0.8 * tentativa)
+                continue
+
+            raise RuntimeError(
+                "O catálogo TCGdex atingiu temporariamente "
+                "o limite de consultas."
+            )
+
+        if resposta.status_code in {500, 502, 503, 504}:
+            if tentativa < tentativas:
+                time.sleep(0.8 * tentativa)
+                continue
+
+            raise RuntimeError(
+                "O catálogo TCGdex está temporariamente "
+                f"indisponível (HTTP {resposta.status_code})."
+            )
+
+        try:
+            resposta.raise_for_status()
+        except requests.RequestException as erro:
+            raise RuntimeError(
+                "O catálogo TCGdex respondeu com erro "
+                f"HTTP {resposta.status_code}."
+            ) from erro
+
+        try:
+            return resposta.json()
+        except ValueError as erro:
+            raise RuntimeError(
+                "O catálogo TCGdex respondeu em formato inválido."
+            ) from erro
+
+    raise RuntimeError(
+        "Não foi possível concluir a consulta ao catálogo TCGdex. "
+        f"Detalhe: {ultimo_erro}"
+    )
+
+
+def _urls_imagem_tcgdex(base):
+    base = str(base or "").strip().rstrip("/")
+
+    if not base:
+        return {}
+
+    # O TCGdex expõe o asset base e permite escolher
+    # qualidade/formato acrescentando /low.webp ou /high.webp.
+    return {
+        "small": f"{base}/low.webp",
+        "large": f"{base}/high.webp",
+    }
+
+
+def _adaptar_precos_tcgdex(pricing):
+    """
+    Converte o formato de preços do TCGdex para o formato interno
+    já utilizado pela UI do CardCraftAI.
+    """
+    pricing = pricing if isinstance(pricing, dict) else {}
+
+    tcg_origem = pricing.get("tcgplayer") or {}
+    cm_origem = pricing.get("cardmarket") or {}
+
+    tcg_destino = {}
+
+    mapa_variantes = {
+        "normal": "normal",
+        "holo": "holofoil",
+        "holofoil": "holofoil",
+        "reverse": "reverseHolofoil",
+        "reverse-holofoil": "reverseHolofoil",
+        "reverseHolofoil": "reverseHolofoil",
+        "1st-edition": "1stEditionNormal",
+        "1st-edition-holofoil": "1stEditionHolofoil",
+    }
+
+    for chave_origem, chave_destino in mapa_variantes.items():
+        valores = tcg_origem.get(chave_origem) or {}
+
+        if not isinstance(valores, dict):
+            continue
+
+        low = (
+            valores.get("lowPrice")
+            if valores.get("lowPrice") is not None
+            else valores.get("low")
+        )
+        market = (
+            valores.get("marketPrice")
+            if valores.get("marketPrice") is not None
+            else valores.get("market")
+        )
+
+        if low is None and market is None:
+            continue
+
+        tcg_destino[chave_destino] = {
+            "low": low,
+            "market": market,
+        }
+
+    tcgplayer = {}
+
+    if tcg_destino:
+        tcgplayer = {
+            "updatedAt": (
+                tcg_origem.get("updated")
+                or tcg_origem.get("updatedAt")
+            ),
+            "prices": tcg_destino,
+        }
+
+    cardmarket = {}
+
+    if isinstance(cm_origem, dict) and cm_origem:
+        cardmarket = {
+            "updatedAt": (
+                cm_origem.get("updated")
+                or cm_origem.get("updatedAt")
+            ),
+            "prices": {
+                "lowPrice": (
+                    cm_origem.get("low")
+                    if cm_origem.get("low") is not None
+                    else cm_origem.get("lowPrice")
+                ),
+                "trendPrice": (
+                    cm_origem.get("trend")
+                    if cm_origem.get("trend") is not None
+                    else cm_origem.get("trendPrice")
+                ),
+                "avg7": cm_origem.get("avg7"),
+                "avg30": cm_origem.get("avg30"),
+            },
+        }
+
+    return tcgplayer, cardmarket
+
+
+def _adaptar_carta_tcgdex(
+    carta,
+    set_completo=None,
+):
+    """
+    Normaliza um Card do TCGdex para o contrato que a UI já utiliza.
+    Assim galeria, Confidence Engine, histórico e links continuam
+    funcionando sem duplicar lógica de apresentação.
+    """
+    if not isinstance(carta, dict):
+        return None
+
+    set_brief = carta.get("set") or {}
+    set_completo = (
+        set_completo
+        if isinstance(set_completo, dict)
+        else {}
+    )
+
+    set_id = (
+        set_brief.get("id")
+        or set_completo.get("id")
+    )
+    set_nome = (
+        set_brief.get("name")
+        or set_completo.get("name")
+    )
+    release_date = (
+        set_completo.get("releaseDate")
+        or set_brief.get("releaseDate")
+    )
+
+    tcgplayer, cardmarket = _adaptar_precos_tcgdex(
+        carta.get("pricing") or {}
+    )
+
+    adaptada = {
+        "id": carta.get("id"),
+        "name": carta.get("name"),
+        "number": (
+            carta.get("localId")
+            if carta.get("localId") is not None
+            else carta.get("number")
+        ),
+        "rarity": carta.get("rarity"),
+        "artist": (
+            carta.get("illustrator")
+            or carta.get("artist")
+        ),
+        "set": {
+            "id": set_id,
+            "name": set_nome,
+            "releaseDate": release_date,
+        },
+        "images": _urls_imagem_tcgdex(
+            carta.get("image")
+        ),
+        "_catalog_provider": "TCGdex",
+    }
+
+    if tcgplayer:
+        adaptada["tcgplayer"] = tcgplayer
+
+    if cardmarket:
+        adaptada["cardmarket"] = cardmarket
+
+    return adaptada
+
+
+@st.cache_data(
+    ttl=3600,
+    show_spinner=False,
+)
+def _resolver_set_tcgdex(
+    colecao,
+    set_id_sugerido="",
+    cache_buster=0,
+):
+    _ = cache_buster
+
+    set_id_sugerido = str(
+        set_id_sugerido or ""
+    ).strip()
+
+    if set_id_sugerido:
+        try:
+            direto = _executar_requisicao_tcgdex(
+                f"sets/{set_id_sugerido}",
+                tentativas=2,
+            )
+        except RuntimeError:
+            direto = None
+
+        if isinstance(direto, dict):
+            return direto
+
+    colecao = str(colecao or "").strip()
+
+    if not colecao:
+        return None
+
+    resultado = _executar_requisicao_tcgdex(
+        "sets",
+        params={
+            "name": colecao,
+        },
+        tentativas=2,
+    )
+
+    if not isinstance(resultado, list):
+        return None
+
+    candidatos = [
+        item
+        for item in resultado
+        if isinstance(item, dict)
+    ]
+
+    if not candidatos:
+        return None
+
+    candidatos.sort(
+        key=lambda item: _similaridade_colecao_catalogo(
+            colecao,
+            item.get("name", ""),
+        ),
+        reverse=True,
+    )
+
+    melhor = candidatos[0]
+
+    if (
+        _similaridade_colecao_catalogo(
+            colecao,
+            melhor.get("name", ""),
+        )
+        < 0.72
+    ):
+        return None
+
+    set_id = str(
+        melhor.get("id") or ""
+    ).strip()
+
+    if not set_id:
+        return melhor
+
+    completo = _executar_requisicao_tcgdex(
+        f"sets/{set_id}",
+        tentativas=2,
+    )
+
+    return (
+        completo
+        if isinstance(completo, dict)
+        else melhor
+    )
+
+
+@st.cache_data(
+    ttl=3600,
+    show_spinner=False,
+)
+def consultar_catalogo_tcgdex(
+    nome,
+    colecao="",
+    numero="",
+    limite=20,
+    cache_buster=0,
+):
+    """
+    Reliability 2.6.30
+
+    Consulta o TCGdex primeiro.
+    Não exige nova chave/secret e preserva IDs familiares como
+    smp-SM211, swshp-SWSH050 e xyp-XY17.
+    """
+    _ = cache_buster
+
+    nome = str(nome or "").strip()
+    colecao = str(colecao or "").strip()
+    numero = str(numero or "").strip()
+
+    set_id_sugerido = (
+        _set_id_catalogo_por_colecao(colecao)
+        or _set_id_catalogo_por_numero(numero)
+        or ""
+    )
+
+    # 1. Quando set + número permitem formar um ID determinístico,
+    # tentamos a carta diretamente. Esse é o caminho mais confiável
+    # para validação por foto.
+    numero_principal = _numero_principal_catalogo(
+        numero
+    ).upper()
+
+    if set_id_sugerido and numero_principal:
+        carta_direta = _executar_requisicao_tcgdex(
+            f"cards/{set_id_sugerido}-{numero_principal}",
+            tentativas=2,
+        )
+
+        if isinstance(carta_direta, dict):
+            set_completo = _resolver_set_tcgdex(
+                colecao,
+                set_id_sugerido=set_id_sugerido,
+                cache_buster=cache_buster,
+            )
+            adaptada = _adaptar_carta_tcgdex(
+                carta_direta,
+                set_completo=set_completo,
+            )
+
+            if adaptada:
+                return [adaptada]
+
+    set_completo = None
+
+    if colecao or set_id_sugerido:
+        set_completo = _resolver_set_tcgdex(
+            colecao,
+            set_id_sugerido=set_id_sugerido,
+            cache_buster=cache_buster,
+        )
+
+    briefs = []
+
+    # 2. Se a coleção foi resolvida, usamos a lista completa do set.
+    # Isso elimina o problema que ocultava a SM211 na busca ampla.
+    if isinstance(set_completo, dict):
+        briefs = [
+            item
+            for item in (set_completo.get("cards") or [])
+            if isinstance(item, dict)
+        ]
+
+    # 3. Sem coleção resolvida, buscamos pelo nome no índice global.
+    if not briefs:
+        params = {}
+
+        if nome:
+            params["name"] = nome
+
+        if numero:
+            params["localId"] = _numero_principal_catalogo(
+                numero
+            )
+
+        resultado = _executar_requisicao_tcgdex(
+            "cards",
+            params=params,
+            tentativas=2,
+        )
+
+        if isinstance(resultado, list):
+            briefs = [
+                item
+                for item in resultado
+                if isinstance(item, dict)
+            ]
+
+    candidatos = []
+
+    for brief in briefs:
+        if numero and not _numeros_catalogo_equivalentes(
+            brief.get("localId"),
+            numero,
+        ):
+            continue
+
+        if nome:
+            similaridade = _similaridade_catalogo(
+                nome,
+                brief.get("name", ""),
+            )
+
+            if similaridade < 0.72:
+                continue
+        else:
+            similaridade = 1.0
+
+        candidatos.append(
+            (
+                similaridade,
+                brief,
+            )
+        )
+
+    candidatos.sort(
+        key=lambda item: item[0],
+        reverse=True,
+    )
+
+    # Buscamos detalhes apenas dos candidatos que realmente serão úteis.
+    max_detalhes = max(
+        int(limite or 12) * 2,
+        16,
+    )
+
+    adaptadas = []
+    ids_vistos = set()
+
+    for _, brief in candidatos[:max_detalhes]:
+        card_id = str(
+            brief.get("id") or ""
+        ).strip()
+
+        if not card_id or card_id in ids_vistos:
+            continue
+
+        ids_vistos.add(card_id)
+
+        detalhe = _executar_requisicao_tcgdex(
+            f"cards/{card_id}",
+            tentativas=2,
+        )
+
+        if not isinstance(detalhe, dict):
+            # Ainda conseguimos montar uma carta resumida.
+            detalhe = dict(brief)
+
+            if isinstance(set_completo, dict):
+                detalhe["set"] = {
+                    "id": set_completo.get("id"),
+                    "name": set_completo.get("name"),
+                }
+
+        adaptada = _adaptar_carta_tcgdex(
+            detalhe,
+            set_completo=set_completo,
+        )
+
+        if adaptada:
+            adaptadas.append(adaptada)
+
+    return adaptadas
+
+
 def buscar_cartas_catalogo_pokemon(
     nome,
     colecao="",
@@ -2524,16 +3060,42 @@ def buscar_cartas_catalogo_pokemon(
     cache_buster=0,
 ):
     """
-    Reliability 2.2.4
+    Reliability 2.6.30
 
-    Ordem de resolução:
-    1. número exato, quando disponível;
-    2. nome + coleção, quando a coleção foi informada;
-    3. busca ampla por nome;
-    4. ranking local por número, nome e coleção normalizada.
+    Ordem atual:
+    1. TCGdex (principal, público e sem nova chave);
+    2. Pokémon TCG API legado como fallback temporário;
+    3. ranking local por número, nome e coleção normalizada.
 
-    O resultado exato por número nunca é descartado pela busca ampla por nome.
+    O fluxo continua impedindo que uma falha de busca ampla substitua
+    uma identificação exata por número.
     """
+    erro_tcgdex = None
+
+    try:
+        cartas_tcgdex = consultar_catalogo_tcgdex(
+            nome,
+            colecao=colecao,
+            numero=numero,
+            limite=max(int(limite or 12), 12),
+            cache_buster=cache_buster,
+        )
+    except RuntimeError as erro:
+        erro_tcgdex = erro
+        cartas_tcgdex = []
+
+    if cartas_tcgdex:
+        return ranquear_cartas_catalogo(
+            cartas_tcgdex,
+            nome=nome,
+            colecao=colecao,
+            numero=numero,
+            limite=limite,
+        )
+
+    # --------------------------------------------------------
+    # Fallback legado: pokemontcg.io
+    # --------------------------------------------------------
     cartas_numero = []
     erro_numero = None
 
@@ -2547,10 +3109,6 @@ def buscar_cartas_catalogo_pokemon(
         except RuntimeError as erro:
             erro_numero = erro
 
-    # Reliability 2.6.29:
-    # se o usuário informou a coleção, consultamos nome + coleção antes da
-    # busca ampla por nome. Assim uma carta correta (por exemplo SM211) não
-    # desaparece por estar fora da primeira página global de resultados.
     cartas_colecao = []
 
     if (
@@ -2566,21 +3124,19 @@ def buscar_cartas_catalogo_pokemon(
                 )
             )
         except RuntimeError:
-            # A busca específica melhora cobertura/ranking, mas não deve tornar
-            # a pesquisa gratuita indisponível se apenas esse refinamento falhar.
             cartas_colecao = []
 
     cartas_nome = []
+    erro_nome = None
+
     try:
         cartas_nome = consultar_catalogo_pokemon(
             nome,
             cache_buster=cache_buster,
         )
-    except RuntimeError:
-        if cartas_numero or cartas_colecao:
-            cartas_nome = []
-        else:
-            raise
+    except RuntimeError as erro:
+        erro_nome = erro
+        cartas_nome = []
 
     combinadas = []
     ids_vistos = set()
@@ -2593,7 +3149,10 @@ def buscar_cartas_catalogo_pokemon(
         if not isinstance(carta, dict):
             continue
 
-        chave = str(carta.get("id") or "").strip()
+        chave = str(
+            carta.get("id") or ""
+        ).strip()
+
         if not chave:
             set_dados = carta.get("set") or {}
             chave = "|".join([
@@ -2608,19 +3167,27 @@ def buscar_cartas_catalogo_pokemon(
         ids_vistos.add(chave)
         combinadas.append(carta)
 
-    if erro_numero is not None and str(numero or "").strip():
-        # Se a consulta exata por número falhou tecnicamente, não usamos uma
-        # busca ampla por nome para inventar um "melhor candidato". Isso evita
-        # falsos conflitos como SM211 -> SM60 durante falhas parciais da API.
+    if combinadas:
+        return ranquear_cartas_catalogo(
+            combinadas,
+            nome=nome,
+            colecao=colecao,
+            numero=numero,
+            limite=limite,
+        )
+
+    # Se nenhum dos dois provedores conseguiu responder, preservamos
+    # o erro mais informativo sem consumir crédito.
+    if erro_tcgdex is not None:
+        raise erro_tcgdex
+
+    if erro_numero is not None:
         raise erro_numero
 
-    return ranquear_cartas_catalogo(
-        combinadas,
-        nome=nome,
-        colecao=colecao,
-        numero=numero,
-        limite=limite,
-    )
+    if erro_nome is not None:
+        raise erro_nome
+
+    return []
 
 
 # ============================================================
