@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.25
+# CARDCRAFTAI RELIABILITY 2.6.26
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.25"
+APP_VERSION = "2.6.26"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -2251,6 +2251,87 @@ def consultar_catalogo_pokemon_por_numero(
 
     return []
 
+
+def consultar_catalogo_pokemon_por_nome_e_colecao(
+    nome_carta,
+    colecao,
+    cache_buster=0,
+):
+    """
+    Reliability 2.6.26
+
+    Faz uma consulta priorizando nome + coleção antes da busca ampla por nome.
+
+    Motivo:
+    a API pode possuir mais resultados para um nome do que cabem na primeira
+    página da busca ampla. Quando o usuário informa a coleção, uma carta correta
+    dessa coleção não deve desaparecer apenas porque ficou fora dos primeiros
+    resultados globais.
+
+    Para coleções promocionais conhecidas, usa set.id determinístico.
+    Para outras coleções, tenta set.name. Se a consulta específica não retornar
+    dados, a busca ampla por nome continua normalmente no chamador.
+    """
+    _ = cache_buster
+
+    nome = str(nome_carta or "").strip()
+    colecao = str(colecao or "").strip()
+
+    if not nome or not colecao:
+        return []
+
+    if not POKEMON_TCG_API_KEY:
+        raise RuntimeError(
+            "A chave POKEMON_TCG_API_KEY ainda não está "
+            "configurada nos Secrets do Streamlit."
+        )
+
+    nome_seguro = _frase_lucene_segura(nome)
+    colecao_segura = _frase_lucene_segura(colecao)
+    token = _token_fallback_catalogo(nome)
+    set_id = _set_id_catalogo_por_colecao(colecao)
+
+    consultas = []
+
+    if set_id:
+        consultas.append(
+            f'name:"{nome_seguro}" set.id:{set_id}'
+        )
+        if token:
+            consultas.append(
+                f"name:{token}* set.id:{set_id}"
+            )
+    else:
+        consultas.append(
+            f'name:"{nome_seguro}" set.name:"{colecao_segura}"'
+        )
+        if token:
+            consultas.append(
+                f'name:{token}* set.name:"{colecao_segura}"'
+            )
+
+    consultas = list(dict.fromkeys(consultas))
+
+    for consulta in consultas:
+        resultado = _executar_requisicao_catalogo(
+            params={
+                "q": consulta,
+                "page": 1,
+                "pageSize": 100,
+            },
+            tentativas=2,
+        )
+
+        if not resultado.get("ok"):
+            continue
+
+        cartas = resultado.get("data", []) or []
+        if cartas:
+            return cartas
+
+    return []
+
+
 def ranquear_cartas_catalogo(
     cartas,
     nome="",
@@ -2346,8 +2427,9 @@ def buscar_cartas_catalogo_pokemon(
 
     Ordem de resolução:
     1. número exato, quando disponível;
-    2. nome da carta;
-    3. ranking local por número, nome e coleção normalizada.
+    2. nome + coleção, quando a coleção foi informada;
+    3. busca ampla por nome;
+    4. ranking local por número, nome e coleção normalizada.
 
     O resultado exato por número nunca é descartado pela busca ampla por nome.
     """
@@ -2364,6 +2446,29 @@ def buscar_cartas_catalogo_pokemon(
         except RuntimeError as erro:
             erro_numero = erro
 
+    # Reliability 2.6.26:
+    # se o usuário informou a coleção, consultamos nome + coleção antes da
+    # busca ampla por nome. Assim uma carta correta (por exemplo SM211) não
+    # desaparece por estar fora da primeira página global de resultados.
+    cartas_colecao = []
+
+    if (
+        str(nome or "").strip()
+        and str(colecao or "").strip()
+    ):
+        try:
+            cartas_colecao = (
+                consultar_catalogo_pokemon_por_nome_e_colecao(
+                    nome,
+                    colecao,
+                    cache_buster=cache_buster,
+                )
+            )
+        except RuntimeError:
+            # A busca específica melhora cobertura/ranking, mas não deve tornar
+            # a pesquisa gratuita indisponível se apenas esse refinamento falhar.
+            cartas_colecao = []
+
     cartas_nome = []
     try:
         cartas_nome = consultar_catalogo_pokemon(
@@ -2371,7 +2476,7 @@ def buscar_cartas_catalogo_pokemon(
             cache_buster=cache_buster,
         )
     except RuntimeError:
-        if cartas_numero:
+        if cartas_numero or cartas_colecao:
             cartas_nome = []
         else:
             raise
@@ -2379,7 +2484,11 @@ def buscar_cartas_catalogo_pokemon(
     combinadas = []
     ids_vistos = set()
 
-    for carta in [*(cartas_numero or []), *(cartas_nome or [])]:
+    for carta in [
+        *(cartas_numero or []),
+        *(cartas_colecao or []),
+        *(cartas_nome or []),
+    ]:
         if not isinstance(carta, dict):
             continue
 
@@ -6101,7 +6210,7 @@ def reabrir_analise_historico(registro):
 
 
 # ============================================================
-# DOCUMENTOS LEGAIS - 2.6.25
+# DOCUMENTOS LEGAIS - 2.6.26
 # ============================================================
 
 LEGAL_VERSION = "2026-09-17"
