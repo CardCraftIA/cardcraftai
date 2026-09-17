@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.24
+# CARDCRAFTAI RELIABILITY 2.6.25
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.24"
+APP_VERSION = "2.6.25"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -189,7 +189,7 @@ UI_TEXT = {
         "confirmation_sent": "📧 We sent a confirmation email to {email}. Open the CardCraftAI message and click ‘Confirm my email’.",
         "confirmation_required": "🔒 Your account can only sign in to CardCraftAI after the email is confirmed.",
         "signup_failed": "Could not create the account.",
-        "legal_beta": "Beta legal documents",
+        "legal_beta": "Legal documents",
         "terms": "📜 Terms of Use",
         "privacy": "🔒 Privacy Policy",
         "new_password_title": "🔐 Create a new password",
@@ -292,7 +292,7 @@ UI_TEXT = {
         "monthly_fee": "Monthly fee",
         "subscribe": "Subscribe to {name}",
         "subscription_pending": "💳 Recurring subscription checkout is not enabled yet. This plan cannot be purchased until recurring billing is connected.",
-        "beta_legal_note": "Beta document. Before commercial launch, we will publish the official support/privacy contact and complete the final legal review.",
+        "beta_legal_note": "Current legal documents. Support and privacy contact: cardcraftai.suporte@gmail.com.",
     },
     "Português (BR)": {
         "language": "🌐 Idioma / Language",
@@ -319,7 +319,7 @@ UI_TEXT = {
         "password_mismatch": "As duas senhas não são iguais.", "must_accept_legal": "Para criar a conta, você precisa aceitar os Termos de Uso e a Política de Privacidade.",
         "signup_success": "Cadastro realizado! ✅", "confirmation_sent": "📧 Enviamos um e-mail de confirmação para {email}. Abra a mensagem do CardCraftAI e clique em ‘Confirmar meu e-mail’.",
         "confirmation_required": "🔒 Sua conta só poderá entrar no CardCraftAI depois que o e-mail for confirmado.", "signup_failed": "Não foi possível criar a conta.",
-        "legal_beta": "Documentos legais da versão beta", "terms": "📜 Termos de Uso", "privacy": "🔒 Política de Privacidade",
+        "legal_beta": "Documentos legais", "terms": "📜 Termos de Uso", "privacy": "🔒 Política de Privacidade",
         "new_password_title": "🔐 Crie uma nova senha", "new_password_intro": "Defina a nova senha da sua conta.", "new_password": "Nova senha",
         "confirm_new_password": "Confirme a nova senha", "save_new_password": "✅ Salvar nova senha", "change_password_failed": "Não foi possível alterar a senha.",
         "cancel_login": "← Cancelar e voltar ao login", "recovery_invalid": "O link de recuperação é inválido, expirou ou já foi usado. Solicite um novo link em ‘Esqueci minha senha’.",
@@ -361,7 +361,7 @@ UI_TEXT = {
         "refresh_balance": "🔄 Atualizar saldo",
         "subscriptions": "🏢 Assinaturas", "per_cycle": "{n} créditos por ciclo", "monthly_fee": "Mensalidade", "subscribe": "Assinar {name}",
         "subscription_pending": "💳 O checkout recorrente da assinatura ainda não está habilitado. Este plano não pode ser comprado até integrarmos a cobrança recorrente.",
-        "beta_legal_note": "Documento beta. Antes do lançamento comercial, vamos publicar o canal oficial de suporte/privacidade e concluir a revisão jurídica final.",
+        "beta_legal_note": "Documentos legais vigentes. Contato de suporte e privacidade: cardcraftai.suporte@gmail.com.",
     },
     "Español": {
         "language": "🌐 Idioma / Language", "tagline_login": "Inteligencia artificial para identificación y evaluación de cartas TCG", "access_account": "🔐 Accede a tu cuenta",
@@ -379,7 +379,7 @@ UI_TEXT = {
         "password_lower": "La contraseña debe contener al menos una letra minúscula.", "password_upper": "La contraseña debe contener al menos una letra mayúscula.", "password_digit": "La contraseña debe contener al menos un número.",
         "password_symbol": "La contraseña debe contener al menos un símbolo.", "password_mismatch": "Las dos contraseñas no coinciden.", "must_accept_legal": "Para crear la cuenta, debes aceptar los Términos de Uso y la Política de Privacidad.",
         "signup_success": "¡Cuenta creada! ✅", "confirmation_sent": "📧 Enviamos un correo de confirmación a {email}. Abre el mensaje de CardCraftAI y pulsa ‘Confirmar mi correo’.",
-        "confirmation_required": "🔒 Tu cuenta solo podrá entrar en CardCraftAI después de confirmar el correo.", "signup_failed": "No se pudo crear la cuenta.", "legal_beta": "Documentos legales de la versión beta",
+        "confirmation_required": "🔒 Tu cuenta solo podrá entrar en CardCraftAI después de confirmar el correo.", "signup_failed": "No se pudo crear la cuenta.", "legal_beta": "Documentos legales",
         "terms": "📜 Términos de Uso", "privacy": "🔒 Política de Privacidad", "new_password_title": "🔐 Crea una nueva contraseña", "new_password_intro": "Define la nueva contraseña de tu cuenta.",
         "new_password": "Nueva contraseña", "confirm_new_password": "Confirma la nueva contraseña", "save_new_password": "✅ Guardar nueva contraseña", "change_password_failed": "No se pudo cambiar la contraseña.",
         "cancel_login": "← Cancelar y volver al acceso", "recovery_invalid": "El enlace de recuperación no es válido, ha caducado o ya fue usado. Solicita uno nuevo en ‘Olvidé mi contraseña’.",
@@ -417,7 +417,7 @@ UI_TEXT = {
         "payment_failure_return": "❌ El pago no se completó. No se añadieron créditos.",
         "refresh_balance": "🔄 Actualizar saldo",
         "subscriptions": "🏢 Suscripciones", "per_cycle": "{n} créditos por ciclo", "monthly_fee": "Mensualidad", "subscribe": "Suscribirse a {name}", "subscription_pending": "💳 El checkout recurrente de la suscripción aún no está habilitado. Este plan no puede comprarse hasta conectar la facturación recurrente.",
-        "beta_legal_note": "Documento beta. Antes del lanzamiento comercial, publicaremos el contacto oficial de soporte/privacidad y completaremos la revisión jurídica final.",
+        "beta_legal_note": "Documentos legales vigentes. Contacto de soporte y privacidad: cardcraftai.suporte@gmail.com.",
     },
     "日本語": {
         "language": "🌐 Language / 言語", "tagline_login": "TCGカードの識別・評価を支援するAI", "access_account": "🔐 アカウントにログイン",
@@ -434,7 +434,7 @@ UI_TEXT = {
         "password_min": "パスワードは{n}文字以上必要です。", "password_lower": "小文字を1文字以上含めてください。", "password_upper": "大文字を1文字以上含めてください。", "password_digit": "数字を1文字以上含めてください。",
         "password_symbol": "記号を1文字以上含めてください。", "password_mismatch": "2つのパスワードが一致しません。", "must_accept_legal": "アカウントを作成するには利用規約とプライバシーポリシーへの同意が必要です。",
         "signup_success": "アカウントを作成しました！✅", "confirmation_sent": "📧 {email} に確認メールを送信しました。CardCraftAI のメールを開き、「メールを確認」をクリックしてください。",
-        "confirmation_required": "🔒 メール確認が完了するまで CardCraftAI にログインできません。", "signup_failed": "アカウントを作成できませんでした。", "legal_beta": "ベータ版の法的文書",
+        "confirmation_required": "🔒 メール確認が完了するまで CardCraftAI にログインできません。", "signup_failed": "アカウントを作成できませんでした。", "legal_beta": "法的文書",
         "terms": "📜 利用規約", "privacy": "🔒 プライバシーポリシー", "new_password_title": "🔐 新しいパスワードを作成", "new_password_intro": "アカウントの新しいパスワードを設定します。",
         "new_password": "新しいパスワード", "confirm_new_password": "新しいパスワードを確認", "save_new_password": "✅ 新しいパスワードを保存", "change_password_failed": "パスワードを変更できませんでした。",
         "cancel_login": "← キャンセルしてログインへ戻る", "recovery_invalid": "復旧リンクは無効、期限切れ、または既に使用されています。「パスワードを忘れた」から新しいリンクを取得してください。",
@@ -471,7 +471,7 @@ UI_TEXT = {
         "payment_failure_return": "❌ 支払いは完了しませんでした。クレジットは追加されていません。",
         "refresh_balance": "🔄 残高を更新",
         "subscriptions": "🏢 サブスクリプション", "per_cycle": "1サイクルあたり{n}クレジット", "monthly_fee": "月額", "subscribe": "{name} に登録", "subscription_pending": "💳 定期課金のチェックアウトはまだ有効化されていません。定期請求の接続が完了するまで、このプランは購入できません。",
-        "beta_legal_note": "ベータ版文書です。商用公開前に公式サポート／プライバシー窓口を公開し、最終的な法務レビューを完了します。",
+        "beta_legal_note": "現行の法的文書です。サポート／プライバシー窓口: cardcraftai.suporte@gmail.com。",
     },
 }
 
@@ -6101,169 +6101,200 @@ def reabrir_analise_historico(registro):
 
 
 # ============================================================
-# DOCUMENTOS LEGAIS - BETA 2.6.15
+# DOCUMENTOS LEGAIS - 2.6.25
 # ============================================================
 
-LEGAL_VERSION = "2026-09-13"
+LEGAL_VERSION = "2026-09-17"
 TERMS_VERSION = LEGAL_VERSION
 PRIVACY_VERSION = LEGAL_VERSION
 
+LEGAL_RESPONSIBLE_NAME = "Francis José Nolasco da Silva"
+LEGAL_RESPONSIBLE_FORM = "Pessoa física"
+LEGAL_LOCATION = "Betim, Minas Gerais, Brasil"
+LEGAL_CONTACT_EMAIL = "cardcraftai.suporte@gmail.com"
+
 
 def renderizar_termos_uso(idioma_atual="English"):
-    """Exibe os Termos de Uso em linguagem simples e compatível com a fase beta."""
+    """Exibe os Termos de Uso vigentes do CardCraftAI."""
 
     if idioma_atual == "English":
         titulo = "📜 Terms of Use"
         texto = f"""
 **Legal version:** {LEGAL_VERSION}  
-**Product:** CardCraftAI — beta
+**Product:** CardCraftAI  
+**Responsible party:** {LEGAL_RESPONSIBLE_NAME} — individual operator  
+**Location:** {LEGAL_LOCATION}  
+**Support and privacy contact:** {LEGAL_CONTACT_EMAIL}
 
 ### 1. Service
-CardCraftAI is an AI-assisted tool for identifying, organizing and analyzing Trading Card Game (TCG) cards. Features may include visual identification, catalog comparison, descriptive analysis, account credits and purchase history.
+CardCraftAI is an AI-assisted tool for identifying, organizing and analyzing Trading Card Game (TCG) cards. Features may include visual identification, catalog comparison, descriptive analysis, account credits, analysis history, purchase history and links to third-party marketplaces or data sources.
 
-### 2. AI limitations
-AI and catalog results can be incomplete, outdated or incorrect. CardCraftAI does **not** guarantee exact identification, authenticity, professional grading, market value, investment return or sale price. Any condition or authenticity indication is only a preliminary visual aid and does not replace evaluation by PSA, CGC, Beckett, a qualified dealer or another specialist.
+### 2. AI and catalog limitations
+AI and third-party catalog results can be incomplete, outdated or incorrect. CardCraftAI does **not** guarantee exact identification, authenticity, professional grading, market value, investment return or sale price. Any condition or authenticity indication is a preliminary visual aid and does not replace physical inspection or evaluation by PSA, CGC, Beckett, a qualified dealer or another specialist.
 
 ### 3. Market information
-When current market search is unavailable, CardCraftAI will not represent estimated values as live market prices. Users should verify prices, recent sales and listing conditions through independent sources before buying, selling or insuring a card.
+When current market information is unavailable or stale, CardCraftAI does not represent estimates as live market prices. Prices, listings and reference values from third parties can change without notice. Users should independently verify recent sales, listing conditions, fees and applicable taxes before buying, selling, insuring or valuing a card.
 
 ### 4. User responsibilities
-You are responsible for the images, text and information you submit and must have the right to use them. The service must not be used for fraud, counterfeit listings, impersonation, unlawful activity, harassment, security abuse or attempts to bypass credits or access controls.
+You are responsible for the images, text and information you submit and must have the right to use them. The service must not be used for fraud, counterfeit listings, impersonation, unlawful activity, harassment, security abuse, unauthorized access, or attempts to bypass credits, payment controls or other access restrictions.
 
 ### 5. Accounts and security
-You are responsible for protecting your password and access to your email account. Notify CardCraftAI through the official support channel when available if you suspect unauthorized access.
+You are responsible for protecting your password and access to your email account. Email confirmation may be required before full account use. If you suspect unauthorized access, contact CardCraftAI at {LEGAL_CONTACT_EMAIL}.
 
 ### 6. Credits and paid services
-Credits represent permission to use eligible CardCraftAI features and are not currency, an investment or a stored-value account. Prices, packages, payment methods and refund rules will be displayed before purchase. Mandatory consumer rights applicable in your jurisdiction are not waived by these Terms.
+Credits represent permission to use eligible CardCraftAI features and are not currency, an investment, a bank deposit or a stored-value account. The applicable package, price, currency and number of credits are shown before purchase. Mandatory consumer rights applicable in your jurisdiction are not waived by these Terms.
 
-### 7. Availability
-The service may be modified, suspended or temporarily unavailable for maintenance, provider outages, rate limits, security incidents or technical failures. CardCraftAI may automatically refund a consumed credit when an eligible analysis fails before completion.
+### 7. Payment processing
+For purchase flows currently enabled, payment processing is performed by Mercado Pago. CardCraftAI does not receive or store full payment-card details such as the complete card number or security code. CardCraftAI may receive and retain transaction identifiers, status, amount, currency, purchased package and other metadata necessary to reconcile the payment, release credits, prevent duplicate crediting and maintain purchase history. Any cancellation or refund rights required by applicable law remain unaffected.
 
-### 8. Intellectual property
-The CardCraftAI software, interface, brand and original content are protected by applicable intellectual-property rules. TCG names, card images, trademarks and third-party catalog data belong to their respective owners. CardCraftAI is not affiliated with or endorsed by those rights holders unless expressly stated.
+### 8. Availability and external services
+The service may be modified, suspended or temporarily unavailable because of maintenance, provider outages, rate limits, API changes, security incidents or technical failures. External catalogs, AI providers, hosting, email, payment and marketplace services are outside CardCraftAI's direct control. When an eligible analysis fails before completion, the application may preserve or restore the corresponding credit according to its operational rules.
 
-### 9. Limitation of use
-Decisions involving purchases, sales, insurance, taxes, legal matters or significant financial value should not rely exclusively on an AI result. Use the service as an informational aid and independently verify important decisions.
+### 9. Intellectual property and third-party rights
+The CardCraftAI software, interface, brand and original content are protected by applicable intellectual-property rules. TCG names, card images, trademarks, marketplace names and third-party catalog data belong to their respective owners. CardCraftAI is not affiliated with or endorsed by those rights holders unless expressly stated.
 
-### 10. Changes
-These Terms may be updated as the product, providers or legal requirements evolve. The current version date is displayed above. A commercial launch will include a published official support/privacy contact.
+### 10. Responsible use
+Decisions involving purchases, sales, insurance, taxes, legal matters or significant financial value should not rely exclusively on an AI result. Use CardCraftAI as an informational aid and independently verify important decisions.
 
-By continuing to use CardCraftAI, you acknowledge these limitations and agree to use the service responsibly.
+### 11. Changes and contact
+These Terms may be updated as the product, providers or legal requirements evolve. The current version date is displayed above. Questions about the service, these Terms or privacy may be sent to {LEGAL_CONTACT_EMAIL}.
+
+By creating or continuing to use an account after accepting the applicable legal version, you acknowledge these limitations and agree to use CardCraftAI responsibly.
 """
 
     elif idioma_atual == "Español":
         titulo = "📜 Términos de Uso"
         texto = f"""
 **Versión legal:** {LEGAL_VERSION}  
-**Producto:** CardCraftAI — beta
+**Producto:** CardCraftAI  
+**Responsable:** {LEGAL_RESPONSIBLE_NAME} — persona física  
+**Ubicación:** {LEGAL_LOCATION}  
+**Contacto de soporte y privacidad:** {LEGAL_CONTACT_EMAIL}
 
 ### 1. Servicio
-CardCraftAI es una herramienta asistida por inteligencia artificial para identificar, organizar y analizar cartas de Trading Card Games (TCG). Puede incluir identificación visual, comparación con catálogos, análisis descriptivo, créditos de cuenta e historial de compras.
+CardCraftAI es una herramienta asistida por inteligencia artificial para identificar, organizar y analizar cartas de Trading Card Games (TCG). Puede incluir identificación visual, comparación con catálogos, análisis descriptivo, créditos, historial de análisis, historial de compras y enlaces a mercados o fuentes de datos de terceros.
 
-### 2. Límites de la IA
-Los resultados de IA y catálogo pueden ser incompletos, desactualizados o incorrectos. CardCraftAI **no** garantiza identificación exacta, autenticidad, grading profesional, valor de mercado, retorno de inversión ni precio de venta. Cualquier indicación de estado o autenticidad es solo una ayuda visual preliminar.
+### 2. Límites de la IA y del catálogo
+Los resultados de IA y de catálogos externos pueden ser incompletos, desactualizados o incorrectos. CardCraftAI **no** garantiza identificación exacta, autenticidad, grading profesional, valor de mercado, retorno de inversión ni precio de venta. Cualquier indicación de estado o autenticidad es solo una ayuda visual preliminar y no sustituye una inspección física o evaluación profesional.
 
 ### 3. Información de mercado
-Cuando la búsqueda de mercado actual no esté disponible, CardCraftAI no presentará estimaciones como precios en tiempo real. Verifica precios, ventas recientes y condiciones de anuncios en fuentes independientes antes de comprar, vender o asegurar una carta.
+Cuando la información de mercado actual no esté disponible o esté desactualizada, CardCraftAI no presentará estimaciones como precios en tiempo real. Los precios, anuncios y referencias de terceros pueden cambiar sin aviso. Verifica de forma independiente ventas recientes, condiciones de anuncios, comisiones e impuestos aplicables antes de comprar, vender, asegurar o valorar una carta.
 
 ### 4. Responsabilidad del usuario
-Eres responsable de las imágenes, textos e información que envías y debes tener derecho a utilizarlos. El servicio no puede usarse para fraude, falsificaciones, suplantación, actividades ilegales, acoso, abuso de seguridad ni intentos de eludir créditos o controles de acceso.
+Eres responsable de las imágenes, textos e información que envías y debes tener derecho a utilizarlos. El servicio no puede usarse para fraude, falsificaciones, suplantación, actividades ilegales, acoso, abuso de seguridad, acceso no autorizado ni intentos de eludir créditos, pagos o controles de acceso.
 
 ### 5. Cuenta y seguridad
-Debes proteger tu contraseña y el acceso a tu correo electrónico. Si sospechas acceso no autorizado, utiliza el canal oficial de soporte cuando esté disponible.
+Debes proteger tu contraseña y el acceso a tu correo electrónico. Puede ser necesaria la confirmación del correo antes del uso completo de la cuenta. Si sospechas acceso no autorizado, contacta a CardCraftAI en {LEGAL_CONTACT_EMAIL}.
 
 ### 6. Créditos y servicios de pago
-Los créditos permiten utilizar funciones elegibles de CardCraftAI y no son moneda, inversión ni saldo financiero. Precios, paquetes, métodos de pago y reglas de reembolso se mostrarán antes de la compra. Los derechos obligatorios del consumidor de tu jurisdicción permanecen vigentes.
+Los créditos permiten utilizar funciones elegibles de CardCraftAI y no son moneda, inversión, depósito bancario ni saldo financiero. El paquete, precio, moneda y cantidad de créditos se muestran antes de la compra. Los derechos obligatorios del consumidor aplicables en tu jurisdicción permanecen vigentes.
 
-### 7. Disponibilidad
-El servicio puede cambiar, suspenderse o quedar temporalmente indisponible por mantenimiento, fallos de proveedores, límites de uso, incidentes de seguridad o errores técnicos. Cuando corresponda, un crédito puede devolverse automáticamente si un análisis falla antes de completarse.
+### 7. Procesamiento de pagos
+En los flujos de compra actualmente habilitados, el pago es procesado por Mercado Pago. CardCraftAI no recibe ni almacena los datos completos de la tarjeta, como el número completo o el código de seguridad. CardCraftAI puede recibir y conservar identificadores de transacción, estado, importe, moneda, paquete adquirido y otros metadatos necesarios para conciliar el pago, liberar créditos, evitar duplicidades y mantener el historial de compras. Los derechos de cancelación o reembolso exigidos por la legislación aplicable permanecen vigentes.
 
-### 8. Propiedad intelectual
-El software, la interfaz, la marca y el contenido original de CardCraftAI están protegidos. Nombres de TCG, imágenes de cartas, marcas y datos de catálogos externos pertenecen a sus respectivos titulares. CardCraftAI no está afiliado ni respaldado por ellos salvo indicación expresa.
+### 8. Disponibilidad y servicios externos
+El servicio puede cambiar, suspenderse o quedar temporalmente indisponible por mantenimiento, fallos de proveedores, límites de API, cambios de servicios externos, incidentes de seguridad o errores técnicos. Los servicios externos de catálogo, IA, hosting, correo, pagos y marketplaces están fuera del control directo de CardCraftAI. Cuando corresponda, un crédito puede conservarse o devolverse si un análisis falla antes de completarse.
 
-### 9. Uso responsable
-No tomes decisiones relevantes de compra, venta, seguros, impuestos o finanzas basándote únicamente en una respuesta de IA. Utiliza el servicio como apoyo informativo y verifica de forma independiente las decisiones importantes.
+### 9. Propiedad intelectual y derechos de terceros
+El software, la interfaz, la marca y el contenido original de CardCraftAI están protegidos. Los nombres de TCG, imágenes de cartas, marcas, marketplaces y datos de catálogos externos pertenecen a sus respectivos titulares. CardCraftAI no está afiliado ni respaldado por ellos salvo indicación expresa.
 
-### 10. Cambios
-Estos términos pueden actualizarse cuando cambien el producto, los proveedores o los requisitos legales. La fecha de la versión vigente aparece arriba. Antes del lanzamiento comercial se publicará un canal oficial de soporte y privacidad.
+### 10. Uso responsable
+No tomes decisiones relevantes de compra, venta, seguros, impuestos, asuntos legales o valores financieros significativos basándote únicamente en una respuesta de IA. Utiliza el servicio como apoyo informativo y verifica de forma independiente las decisiones importantes.
+
+### 11. Cambios y contacto
+Estos Términos pueden actualizarse cuando cambien el producto, los proveedores o los requisitos legales. La fecha de la versión vigente aparece arriba. Las consultas sobre el servicio, estos Términos o privacidad pueden enviarse a {LEGAL_CONTACT_EMAIL}.
+
+Al crear o seguir utilizando una cuenta después de aceptar la versión legal aplicable, reconoces estas limitaciones y aceptas utilizar CardCraftAI de forma responsable.
 """
 
     elif idioma_atual == "日本語":
         titulo = "📜 利用規約"
         texto = f"""
 **法的文書の版:** {LEGAL_VERSION}  
-**製品:** CardCraftAI — ベータ
+**製品:** CardCraftAI  
+**運営責任者:** {LEGAL_RESPONSIBLE_NAME}（個人運営）  
+**所在地:** {LEGAL_LOCATION}  
+**サポート／プライバシー窓口:** {LEGAL_CONTACT_EMAIL}
 
 ### 1. サービス
-CardCraftAI は、Trading Card Game（TCG）カードの識別、整理、分析を支援するAIツールです。画像による識別、カタログ比較、説明的分析、アカウントクレジット、購入履歴などの機能を提供する場合があります。
+CardCraftAI は、Trading Card Game（TCG）カードの識別、整理、分析を支援するAIツールです。画像識別、カタログ比較、説明的分析、クレジット、分析履歴、購入履歴、外部マーケットプレイスやデータソースへのリンクなどを提供する場合があります。
 
-### 2. AIの制限
-AIおよびカタログの結果は、不完全、古い、または誤っている場合があります。CardCraftAI は、正確な識別、真贋、専門的なグレーディング、市場価格、投資収益、販売価格を保証しません。状態や真贋に関する表示は予備的な視覚支援であり、PSA、CGC、Beckett、専門店などによる評価の代替ではありません。
+### 2. AI・カタログの制限
+AIおよび外部カタログの結果は、不完全、古い、または誤っている場合があります。CardCraftAI は、正確な識別、真贋、専門的グレーディング、市場価格、投資収益、販売価格を保証しません。状態や真贋に関する表示は予備的な視覚支援であり、現物確認や専門家による評価の代替ではありません。
 
 ### 3. 市場情報
-現在の市場検索が利用できない場合、推定値をリアルタイム価格として表示しません。購入、販売、保険などの重要な判断を行う前に、価格、最近の取引、出品条件を独立した情報源で確認してください。
+最新の市場情報が利用できない、または古い場合、推定値をリアルタイム価格として表示しません。第三者の価格、出品、参考値は予告なく変わる可能性があります。購入、販売、保険、査定の前に、最近の取引、出品条件、手数料、適用税を独立した情報源で確認してください。
 
 ### 4. ユーザーの責任
-送信する画像、文章、情報について、ユーザーは適切な利用権を持つ必要があります。詐欺、偽造品の出品、なりすまし、違法行為、嫌がらせ、セキュリティの悪用、クレジットやアクセス制御の回避にサービスを利用してはいけません。
+送信する画像、文章、情報について、ユーザーは適切な利用権を持つ必要があります。詐欺、偽造品の出品、なりすまし、違法行為、嫌がらせ、セキュリティの悪用、不正アクセス、クレジット・決済・アクセス制御の回避にサービスを利用してはいけません。
 
 ### 5. アカウントとセキュリティ
-パスワードおよび登録メールへのアクセスを安全に管理してください。不正アクセスが疑われる場合は、公式サポート窓口が公開された後、その窓口を利用してください。
+パスワードおよび登録メールへのアクセスを安全に管理してください。アカウントの完全な利用前にメール確認が必要となる場合があります。不正アクセスが疑われる場合は {LEGAL_CONTACT_EMAIL} へ連絡してください。
 
 ### 6. クレジットと有料サービス
-クレジットは対象機能を利用するための権利であり、通貨、投資、預金残高ではありません。価格、パッケージ、決済方法、返金条件は購入前に表示されます。適用法上の消費者保護権は本規約によって放棄されません。
+クレジットは対象機能を利用するための権利であり、通貨、投資、銀行預金、電子的な預かり残高ではありません。購入前に、対象パッケージ、価格、通貨、クレジット数が表示されます。適用法上の強行的な消費者保護権は本規約によって放棄されません。
 
-### 7. 可用性
-保守、外部サービス障害、API制限、セキュリティ事象、技術障害などにより、サービスが変更、停止、一時利用不可になる場合があります。対象となる分析が完了前に失敗した場合、クレジットが自動返却されることがあります。
+### 7. 決済処理
+現在有効な購入フローでは、決済は Mercado Pago により処理されます。CardCraftAI は、カード番号全体やセキュリティコードなどの完全なカード情報を受信・保存しません。CardCraftAI は、決済照合、クレジット付与、重複付与防止、購入履歴維持のために必要な取引ID、状態、金額、通貨、購入パッケージその他のメタデータを受信・保持する場合があります。適用法で認められる取消・返金の権利は維持されます。
 
-### 8. 知的財産
-CardCraftAI のソフトウェア、インターフェース、ブランド、独自コンテンツは適用される知的財産法により保護されます。TCG名、カード画像、商標、外部カタログデータは各権利者に帰属します。明示されない限り、CardCraftAI はこれらの権利者と提携または承認関係にありません。
+### 8. 可用性と外部サービス
+保守、外部サービス障害、API制限、外部サービスの変更、セキュリティ事象、技術障害などにより、サービスが変更、停止、一時利用不可になる場合があります。カタログ、AI、ホスティング、メール、決済、マーケットプレイス等の外部サービスは CardCraftAI の直接管理下にはありません。対象となる分析が完了前に失敗した場合、運用ルールに従いクレジットが維持または返却される場合があります。
 
-### 9. 責任ある利用
+### 9. 知的財産と第三者の権利
+CardCraftAI のソフトウェア、インターフェース、ブランド、独自コンテンツは適用される知的財産法により保護されます。TCG名、カード画像、商標、マーケットプレイス名、外部カタログデータは各権利者に帰属します。明示されない限り、CardCraftAI はこれらの権利者と提携または承認関係にありません。
+
+### 10. 責任ある利用
 購入、販売、保険、税務、法務、重要な金銭判断をAI結果だけに依存して行わないでください。CardCraftAI は情報支援として利用し、重要な判断は独立して確認してください。
 
-### 10. 変更
-製品、外部提供者、法的要件の変化に応じて本規約を更新することがあります。現行版の日付は上部に表示されます。商用公開前に公式サポート／プライバシー窓口を公開します。
+### 11. 変更と連絡先
+製品、外部提供者、法的要件の変化に応じて本規約を更新する場合があります。現行版の日付は上部に表示されます。サービス、本規約、プライバシーに関する問い合わせは {LEGAL_CONTACT_EMAIL} までご連絡ください。
 
-CardCraftAI を継続して利用することで、これらの制限を理解し、責任を持ってサービスを利用することに同意したものとみなされます。
+適用される法的文書の版に同意したうえでアカウントを作成または継続利用することにより、これらの制限を理解し、責任を持って CardCraftAI を利用することに同意したものとみなされます。
 """
 
     else:
         titulo = "📜 Termos de Uso"
         texto = f"""
 **Versão legal:** {LEGAL_VERSION}  
-**Produto:** CardCraftAI — beta
+**Produto:** CardCraftAI  
+**Responsável:** {LEGAL_RESPONSIBLE_NAME} — pessoa física  
+**Localização:** {LEGAL_LOCATION}  
+**Contato de suporte e privacidade:** {LEGAL_CONTACT_EMAIL}
 
 ### 1. Sobre o serviço
-O CardCraftAI é uma ferramenta assistida por inteligência artificial para identificação, organização e análise de cartas de Trading Card Games (TCG). Os recursos podem incluir identificação visual, comparação com catálogo, análise descritiva, créditos de uso e histórico de compras.
+O CardCraftAI é uma ferramenta assistida por inteligência artificial para identificação, organização e análise de cartas de Trading Card Games (TCG). Os recursos podem incluir identificação visual, comparação com catálogo, análise descritiva, créditos de uso, histórico de análises, histórico de compras e links para marketplaces ou fontes de dados de terceiros.
 
-### 2. Limitações da inteligência artificial
-Resultados de IA e de catálogo podem ser incompletos, desatualizados ou incorretos. O CardCraftAI **não garante** identificação exata, autenticidade, grading profissional, valor de mercado, retorno de investimento ou preço de venda. Indicações de conservação ou autenticidade são apenas apoio visual preliminar e não substituem avaliação de PSA, CGC, Beckett, loja especializada ou outro profissional qualificado.
+### 2. Limitações da IA e do catálogo
+Resultados de IA e de catálogos externos podem ser incompletos, desatualizados ou incorretos. O CardCraftAI **não garante** identificação exata, autenticidade, grading profissional, valor de mercado, retorno de investimento ou preço de venda. Indicações de conservação ou autenticidade são apenas apoio visual preliminar e não substituem inspeção física ou avaliação de PSA, CGC, Beckett, loja especializada ou outro profissional qualificado.
 
 ### 3. Informações de mercado
-Quando a consulta de mercado atual estiver indisponível, o CardCraftAI não apresentará estimativas como se fossem preços em tempo real. Antes de comprar, vender ou segurar uma carta, o usuário deve verificar preços, vendas recentes e condições do anúncio em fontes independentes.
+Quando informações atuais de mercado estiverem indisponíveis ou desatualizadas, o CardCraftAI não apresentará estimativas como se fossem preços em tempo real. Preços, anúncios e referências de terceiros podem mudar sem aviso. Antes de comprar, vender, segurar ou avaliar uma carta, o usuário deve verificar vendas recentes, condições dos anúncios, taxas e tributos aplicáveis em fontes independentes.
 
 ### 4. Responsabilidades do usuário
-Você é responsável pelas imagens, textos e informações enviados ao serviço e deve possuir autorização para utilizá-los. É proibido usar o CardCraftAI para fraude, anúncios de falsificações, falsidade ideológica, atividade ilegal, assédio, abuso de segurança ou tentativa de burlar créditos e controles de acesso.
+Você é responsável pelas imagens, textos e informações enviados ao serviço e deve possuir autorização para utilizá-los. É proibido utilizar o serviço para fraude, anúncios de falsificações, falsidade ideológica, atividades ilícitas, assédio, abuso de segurança, acesso não autorizado ou tentativas de contornar créditos, pagamentos ou controles de acesso.
 
 ### 5. Conta e segurança
-Você é responsável por proteger sua senha e o acesso ao e-mail vinculado à conta. Em caso de suspeita de acesso não autorizado, utilize o canal oficial de suporte assim que ele estiver disponível.
+Você é responsável por proteger sua senha e o acesso ao e-mail cadastrado. A confirmação do e-mail pode ser exigida antes do uso integral da conta. Se suspeitar de acesso não autorizado, entre em contato com o CardCraftAI pelo e-mail {LEGAL_CONTACT_EMAIL}.
 
 ### 6. Créditos e serviços pagos
-Créditos representam autorização de uso de funcionalidades elegíveis do CardCraftAI. Não são moeda, investimento nem conta de valor armazenado. Preços, pacotes, meios de pagamento e regras de reembolso serão apresentados antes da compra. Direitos obrigatórios do consumidor previstos na legislação aplicável não são afastados por estes Termos.
+Os créditos representam permissão de uso de funcionalidades elegíveis do CardCraftAI e não constituem moeda, investimento, depósito bancário ou saldo financeiro armazenado. O pacote, o preço, a moeda e a quantidade de créditos aplicáveis são exibidos antes da compra. Direitos obrigatórios do consumidor previstos na legislação aplicável não são afastados por estes Termos.
 
-### 7. Disponibilidade e falhas
-O serviço pode ser alterado, suspenso ou ficar temporariamente indisponível por manutenção, indisponibilidade de fornecedores, limites de API, incidentes de segurança ou falhas técnicas. Quando aplicável, o sistema poderá devolver automaticamente o crédito de uma análise que falhou antes da conclusão.
+### 7. Processamento de pagamentos
+Nos fluxos de compra atualmente habilitados, o pagamento é processado pelo Mercado Pago. O CardCraftAI não recebe nem armazena dados completos de cartão, como número integral ou código de segurança. O CardCraftAI poderá receber e manter identificadores da transação, status, valor, moeda, pacote adquirido e outros metadados necessários para conciliar o pagamento, liberar créditos, impedir duplicidade de crédito e manter o histórico de compras. Eventuais direitos de cancelamento ou reembolso previstos na legislação aplicável permanecem preservados.
 
-### 8. Propriedade intelectual
-O software, a interface, a marca e o conteúdo original do CardCraftAI são protegidos pela legislação aplicável. Nomes de TCG, imagens de cartas, marcas e dados de catálogos externos pertencem aos respectivos titulares. O CardCraftAI não é afiliado ou endossado por esses titulares, salvo quando houver indicação expressa.
+### 8. Disponibilidade e serviços externos
+O serviço pode ser alterado, suspenso ou ficar temporariamente indisponível por manutenção, indisponibilidade de fornecedores, limites de API, mudanças em serviços externos, incidentes de segurança ou falhas técnicas. Catálogos, provedores de IA, hospedagem, e-mail, pagamentos e marketplaces externos não estão sob controle direto do CardCraftAI. Quando uma análise elegível falhar antes da conclusão, o aplicativo poderá preservar ou devolver o crédito correspondente conforme suas regras operacionais.
 
-### 9. Uso responsável
+### 9. Propriedade intelectual e direitos de terceiros
+O software, a interface, a marca e o conteúdo original do CardCraftAI são protegidos pela legislação aplicável. Nomes de TCG, imagens de cartas, marcas, nomes de marketplaces e dados de catálogos externos pertencem aos respectivos titulares. O CardCraftAI não é afiliado ou endossado por esses titulares, salvo quando houver indicação expressa.
+
+### 10. Uso responsável
 Decisões relevantes de compra, venda, seguro, tributação, questões jurídicas ou valores financeiros significativos não devem se basear exclusivamente em uma resposta de IA. Utilize o CardCraftAI como apoio informativo e verifique decisões importantes por meios independentes.
 
-### 10. Alterações
-Estes Termos poderão ser atualizados conforme o produto, os fornecedores ou os requisitos legais evoluírem. A data da versão vigente aparece no topo. Antes do lançamento comercial, o CardCraftAI publicará um canal oficial de suporte e privacidade.
+### 11. Alterações e contato
+Estes Termos poderão ser atualizados conforme o produto, os fornecedores ou os requisitos legais evoluírem. A data da versão vigente aparece no topo. Dúvidas sobre o serviço, estes Termos ou privacidade podem ser enviadas para {LEGAL_CONTACT_EMAIL}.
 
-Ao continuar utilizando o CardCraftAI, você reconhece essas limitações e concorda em utilizar o serviço de forma responsável.
+Ao criar ou continuar utilizando uma conta após aceitar a versão legal aplicável, você reconhece essas limitações e concorda em utilizar o CardCraftAI de forma responsável.
 """
 
     st.header(titulo)
@@ -6271,171 +6302,194 @@ Ao continuar utilizando o CardCraftAI, você reconhece essas limitações e conc
 
 
 def renderizar_politica_privacidade(idioma_atual="English"):
-    """Exibe uma política de privacidade transparente para a fase beta."""
+    """Exibe a Política de Privacidade vigente do CardCraftAI."""
 
     if idioma_atual == "English":
         titulo = "🔒 Privacy Policy"
         texto = f"""
 **Privacy version:** {LEGAL_VERSION}  
-**Product:** CardCraftAI — beta
+**Product:** CardCraftAI  
+**Responsible party:** {LEGAL_RESPONSIBLE_NAME} — individual operator  
+**Location:** {LEGAL_LOCATION}  
+**Privacy and support contact:** {LEGAL_CONTACT_EMAIL}
 
 ### 1. Data we process
-Depending on how you use the service, CardCraftAI may process account information (such as email, user ID, plan and credits), authentication/session data, usage and technical logs, analysis status, catalog selections, purchase records when available, and the card image or text that you intentionally submit for analysis.
+Depending on how you use CardCraftAI, we may process account information (such as email, user ID, plan and credits), authentication/session information, usage and technical logs, analysis status and structured analysis results, catalog selections and validations, analysis history, purchase records, and the card image or text you intentionally submit for analysis.
 
 ### 2. Why we use the data
-We use this information to authenticate accounts, provide analyses, control credits, prevent duplicate charges, recover interrupted operations, display account and purchase history, send transactional emails, investigate failures, protect the service and improve reliability.
+We use this information to authenticate accounts, provide and recover analyses, control credits, prevent duplicate charges, maintain analysis and purchase history, send transactional emails, confirm payments, investigate failures, protect the service and improve reliability.
 
 ### 3. Card images and AI processing
-When you submit a card image for AI analysis, the application converts it for processing and sends the analysis request to the configured AI provider. In the current architecture, CardCraftAI does not intentionally store the uploaded card image in its own Supabase database. Hosting and AI providers may nevertheless process technical data according to their own terms and privacy policies.
+When you submit a card image for AI analysis, the application prepares it for processing and sends the analysis request to the configured AI provider. In the current architecture, CardCraftAI does not intentionally save the uploaded card image in its own Supabase database. The image and related technical data may nevertheless be processed temporarily by hosting and AI providers according to their own terms and privacy policies. Structured analysis results may be stored so that you can reopen analysis history.
 
 ### 4. Service providers
-The current technical stack may involve Supabase for authentication/database, Streamlit for application hosting, Google Gemini for AI processing, Brevo for transactional email and an external TCG catalog provider for card search/validation. Payment providers may be added when checkout is enabled. Each provider processes data under its own terms and security controls.
+The current technical stack may involve Supabase for authentication/database, Streamlit for application hosting, Google Gemini for AI processing, Brevo for transactional email, an external TCG catalog provider for card search/validation, Mercado Pago for enabled payment processing, and third-party marketplaces or data sources linked from the application. Each provider processes information under its own terms, privacy notices and security controls.
 
-### 5. International processing
-Because some technology providers operate globally, data may be processed outside your country. CardCraftAI intends to use providers and safeguards appropriate to the applicable legal requirements before international commercial expansion.
+### 5. Payment data
+When you start or complete an enabled purchase, Mercado Pago processes the payment information required for the transaction. CardCraftAI does not receive or store the full card number or card security code. CardCraftAI may receive and store transaction identifiers, payment status, amount, currency, purchased package, credits purchased and other metadata needed to confirm the payment, release credits, prevent duplicate crediting, handle support issues and maintain purchase history.
 
-### 6. Retention
-Account, credit, purchase and technical records may be retained while needed to provide the service, maintain security, resolve disputes, prevent duplicate charges and comply with applicable legal obligations. Data that is no longer necessary should be deleted or anonymized according to the applicable retention process.
+### 6. International processing
+Some technology providers operate globally, so personal data may be processed outside your country. CardCraftAI seeks to use providers and safeguards appropriate to applicable legal requirements. Different jurisdictions may provide different privacy protections.
 
-### 7. Your privacy rights
-Depending on your jurisdiction, you may have rights to obtain information about processing, access, correct, delete, restrict or object to certain processing, request portability, or exercise other rights provided by applicable law. These rights can have legal exceptions.
+### 7. Retention
+Account, credit, analysis, catalog-validation, purchase and technical records may be retained for as long as reasonably necessary to provide the service, maintain security, preserve history requested by the user, resolve disputes, prevent duplicate charges and comply with applicable legal obligations. Data that is no longer necessary should be deleted or anonymized according to the applicable retention process and technical limitations.
 
-### 8. Sale of personal data
-The current CardCraftAI design does not sell users' personal data.
+### 8. Your privacy rights and requests
+Depending on your jurisdiction, you may have rights to obtain information about processing, access, correct, delete, restrict or object to certain processing, request portability, revoke consent when applicable, or exercise other rights provided by law. In Brazil, rights under the LGPD may be requested through {LEGAL_CONTACT_EMAIL}, subject to applicable legal exceptions and identity verification when necessary.
 
-### 9. Security
-CardCraftAI uses authentication, email confirmation, access controls, database policies and server-side secrets to reduce unauthorized access. No online system can guarantee absolute security.
+### 9. Sale of personal data
+CardCraftAI does not sell users' personal data.
 
-### 10. Children and minors
-The beta service is not designed to intentionally collect sensitive information from children. Users who are not legally able to accept these terms should use the service only with authorization from a parent or legal guardian and subject to local law.
+### 10. Security
+CardCraftAI uses measures such as authentication, email confirmation, access controls, database policies and server-side secrets to reduce unauthorized access. No online system can guarantee absolute security.
 
-### 11. Updates and contact
-This Policy may change as the product and legal obligations evolve. The current version date appears above. An official privacy/support contact will be published before commercial launch.
+### 11. Children and minors
+CardCraftAI is not specifically directed to children. Users who are not legally able to accept the applicable terms should use the service only with authorization and supervision of a parent or legal guardian, subject to local law.
+
+### 12. Updates and contact
+This Policy may change as the product, providers and legal obligations evolve. The current version date appears above. Privacy, data-rights and support requests may be sent to {LEGAL_CONTACT_EMAIL}. The person responsible for CardCraftAI is {LEGAL_RESPONSIBLE_NAME}, operating as an individual in {LEGAL_LOCATION}.
 """
 
     elif idioma_atual == "Español":
         titulo = "🔒 Política de Privacidad"
         texto = f"""
 **Versión de privacidad:** {LEGAL_VERSION}  
-**Producto:** CardCraftAI — beta
+**Producto:** CardCraftAI  
+**Responsable:** {LEGAL_RESPONSIBLE_NAME} — persona física  
+**Ubicación:** {LEGAL_LOCATION}  
+**Contacto de privacidad y soporte:** {LEGAL_CONTACT_EMAIL}
 
 ### 1. Datos tratados
-Según el uso del servicio, CardCraftAI puede tratar datos de cuenta (como correo electrónico, ID de usuario, plan y créditos), autenticación y sesión, registros técnicos y de uso, estado de análisis, selecciones de catálogo, compras cuando existan y la imagen o texto de la carta que envíes voluntariamente para análisis.
+Según el uso de CardCraftAI, podemos tratar datos de cuenta (correo electrónico, ID de usuario, plan y créditos), autenticación y sesión, registros técnicos y de uso, estado y resultados estructurados de análisis, selecciones y validaciones de catálogo, historial de análisis, registros de compras y la imagen o texto que envíes voluntariamente para análisis.
 
 ### 2. Finalidades
-Utilizamos estos datos para autenticar cuentas, entregar análisis, controlar créditos, evitar cobros duplicados, recuperar operaciones interrumpidas, mostrar historial de cuenta y compras, enviar correos transaccionales, investigar fallos, proteger el servicio y mejorar su fiabilidad.
+Utilizamos estos datos para autenticar cuentas, prestar y recuperar análisis, controlar créditos, evitar cobros duplicados, mantener historial de análisis y compras, enviar correos transaccionales, confirmar pagos, investigar fallos, proteger el servicio y mejorar su fiabilidad.
 
 ### 3. Imágenes e inteligencia artificial
-Cuando envías una imagen para análisis, la aplicación la prepara y envía la solicitud al proveedor de IA configurado. En la arquitectura actual, CardCraftAI no guarda intencionalmente la imagen cargada en su propia base de datos Supabase. Los proveedores de hosting e IA pueden tratar datos técnicos conforme a sus propias políticas.
+Cuando envías una imagen para análisis, la aplicación la prepara y envía la solicitud al proveedor de IA configurado. En la arquitectura actual, CardCraftAI no guarda intencionalmente la imagen cargada en su propia base de datos Supabase. Sin embargo, la imagen y datos técnicos relacionados pueden ser procesados temporalmente por proveedores de hosting e IA conforme a sus propias políticas. Los resultados estructurados del análisis pueden almacenarse para permitir reabrir el historial.
 
 ### 4. Proveedores
-La infraestructura actual puede utilizar Supabase, Streamlit, Google Gemini, Brevo y un proveedor externo de catálogo TCG. Se podrán añadir proveedores de pago cuando el checkout esté activo. Cada proveedor trata datos según sus propios términos y controles de seguridad.
+La infraestructura actual puede utilizar Supabase para autenticación y base de datos, Streamlit para hosting, Google Gemini para IA, Brevo para correo transaccional, un proveedor externo de catálogo TCG para búsqueda y validación, Mercado Pago para el procesamiento de pagos habilitados y marketplaces o fuentes de datos de terceros enlazados desde la aplicación. Cada proveedor trata información bajo sus propios términos, avisos de privacidad y controles de seguridad.
 
-### 5. Tratamiento internacional
-Algunos proveedores tecnológicos operan globalmente, por lo que los datos pueden tratarse fuera de tu país. Antes de la expansión comercial internacional, CardCraftAI pretende aplicar proveedores y salvaguardas adecuadas a las obligaciones legales aplicables.
+### 5. Datos de pago
+Cuando inicias o completas una compra habilitada, Mercado Pago procesa la información necesaria para la transacción. CardCraftAI no recibe ni almacena el número completo de la tarjeta ni el código de seguridad. CardCraftAI puede recibir y guardar identificadores de transacción, estado del pago, importe, moneda, paquete adquirido, créditos comprados y otros metadatos necesarios para confirmar el pago, liberar créditos, evitar duplicidades, atender soporte y mantener el historial de compras.
 
-### 6. Conservación
-Los datos de cuenta, créditos, compras y registros técnicos pueden conservarse mientras sean necesarios para prestar el servicio, proteger la seguridad, resolver disputas, evitar cobros duplicados y cumplir obligaciones legales. Los datos que dejen de ser necesarios deberán eliminarse o anonimizarse según el proceso aplicable.
+### 6. Tratamiento internacional
+Algunos proveedores tecnológicos operan globalmente, por lo que los datos personales pueden tratarse fuera de tu país. CardCraftAI procura utilizar proveedores y salvaguardas adecuadas a las obligaciones legales aplicables. Las protecciones pueden variar entre jurisdicciones.
 
-### 7. Tus derechos
-Según tu jurisdicción, puedes tener derechos de información, acceso, corrección, eliminación, limitación, oposición, portabilidad u otros previstos por la ley, sujetos a excepciones legales.
+### 7. Conservación
+Los datos de cuenta, créditos, análisis, validaciones de catálogo, compras y registros técnicos pueden conservarse durante el tiempo razonablemente necesario para prestar el servicio, mantener la seguridad, conservar el historial solicitado por el usuario, resolver disputas, evitar cobros duplicados y cumplir obligaciones legales. Los datos que dejen de ser necesarios deberán eliminarse o anonimizarse según el proceso aplicable y las limitaciones técnicas.
 
-### 8. Venta de datos
-El diseño actual de CardCraftAI no vende datos personales de los usuarios.
+### 8. Tus derechos y solicitudes
+Según tu jurisdicción, puedes tener derechos de información, acceso, corrección, eliminación, limitación, oposición, portabilidad, revocación del consentimiento cuando corresponda y otros previstos por la ley. En Brasil, las solicitudes relacionadas con la LGPD pueden enviarse a {LEGAL_CONTACT_EMAIL}, sujetas a excepciones legales y verificación de identidad cuando sea necesaria.
 
-### 9. Seguridad
-CardCraftAI utiliza autenticación, confirmación de correo, controles de acceso, políticas de base de datos y secretos del servidor para reducir accesos no autorizados. Ningún sistema en línea puede garantizar seguridad absoluta.
+### 9. Venta de datos
+CardCraftAI no vende los datos personales de los usuarios.
 
-### 10. Menores
-La versión beta no está diseñada para recopilar intencionalmente información sensible de menores. Quien no pueda aceptar legalmente estos términos debe utilizar el servicio solo con autorización de padre, madre o tutor y de acuerdo con la legislación local.
+### 10. Seguridad
+CardCraftAI utiliza medidas como autenticación, confirmación de correo, controles de acceso, políticas de base de datos y secretos del servidor para reducir accesos no autorizados. Ningún sistema en línea puede garantizar seguridad absoluta.
 
-### 11. Actualizaciones y contacto
-Esta Política puede cambiar con el producto y las obligaciones legales. La fecha de la versión vigente aparece arriba. Antes del lanzamiento comercial se publicará un canal oficial de privacidad y soporte.
+### 11. Menores
+CardCraftAI no está dirigido específicamente a niños. Los usuarios que no puedan aceptar legalmente los términos aplicables deben utilizar el servicio únicamente con autorización y supervisión de padre, madre o tutor legal, de acuerdo con la legislación local.
+
+### 12. Actualizaciones y contacto
+Esta Política puede cambiar conforme evolucionen el producto, los proveedores y las obligaciones legales. La fecha de la versión vigente aparece arriba. Las solicitudes de privacidad, derechos sobre datos y soporte pueden enviarse a {LEGAL_CONTACT_EMAIL}. El responsable de CardCraftAI es {LEGAL_RESPONSIBLE_NAME}, persona física ubicada en {LEGAL_LOCATION}.
 """
 
     elif idioma_atual == "日本語":
         titulo = "🔒 プライバシーポリシー"
         texto = f"""
 **プライバシー版:** {LEGAL_VERSION}  
-**製品:** CardCraftAI — ベータ
+**製品:** CardCraftAI  
+**運営責任者:** {LEGAL_RESPONSIBLE_NAME}（個人運営）  
+**所在地:** {LEGAL_LOCATION}  
+**プライバシー／サポート窓口:** {LEGAL_CONTACT_EMAIL}
 
 ### 1. 処理するデータ
-利用状況に応じて、CardCraftAI はメールアドレス、ユーザーID、プラン、クレジットなどのアカウント情報、認証・セッション情報、利用・技術ログ、分析状態、カタログ選択、購入記録、および分析のためにユーザーが意図的に送信したカード画像や文章を処理する場合があります。
+利用状況に応じて、CardCraftAI はメールアドレス、ユーザーID、プラン、クレジット等のアカウント情報、認証・セッション情報、利用・技術ログ、分析状態と構造化された分析結果、カタログ選択・検証、分析履歴、購入記録、および分析のためにユーザーが意図的に送信したカード画像や文章を処理する場合があります。
 
 ### 2. 利用目的
-これらの情報は、認証、分析提供、クレジット管理、重複請求防止、中断した処理の復旧、アカウント・購入履歴の表示、取引メール送信、障害調査、サービス保護、信頼性向上のために利用します。
+これらの情報は、認証、分析の提供・復旧、クレジット管理、重複請求防止、分析・購入履歴の維持、取引メール送信、決済確認、障害調査、サービス保護、信頼性向上のために利用します。
 
 ### 3. カード画像とAI処理
-カード画像をAI分析に送信すると、アプリは画像を処理用に準備し、設定されたAI提供者へ分析リクエストを送ります。現在の構成では、CardCraftAI はアップロード画像を自社のSupabaseデータベースへ意図的に保存しません。ただし、ホスティングやAI提供者は各社の規約・プライバシーポリシーに基づき技術データを処理する場合があります。
+カード画像をAI分析に送信すると、アプリは画像を処理用に準備し、設定されたAI提供者へ分析リクエストを送ります。現在の構成では、CardCraftAI はアップロード画像を自社のSupabaseデータベースへ意図的に保存しません。ただし、画像や関連技術データは、ホスティングやAI提供者により各社の規約・プライバシーポリシーに従って一時的に処理される場合があります。構造化された分析結果は、分析履歴を再表示できるよう保存される場合があります。
 
 ### 4. サービス提供者
-現在の技術構成では、認証・DBにSupabase、ホスティングにStreamlit、AIにGoogle Gemini、取引メールにBrevo、カード検索・検証に外部TCGカタログを利用する場合があります。チェックアウト導入時には決済提供者が追加される場合があります。
+現在の技術構成では、認証・DBにSupabase、ホスティングにStreamlit、AIにGoogle Gemini、取引メールにBrevo、カード検索・検証に外部TCGカタログ、対応する決済処理にMercado Pago、さらにアプリからリンクされる外部マーケットプレイスやデータソースを利用する場合があります。各提供者は、それぞれの規約、プライバシー通知、セキュリティ管理に基づいて情報を処理します。
 
-### 5. 国際的な処理
-一部の技術提供者は世界各地で運用されているため、データがユーザーの国以外で処理される場合があります。国際的な商用展開前に、適用法に応じた提供者と保護措置を採用する方針です。
+### 5. 決済データ
+対応する購入を開始または完了すると、Mercado Pago が取引に必要な決済情報を処理します。CardCraftAI はカード番号全体やセキュリティコードを受信・保存しません。CardCraftAI は、決済確認、クレジット付与、重複付与防止、サポート対応、購入履歴維持に必要な取引ID、決済状態、金額、通貨、購入パッケージ、購入クレジット数その他のメタデータを受信・保存する場合があります。
 
-### 6. 保持期間
-アカウント、クレジット、購入、技術記録は、サービス提供、セキュリティ維持、紛争対応、重複請求防止、法的義務への対応に必要な期間保持される場合があります。不要となったデータは適用される保持方針に従って削除または匿名化されるべきです。
+### 6. 国際的な処理
+一部の技術提供者は世界各地で運用されているため、個人データがユーザーの国以外で処理される場合があります。CardCraftAI は、適用される法的要件に応じた提供者と保護措置の利用に努めます。プライバシー保護の内容は法域によって異なる場合があります。
 
-### 7. プライバシー権
-法域により、処理内容の確認、アクセス、訂正、削除、制限、異議申立て、データポータビリティなどの権利が認められる場合があります。これらには法的例外が適用される場合があります。
+### 7. 保持期間
+アカウント、クレジット、分析、カタログ検証、購入、技術記録は、サービス提供、セキュリティ維持、ユーザーが求める履歴の保存、紛争対応、重複請求防止、法的義務への対応に合理的に必要な期間保持される場合があります。不要となったデータは、適用される保持手順と技術上の制約に従って削除または匿名化されるべきです。
 
-### 8. 個人データの販売
-現在のCardCraftAIの設計では、ユーザーの個人データを販売しません。
+### 8. プライバシー権と請求
+法域により、処理内容の確認、アクセス、訂正、削除、制限、異議申立て、データポータビリティ、該当する場合の同意撤回、その他法令上の権利が認められる場合があります。ブラジルでは、LGPDに基づく請求を {LEGAL_CONTACT_EMAIL} へ送ることができます。必要に応じて法的例外や本人確認が適用されます。
 
-### 9. セキュリティ
-CardCraftAI は、認証、メール確認、アクセス制御、データベースポリシー、サーバー側シークレットなどを使用して不正アクセスの低減に努めます。ただし、オンラインシステムで絶対的な安全性を保証することはできません。
+### 9. 個人データの販売
+CardCraftAI はユーザーの個人データを販売しません。
 
-### 10. 子ども・未成年者
-ベータ版は、子どもの機微情報を意図的に収集することを目的としていません。法的に本規約へ同意できないユーザーは、現地法に従い、親または法定代理人の許可・監督のもとで利用してください。
+### 10. セキュリティ
+CardCraftAI は、認証、メール確認、アクセス制御、データベースポリシー、サーバー側シークレット等の対策を使用して不正アクセスの低減に努めます。ただし、オンラインシステムで絶対的な安全性を保証することはできません。
 
-### 11. 更新と連絡先
-製品および法的義務の変化に応じて本ポリシーを更新する場合があります。現行版の日付は上部に表示されます。商用公開前に公式のプライバシー／サポート窓口を公開します。
+### 11. 子ども・未成年者
+CardCraftAI は特に子どもを対象としたサービスではありません。適用される規約に法的に同意できないユーザーは、現地法に従い、親または法定代理人の許可・監督のもとで利用してください。
+
+### 12. 更新と連絡先
+製品、外部提供者、法的義務の変化に応じて本ポリシーを更新する場合があります。現行版の日付は上部に表示されます。プライバシー、データ主体の権利、サポートに関する請求は {LEGAL_CONTACT_EMAIL} までご連絡ください。CardCraftAI の運営責任者は {LEGAL_RESPONSIBLE_NAME} で、{LEGAL_LOCATION} に所在する個人運営者です。
 """
 
     else:
         titulo = "🔒 Política de Privacidade"
         texto = f"""
 **Versão de privacidade:** {LEGAL_VERSION}  
-**Produto:** CardCraftAI — beta
+**Produto:** CardCraftAI  
+**Responsável:** {LEGAL_RESPONSIBLE_NAME} — pessoa física  
+**Localização:** {LEGAL_LOCATION}  
+**Contato de privacidade e suporte:** {LEGAL_CONTACT_EMAIL}
 
 ### 1. Dados tratados
-Conforme o uso do serviço, o CardCraftAI pode tratar dados de conta (como e-mail, ID do usuário, plano e créditos), dados de autenticação e sessão, registros técnicos e de uso, status de análises, seleções de catálogo, registros de compras quando existirem e a imagem ou o texto da carta que você enviar voluntariamente para análise.
+Conforme o uso do CardCraftAI, podemos tratar dados de conta (como e-mail, ID do usuário, plano e créditos), dados de autenticação e sessão, registros técnicos e de uso, status e resultados estruturados das análises, seleções e validações de catálogo, histórico de análises, registros de compras e a imagem ou o texto da carta que você enviar voluntariamente para análise.
 
 ### 2. Finalidades
-Esses dados são utilizados para autenticar contas, entregar análises, controlar créditos, evitar cobranças duplicadas, recuperar operações interrompidas, exibir histórico da conta e de compras, enviar e-mails transacionais, investigar falhas, proteger o serviço e melhorar a confiabilidade.
+Esses dados são utilizados para autenticar contas, prestar e recuperar análises, controlar créditos, evitar cobranças duplicadas, manter histórico de análises e compras, enviar e-mails transacionais, confirmar pagamentos, investigar falhas, proteger o serviço e melhorar a confiabilidade.
 
 ### 3. Imagens e processamento por IA
-Quando você envia a foto de uma carta para análise por IA, o aplicativo prepara a imagem e envia a solicitação ao provedor de inteligência artificial configurado. Na arquitetura atual, o CardCraftAI não salva intencionalmente a imagem enviada em seu próprio banco de dados Supabase. Provedores de hospedagem e IA podem, contudo, processar dados técnicos conforme seus próprios termos e políticas de privacidade.
+Quando você envia a foto de uma carta para análise por IA, o aplicativo prepara a imagem e envia a solicitação ao provedor de inteligência artificial configurado. Na arquitetura atual, o CardCraftAI não salva intencionalmente a imagem enviada em seu próprio banco de dados Supabase. A imagem e dados técnicos relacionados podem, contudo, ser processados temporariamente por provedores de hospedagem e IA conforme seus próprios termos e políticas de privacidade. Resultados estruturados da análise podem ser armazenados para permitir a reabertura do histórico.
 
 ### 4. Prestadores de serviço
-A infraestrutura atual pode utilizar Supabase para autenticação e banco de dados, Streamlit para hospedagem do aplicativo, Google Gemini para processamento por IA, Brevo para e-mails transacionais e um provedor externo de catálogo TCG para busca e validação de cartas. Provedores de pagamento poderão ser adicionados quando o checkout estiver ativo. Cada fornecedor trata dados conforme seus próprios termos e controles de segurança.
+A infraestrutura atual pode utilizar Supabase para autenticação e banco de dados, Streamlit para hospedagem do aplicativo, Google Gemini para processamento por IA, Brevo para e-mails transacionais, um provedor externo de catálogo TCG para busca e validação de cartas, Mercado Pago para o processamento dos pagamentos habilitados e marketplaces ou fontes de dados de terceiros acessados por links no aplicativo. Cada fornecedor trata informações conforme seus próprios termos, avisos de privacidade e controles de segurança.
 
-### 5. Tratamento internacional
-Alguns fornecedores de tecnologia operam globalmente, de modo que dados podem ser processados fora do seu país. Antes da expansão comercial internacional, o CardCraftAI pretende adotar fornecedores e salvaguardas adequadas às exigências legais aplicáveis.
+### 5. Dados de pagamento
+Quando você inicia ou conclui uma compra habilitada, o Mercado Pago processa as informações de pagamento necessárias à transação. O CardCraftAI não recebe nem armazena o número completo do cartão ou o código de segurança do cartão. O CardCraftAI poderá receber e armazenar identificadores da transação, status do pagamento, valor, moeda, pacote adquirido, créditos comprados e outros metadados necessários para confirmar o pagamento, liberar créditos, impedir duplicidade de crédito, atender solicitações de suporte e manter o histórico de compras.
 
-### 6. Retenção
-Dados de conta, créditos, compras e registros técnicos podem ser mantidos enquanto forem necessários para prestar o serviço, manter a segurança, resolver disputas, evitar cobranças duplicadas e cumprir obrigações legais aplicáveis. Dados que deixarem de ser necessários deverão ser eliminados ou anonimizados conforme o processo de retenção aplicável.
+### 6. Tratamento internacional
+Alguns fornecedores de tecnologia operam globalmente, de modo que dados pessoais podem ser processados fora do seu país. O CardCraftAI busca utilizar fornecedores e salvaguardas adequados às exigências legais aplicáveis. As proteções de privacidade podem variar entre jurisdições.
 
-### 7. Seus direitos de privacidade
-Dependendo da sua jurisdição, você pode ter direitos de confirmação do tratamento, acesso, correção, exclusão, limitação, oposição, portabilidade e outros previstos pela legislação aplicável, sujeitos às exceções legais. No Brasil, esses direitos decorrem, entre outras normas, da LGPD.
+### 7. Retenção
+Dados de conta, créditos, análises, validações de catálogo, compras e registros técnicos podem ser mantidos pelo tempo razoavelmente necessário para prestar o serviço, manter a segurança, preservar o histórico solicitado pelo usuário, resolver disputas, evitar cobranças duplicadas e cumprir obrigações legais aplicáveis. Dados que deixarem de ser necessários deverão ser eliminados ou anonimizados conforme o processo de retenção aplicável e as limitações técnicas.
 
-### 8. Venda de dados pessoais
-O desenho atual do CardCraftAI não vende dados pessoais dos usuários.
+### 8. Seus direitos e solicitações
+Dependendo da sua jurisdição, você pode ter direitos de confirmação do tratamento, acesso, correção, exclusão, limitação, oposição, portabilidade, revogação de consentimento quando aplicável e outros previstos pela legislação. No Brasil, solicitações relacionadas aos direitos previstos na LGPD podem ser enviadas para {LEGAL_CONTACT_EMAIL}, sujeitas às exceções legais aplicáveis e à verificação de identidade quando necessária.
 
-### 9. Segurança
-O CardCraftAI utiliza autenticação, confirmação de e-mail, controles de acesso, políticas de banco de dados e segredos mantidos no servidor para reduzir acessos não autorizados. Nenhum sistema conectado à internet pode garantir segurança absoluta.
+### 9. Venda de dados pessoais
+O CardCraftAI não vende dados pessoais dos usuários.
 
-### 10. Crianças e adolescentes
-A versão beta não é projetada para coletar intencionalmente informações sensíveis de crianças. Usuários que não tenham capacidade legal para aceitar estes termos devem utilizar o serviço apenas com autorização e acompanhamento de responsável legal, observando a legislação local.
+### 10. Segurança
+O CardCraftAI utiliza medidas como autenticação, confirmação de e-mail, controles de acesso, políticas de banco de dados e segredos mantidos no servidor para reduzir acessos não autorizados. Nenhum sistema conectado à internet pode garantir segurança absoluta.
 
-### 11. Atualizações e contato
-Esta Política poderá ser atualizada conforme o produto e as obrigações legais evoluírem. A data da versão vigente aparece no topo. Antes do lançamento comercial, o CardCraftAI publicará um canal oficial de privacidade e suporte.
+### 11. Crianças e adolescentes
+O CardCraftAI não é direcionado especificamente a crianças. Usuários que não tenham capacidade legal para aceitar os termos aplicáveis devem utilizar o serviço apenas com autorização e acompanhamento de pai, mãe ou responsável legal, observando a legislação local.
+
+### 12. Atualizações e contato
+Esta Política poderá ser atualizada conforme o produto, os fornecedores e as obrigações legais evoluírem. A data da versão vigente aparece no topo. Solicitações sobre privacidade, direitos do titular e suporte podem ser enviadas para {LEGAL_CONTACT_EMAIL}. O responsável pelo CardCraftAI é {LEGAL_RESPONSIBLE_NAME}, pessoa física localizada em {LEGAL_LOCATION}.
 """
 
     st.header(titulo)
     st.markdown(texto)
-
 
 # ============================================================
 # RELIABILITY 2.6.15 - ACEITE LEGAL PARA CONTAS EXISTENTES
