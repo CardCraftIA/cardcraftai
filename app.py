@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.27
+# CARDCRAFTAI RELIABILITY 2.6.28
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.27"
+APP_VERSION = "2.6.28"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -2258,7 +2258,7 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
     cache_buster=0,
 ):
     """
-    Reliability 2.6.27
+    Reliability 2.6.28
 
     Consulta nome + coleção e UNE os resultados das estratégias específicas.
 
@@ -2307,6 +2307,15 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
             consultas.append(
                 f"name:{token}* set.id:{set_id}"
             )
+
+        # Reliability 2.6.28:
+        # fallback definitivo para coleções com ID conhecido.
+        # Algumas buscas textuais do provedor não retornam todas as versões
+        # relevantes do mesmo nome. Então consultamos também o set inteiro e
+        # fazemos o filtro de nome localmente no CardCraftAI.
+        consultas.append(
+            f"set.id:{set_id}"
+        )
     else:
         consultas.append(
             f'name:"{nome_seguro}" set.name:"{colecao_segura}"'
@@ -2315,6 +2324,12 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
             consultas.append(
                 f'name:{token}* set.name:"{colecao_segura}"'
             )
+
+        # Mesmo princípio para coleções sem alias determinístico:
+        # busca a coleção inteira e aplica a compatibilidade de nome localmente.
+        consultas.append(
+            f'set.name:"{colecao_segura}"'
+        )
 
     consultas = list(dict.fromkeys(consultas))
 
@@ -2326,7 +2341,10 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
             params={
                 "q": consulta,
                 "page": 1,
-                "pageSize": 100,
+                # O endpoint v2 aceita até 250 itens por página.
+                # Isso é importante para sets promocionais grandes, pois SM211
+                # pode ficar depois dos primeiros 100 registros.
+                "pageSize": 250,
             },
             tentativas=2,
         )
@@ -2487,7 +2505,7 @@ def buscar_cartas_catalogo_pokemon(
         except RuntimeError as erro:
             erro_numero = erro
 
-    # Reliability 2.6.27:
+    # Reliability 2.6.28:
     # se o usuário informou a coleção, consultamos nome + coleção antes da
     # busca ampla por nome. Assim uma carta correta (por exemplo SM211) não
     # desaparece por estar fora da primeira página global de resultados.
