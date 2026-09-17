@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.26
+# CARDCRAFTAI RELIABILITY 2.6.27
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.26"
+APP_VERSION = "2.6.27"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -2258,19 +2258,25 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
     cache_buster=0,
 ):
     """
-    Reliability 2.6.26
+    Reliability 2.6.27
 
-    Faz uma consulta priorizando nome + coleção antes da busca ampla por nome.
+    Consulta nome + coleção e UNE os resultados das estratégias específicas.
 
-    Motivo:
-    a API pode possuir mais resultados para um nome do que cabem na primeira
-    página da busca ampla. Quando o usuário informa a coleção, uma carta correta
-    dessa coleção não deve desaparecer apenas porque ficou fora dos primeiros
-    resultados globais.
+    Correção importante:
+    na 2.6.26 a função retornava assim que a primeira consulta encontrava
+    qualquer carta. Em alguns casos isso fazia a busca parar em SM60 e nunca
+    executar a consulta alternativa capaz de trazer SM211, embora ambas
+    pertencessem ao mesmo set e tivessem o mesmo nome normalizado.
 
-    Para coleções promocionais conhecidas, usa set.id determinístico.
-    Para outras coleções, tenta set.name. Se a consulta específica não retornar
-    dados, a busca ampla por nome continua normalmente no chamador.
+    Agora:
+    1. executa todas as consultas específicas de nome + coleção;
+    2. combina os resultados sem duplicatas;
+    3. mantém apenas cartas compatíveis com a coleção informada;
+    4. mantém apenas nomes razoavelmente compatíveis com o nome pesquisado.
+
+    A ordem final continua sendo decidida pelo ranking local do CardCraftAI.
+    Sem número da carta, duas versões com mesmo nome e mesmo set são tratadas
+    como alternativas igualmente plausíveis, em vez de inventar uma preferência.
     """
     _ = cache_buster
 
@@ -2312,6 +2318,9 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
 
     consultas = list(dict.fromkeys(consultas))
 
+    combinadas = []
+    ids_vistos = set()
+
     for consulta in consultas:
         resultado = _executar_requisicao_catalogo(
             params={
@@ -2325,11 +2334,43 @@ def consultar_catalogo_pokemon_por_nome_e_colecao(
         if not resultado.get("ok"):
             continue
 
-        cartas = resultado.get("data", []) or []
-        if cartas:
-            return cartas
+        for carta in resultado.get("data", []) or []:
+            if not isinstance(carta, dict):
+                continue
 
-    return []
+            set_dados = carta.get("set") or {}
+            set_nome = str(set_dados.get("name") or "")
+            set_id_carta = str(set_dados.get("id") or "").strip().lower()
+
+            # A consulta já restringe o set, mas repetimos a validação local
+            # para não depender apenas do comportamento do provedor externo.
+            if set_id:
+                if set_id_carta != str(set_id).strip().lower():
+                    continue
+            else:
+                if _similaridade_colecao_catalogo(colecao, set_nome) < 0.90:
+                    continue
+
+            # Evita incluir cartas apenas vagamente relacionadas quando o
+            # wildcard por token é usado como cobertura adicional.
+            if _similaridade_catalogo(nome, carta.get("name", "")) < 0.88:
+                continue
+
+            chave = str(carta.get("id") or "").strip()
+            if not chave:
+                chave = "|".join([
+                    str(carta.get("name") or ""),
+                    set_nome,
+                    str(carta.get("number") or ""),
+                ])
+
+            if chave in ids_vistos:
+                continue
+
+            ids_vistos.add(chave)
+            combinadas.append(carta)
+
+    return combinadas
 
 
 def ranquear_cartas_catalogo(
@@ -2446,7 +2487,7 @@ def buscar_cartas_catalogo_pokemon(
         except RuntimeError as erro:
             erro_numero = erro
 
-    # Reliability 2.6.26:
+    # Reliability 2.6.27:
     # se o usuário informou a coleção, consultamos nome + coleção antes da
     # busca ampla por nome. Assim uma carta correta (por exemplo SM211) não
     # desaparece por estar fora da primeira página global de resultados.
