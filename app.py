@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.30
+# CARDCRAFTAI RELIABILITY 2.6.31
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.30"
+APP_VERSION = "2.6.31"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -568,7 +568,7 @@ UI_TEXT["English"].update({
     "select_this_card": "✅ Select this card",
     "selected_catalog_title": "✅ Card selected from the catalog",
     "click_image_larger": "Click the image to open a larger version.",
-    "catalog_data_source": "Source of the data below: Pokémon TCG catalog.",
+    "catalog_data_source": "Source of the data below: TCGdex catalog.",
     "label_catalog_id": "Catalog ID",
     "tcgplayer_live_caption": "Direct external search on TCGplayer for listings available now. Offer prices may differ from the catalog market references.",
     "tcgplayer_live_button": "🛒 View current TCGplayer offers",
@@ -683,7 +683,7 @@ UI_TEXT["Português (BR)"].update({
     "select_this_card": "✅ Selecionar esta carta",
     "selected_catalog_title": "✅ Carta selecionada no catálogo",
     "click_image_larger": "Clique na imagem para abrir a versão maior.",
-    "catalog_data_source": "Fonte dos dados abaixo: catálogo Pokémon TCG.",
+    "catalog_data_source": "Fonte dos dados abaixo: catálogo TCGdex.",
     "label_catalog_id": "ID do catálogo",
     "tcgplayer_live_caption": "Busca externa direta no TCGplayer para consultar anúncios disponíveis agora. Os valores dessas ofertas podem diferir das referências de mercado do catálogo.",
     "tcgplayer_live_button": "🛒 Ver ofertas atuais no TCGplayer",
@@ -798,7 +798,7 @@ UI_TEXT["Español"].update({
     "select_this_card": "✅ Seleccionar esta carta",
     "selected_catalog_title": "✅ Carta seleccionada del catálogo",
     "click_image_larger": "Haz clic en la imagen para abrir una versión más grande.",
-    "catalog_data_source": "Fuente de los datos siguientes: catálogo Pokémon TCG.",
+    "catalog_data_source": "Fuente de los datos siguientes: catálogo TCGdex.",
     "label_catalog_id": "ID del catálogo",
     "tcgplayer_live_caption": "Búsqueda externa directa en TCGplayer para consultar anuncios disponibles ahora. Los precios pueden diferir de las referencias del catálogo.",
     "tcgplayer_live_button": "🛒 Ver ofertas actuales en TCGplayer",
@@ -955,7 +955,7 @@ UI_TEXT["English"].update({
     "result_structured_title": "## 🃏 Structured AI identification",
     "result_preliminary_title": "## 🃏 Preliminary AI identification",
     "result_analysis_status": "Analysis status", "result_visual_status": "Visual reading status",
-    "result_text_intro": "The data below was processed by the AI from the text input and, when a card was selected, from Pokémon TCG catalog data. No image analysis was performed in this flow.",
+    "result_text_intro": "The data below was processed by the AI from the text input and, when a card was selected, from external catalog data. No image analysis was performed in this flow.",
     "result_photo_intro": "The data below was extracted from the image by the AI. Name, set and number can be compared with the Pokémon catalog when it is available.",
     "label_game": "Game", "label_analyzed_name": "Analyzed name", "label_read_name": "Name read",
     "label_analyzed_set": "Analyzed set", "label_read_set": "Set read", "label_analyzed_number": "Analyzed number", "label_read_number": "Number read",
@@ -1000,7 +1000,7 @@ UI_TEXT["Português (BR)"].update({
     "quality_good": "Boa", "quality_acceptable": "Aceitável", "quality_poor": "Ruim", "quality_na": "Não aplicável",
     "result_structured_title": "## 🃏 Identificação estruturada da IA", "result_preliminary_title": "## 🃏 Identificação preliminar da IA",
     "result_analysis_status": "Status da análise", "result_visual_status": "Status da leitura visual",
-    "result_text_intro": "Os dados abaixo foram processados pela IA a partir da entrada textual e, quando uma carta foi selecionada, dos dados do catálogo Pokémon TCG. Não houve análise de imagem neste fluxo.",
+    "result_text_intro": "Os dados abaixo foram processados pela IA a partir da entrada textual e, quando uma carta foi selecionada, dos dados do catálogo externo. Não houve análise de imagem neste fluxo.",
     "result_photo_intro": "Os dados abaixo foram extraídos da imagem pela IA. Nome, coleção e número podem ser comparados com o catálogo Pokémon quando ele estiver disponível.",
     "label_game": "Jogo", "label_analyzed_name": "Nome analisado", "label_read_name": "Nome lido", "label_analyzed_set": "Coleção / Set analisada", "label_read_set": "Coleção / Set lido", "label_analyzed_number": "Número analisado", "label_read_number": "Número lido",
     "result_ai_dependent": "### 🤖 Dados ainda dependentes de interpretação da IA", "label_suggested_rarity": "Raridade sugerida", "label_suggested_variant": "Variante sugerida", "label_read_year": "Ano lido / estimado",
@@ -1027,7 +1027,7 @@ UI_TEXT["Español"].update({
     "result_status_strong": "🟢 Identificación preliminar sólida", "result_status_probable": "🟡 Identificación probable", "result_status_uncertain": "🔴 Identificación incierta",
     "quality_good": "Buena", "quality_acceptable": "Aceptable", "quality_poor": "Mala", "quality_na": "No aplicable",
     "result_structured_title": "## 🃏 Identificación estructurada de la IA", "result_preliminary_title": "## 🃏 Identificación preliminar de la IA", "result_analysis_status": "Estado del análisis", "result_visual_status": "Estado de la lectura visual",
-    "result_text_intro": "Los datos siguientes fueron procesados por la IA a partir de la entrada textual y, cuando se seleccionó una carta, de los datos del catálogo Pokémon TCG. En este flujo no se analizó ninguna imagen.", "result_photo_intro": "Los datos siguientes fueron extraídos de la imagen por la IA. El nombre, la colección y el número pueden compararse con el catálogo Pokémon cuando esté disponible.",
+    "result_text_intro": "Los datos siguientes fueron procesados por la IA a partir de la entrada textual y, cuando se seleccionó una carta, de los datos del catálogo externo. En este flujo no se analizó ninguna imagen.", "result_photo_intro": "Los datos siguientes fueron extraídos de la imagen por la IA. El nombre, la colección y el número pueden compararse con el catálogo Pokémon cuando esté disponible.",
     "label_game": "Juego", "label_analyzed_name": "Nombre analizado", "label_read_name": "Nombre leído", "label_analyzed_set": "Colección analizada", "label_read_set": "Colección leída", "label_analyzed_number": "Número analizado", "label_read_number": "Número leído",
     "result_ai_dependent": "### 🤖 Datos que aún dependen de la interpretación de la IA", "label_suggested_rarity": "Rareza sugerida", "label_suggested_variant": "Variante sugerida", "label_read_year": "Año leído / estimado",
     "input_quality_title": "### 🧾 Calidad de la entrada", "photo_quality_title": "### 📸 Calidad de la entrada", "input_label": "Entrada", "image_label": "Imagen", "text_catalog_input": "Datos textuales / catálogo",
@@ -1066,7 +1066,7 @@ UI_TEXT["日本語"].update({
 # Portuguese strings through freshness/status helpers.
 UI_TEXT["English"].update({
     "market_sources_expander": "💰 Market and source freshness",
-    "market_sources_caption": "The values below are references supplied by the Pokémon TCG catalog. They do not guarantee stock, condition, language, shipping or final price.",
+    "market_sources_caption": "The values below are references supplied by the external TCG catalog. They do not guarantee stock, condition, language, shipping or final price.",
     "market_metric_note": "Market price and lowest listing are different metrics. To see what is actually available now, use the current marketplace offers button.",
     "freshness_no_date": "Date unavailable",
     "freshness_future": "Future date to verify",
@@ -1096,7 +1096,7 @@ UI_TEXT["English"].update({
 
 UI_TEXT["Português (BR)"].update({
     "market_sources_expander": "💰 Mercado e atualidade das fontes",
-    "market_sources_caption": "Os valores abaixo são referências fornecidas pelo catálogo Pokémon TCG. Eles não garantem estoque, condição, idioma, frete ou preço final.",
+    "market_sources_caption": "Os valores abaixo são referências fornecidas pelo catálogo TCG externo. Eles não garantem estoque, condição, idioma, frete ou preço final.",
     "market_metric_note": "Preço de mercado e menor anúncio são métricas diferentes. Para saber o que está realmente disponível agora, use o botão de ofertas atuais do marketplace.",
     "freshness_no_date": "Data não disponível",
     "freshness_future": "Data futura a verificar",
@@ -1126,7 +1126,7 @@ UI_TEXT["Português (BR)"].update({
 
 UI_TEXT["Español"].update({
     "market_sources_expander": "💰 Mercado y actualidad de las fuentes",
-    "market_sources_caption": "Los valores siguientes son referencias proporcionadas por el catálogo Pokémon TCG. No garantizan stock, estado, idioma, envío ni precio final.",
+    "market_sources_caption": "Los valores siguientes son referencias proporcionadas por el catálogo TCG externo. No garantizan stock, estado, idioma, envío ni precio final.",
     "market_metric_note": "El precio de mercado y el anuncio más bajo son métricas diferentes. Para ver qué está realmente disponible ahora, usa el botón de ofertas actuales del marketplace.",
     "freshness_no_date": "Fecha no disponible",
     "freshness_future": "Fecha futura por verificar",
@@ -4418,9 +4418,14 @@ def info_catalogo_para_analise(
         carta
     )
 
+    provedor = str(
+        carta.get("_catalog_provider")
+        or "catálogo TCG externo"
+    ).strip()
+
     return (
         "Fonte: entrada selecionada pelo usuário "
-        "no catálogo Pokémon TCG API.\n"
+        f"no catálogo externo ({provedor}).\n"
         f"ID do catálogo: {resumo.get('id')}\n"
         f"Nome: {resumo.get('nome')}\n"
         f"Coleção/Set: {resumo.get('set')}\n"
@@ -8246,22 +8251,15 @@ elif pagina == "search":
                     )
                 )
 
-                # Reliability 2.6.3:
-                # se a analise partiu de uma carta selecionada no catalogo,
-                # persistimos essa evidencia externa no mesmo analysis_run
-                # antes do rerun. Nenhuma nova chamada ao catalogo e feita.
-                if carta_selecionada:
-                    validacao_nome = validar_carta_selecionada_catalogo(
-                        resultado,
-                        carta_selecionada,
-                    )
-                    atualizar_registro_catalogo(
-                        resultado,
-                        validacao=validacao_nome,
-                        cartas=[carta_selecionada],
-                        catalogo_latency_ms=0,
-                    )
-
+                # Reliability 2.6.31:
+                # O Gemini já terminou e o crédito já foi concluído dentro de
+                # executar_analise_com_credito(). Portanto o resultado deve ser
+                # preservado IMEDIATAMENTE na sessão, antes de qualquer etapa
+                # complementar de validação/auditoria de catálogo.
+                #
+                # Na 2.6.30, uma exceção nesta etapa complementar podia fazer o
+                # usuário perder a visualização do resultado apesar de o crédito
+                # ter sido corretamente consumido.
                 st.session_state.resultado_analise = (
                     resultado
                 )
@@ -8272,9 +8270,45 @@ elif pagina == "search":
                     True
                 )
 
+                # A evidência da carta selecionada é importante, mas é
+                # complementar. Falha aqui nunca pode esconder a análise paga.
+                if carta_selecionada:
+                    try:
+                        validacao_nome = validar_carta_selecionada_catalogo(
+                            resultado,
+                            carta_selecionada,
+                        )
+                        atualizado = atualizar_registro_catalogo(
+                            resultado,
+                            validacao=validacao_nome,
+                            cartas=[carta_selecionada],
+                            catalogo_latency_ms=0,
+                        )
+
+                        if atualizado is False:
+                            st.session_state.aviso_auditoria = (
+                                st.session_state.aviso_auditoria
+                                or (
+                                    "A análise foi concluída e preservada, "
+                                    "mas a evidência complementar do catálogo "
+                                    "não pôde ser finalizada nesta execução."
+                                )
+                            )
+
+                    except Exception as erro_catalogo_pos_analise:
+                        st.session_state.aviso_auditoria = (
+                            "A análise foi concluída e preservada. "
+                            "A etapa complementar de registro do catálogo "
+                            "falhou, mas nenhum novo crédito é necessário. "
+                            f"Detalhe técnico: "
+                            f"{_sanitizar_detalhe_tecnico(erro_catalogo_pos_analise, 600)}"
+                        )
+
                 st.rerun()
 
             except Exception:
+                # Este bloco passa a representar apenas falhas reais da análise
+                # principal. Falhas posteriores de catálogo são isoladas acima.
                 st.error(t("analysis_failed_safe", idioma))
 
     # --------------------------------------------------------
