@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.32
+# CARDCRAFTAI RELIABILITY 2.6.33
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.32"
+APP_VERSION = "2.6.33"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -481,6 +481,15 @@ UI_TEXT = {
 # ============================================================
 
 UI_TEXT["English"].update({
+    "field_name": "Card name",
+    "field_set": "Collection / Set",
+    "field_number": "Card number",
+    "field_rarity": "Rarity",
+    "field_variant": "Variant",
+    "field_card_language": "Card language",
+    "field_year": "Year",
+    "condition_indeterminate": "Indeterminate",
+    "condition_not_applicable": "Not applicable",
     "analysis_selected_summary": "Selected for analysis: **{name}** • {set_name} • #{number}",
     "analysis_recovered_notice": "♻️ CardCraftAI recovered {count} interrupted analysis run(s) and automatically returned the pending credit.",
     "not_confirmed": "Not confirmed",
@@ -598,6 +607,15 @@ UI_TEXT["English"].update({
 })
 
 UI_TEXT["Português (BR)"].update({
+    "field_name": "Nome da carta",
+    "field_set": "Coleção / Set",
+    "field_number": "Número da carta",
+    "field_rarity": "Raridade",
+    "field_variant": "Variante",
+    "field_card_language": "Idioma da carta",
+    "field_year": "Ano",
+    "condition_indeterminate": "Indeterminada",
+    "condition_not_applicable": "Não aplicável",
     "analysis_selected_summary": "Selecionada para análise: **{name}** • {set_name} • #{number}",
     "analysis_recovered_notice": "♻️ O CardCraftAI recuperou {count} análise(s) interrompida(s) e devolveu o crédito pendente automaticamente.",
     "not_confirmed": "Não confirmado",
@@ -715,6 +733,15 @@ UI_TEXT["Português (BR)"].update({
 })
 
 UI_TEXT["Español"].update({
+    "field_name": "Nombre de la carta",
+    "field_set": "Colección / Set",
+    "field_number": "Número de carta",
+    "field_rarity": "Rareza",
+    "field_variant": "Variante",
+    "field_card_language": "Idioma de la carta",
+    "field_year": "Año",
+    "condition_indeterminate": "Indeterminada",
+    "condition_not_applicable": "No aplicable",
     "analysis_selected_summary": "Seleccionada para el análisis: **{name}** • {set_name} • #{number}",
     "analysis_recovered_notice": "♻️ CardCraftAI recuperó {count} análisis interrumpido(s) y devolvió automáticamente el crédito pendiente.",
     "not_confirmed": "No confirmado",
@@ -832,6 +859,15 @@ UI_TEXT["Español"].update({
 })
 
 UI_TEXT["日本語"].update({
+    "field_name": "カード名",
+    "field_set": "コレクション / セット",
+    "field_number": "カード番号",
+    "field_rarity": "レアリティ",
+    "field_variant": "バリエーション",
+    "field_card_language": "カード言語",
+    "field_year": "年",
+    "condition_indeterminate": "判定不能",
+    "condition_not_applicable": "該当なし",
     "analysis_selected_summary": "分析対象として選択済み: **{name}** • {set_name} • #{number}",
     "analysis_recovered_notice": "♻️ CardCraftAI は中断された分析 {count} 件を復旧し、保留中のクレジットを自動的に返却しました。",
     "not_confirmed": "未確認",
@@ -1456,6 +1492,55 @@ def texto_ou_nao_confirmado(valor, idioma=None):
     texto = str(valor).strip()
     return texto if texto else t("not_confirmed", idioma)
 
+
+def rotulo_campo_interno(campo, idioma=None):
+    """
+    Traduz nomes técnicos do payload antes de exibi-los ao usuário.
+    Evita vazamento de chaves como idioma_carta, colecao_set e ano.
+    """
+    chave = str(campo or "").strip().lower()
+
+    mapa = {
+        "nome": "field_name",
+        "nome_carta": "field_name",
+        "colecao": "field_set",
+        "colecao_set": "field_set",
+        "set": "field_set",
+        "numero": "field_number",
+        "numero_carta": "field_number",
+        "raridade": "field_rarity",
+        "variante": "field_variant",
+        "idioma": "field_card_language",
+        "idioma_carta": "field_card_language",
+        "ano": "field_year",
+    }
+
+    chave_ui = mapa.get(chave)
+    if chave_ui:
+        return t(chave_ui, idioma)
+
+    # Evita snake_case cru para campos futuros ainda não mapeados.
+    return str(campo or "").replace("_", " ").strip().capitalize()
+
+
+def rotulo_estimativa_condicao(valor, idioma=None):
+    """
+    Mantém termos TCG padronizados (Near Mint, Lightly Played etc.)
+    e traduz apenas enums internos do CardCraftAI.
+    """
+    chave = str(valor or "").strip()
+
+    mapa = {
+        "indeterminada": t("condition_indeterminate", idioma),
+        "nao_aplicavel": t("condition_not_applicable", idioma),
+    }
+
+    return mapa.get(
+        chave,
+        texto_ou_nao_confirmado(chave, idioma),
+    )
+
+
 def formatar_resultado_estruturado(dados, tipo_resultado=None, idioma=None):
     idioma = idioma or idioma_interface_atual()
     status = dados.get("status_identificacao", "incerta")
@@ -1529,7 +1614,12 @@ def formatar_resultado_estruturado(dados, tipo_resultado=None, idioma=None):
     incertos = dados.get("campos_incertos") or []
     if incertos:
         linhas.extend(["", t("needs_confirmation_title", idioma)])
-        linhas.extend([f"- {item}" for item in incertos])
+        linhas.extend(
+            [
+                f"- {rotulo_campo_interno(item, idioma)}"
+                for item in incertos
+            ]
+        )
 
     gerais = dados.get("informacoes_gerais") or []
     if gerais:
@@ -1538,9 +1628,27 @@ def formatar_resultado_estruturado(dados, tipo_resultado=None, idioma=None):
 
     condicao = dados.get("condicao_aparente") or {}
     if analise_por_nome:
-        linhas.extend(["", t("condition_no_photo_title", idioma), f"**{t('estimate_label', idioma)}:** {condicao.get('estimativa', 'nao_aplicavel')}"])
+        linhas.extend(
+            [
+                "",
+                t("condition_no_photo_title", idioma),
+                (
+                    f"**{t('estimate_label', idioma)}:** "
+                    f"{rotulo_estimativa_condicao(condicao.get('estimativa', 'nao_aplicavel'), idioma)}"
+                ),
+            ]
+        )
     else:
-        linhas.extend(["", t("condition_visual_title", idioma), f"**{t('visual_estimate_label', idioma)}:** {condicao.get('estimativa', 'indeterminada')}"])
+        linhas.extend(
+            [
+                "",
+                t("condition_visual_title", idioma),
+                (
+                    f"**{t('visual_estimate_label', idioma)}:** "
+                    f"{rotulo_estimativa_condicao(condicao.get('estimativa', 'indeterminada'), idioma)}"
+                ),
+            ]
+        )
     for item in condicao.get("observacoes") or []:
         linhas.append(f"- {item}")
 
