@@ -1,4 +1,4 @@
-# CARDCRAFTAI RELIABILITY 2.6.33
+# CARDCRAFTAI RELIABILITY 2.6.34
 # Resiliencia operacional + recuperacao de falhas + historico rastreavel 2.5.0
 
 import base64
@@ -104,7 +104,7 @@ except Exception:
     )
     st.stop()
 
-APP_VERSION = "2.6.33"
+APP_VERSION = "2.6.34"
 AI_MODEL = "gemini-3.6-flash"
 AI_FALLBACK_MODEL = "gemini-3-flash-preview"
 GEMINI_TIMEOUT_MS = 90_000
@@ -481,6 +481,16 @@ UI_TEXT = {
 # ============================================================
 
 UI_TEXT["English"].update({
+    "history_name_input_reason": "No physical image was provided; the analysis uses the catalog entry explicitly selected by the user.",
+    "history_condition_no_photo": "Physical condition cannot be evaluated without a photo of the card.",
+    "history_auth_no_photo": "Visual authenticity cannot be assessed without a physical-card image.",
+    "history_conservation_no_photo": "No physical image was provided for conservation assessment.",
+    "history_general_card_name": "Card Name",
+    "history_general_set_name": "Set Name",
+    "history_general_card_number": "Card Number",
+    "history_general_rarity": "Rarity",
+    "history_general_illustrated_by": "Illustrated by",
+    "history_general_set_release": "Set Release Date",
     "field_name": "Card name",
     "field_set": "Collection / Set",
     "field_number": "Card number",
@@ -607,6 +617,16 @@ UI_TEXT["English"].update({
 })
 
 UI_TEXT["Português (BR)"].update({
+    "history_name_input_reason": "Nenhuma imagem física foi fornecida; a análise usa a entrada do catálogo selecionada explicitamente pelo usuário.",
+    "history_condition_no_photo": "A condição física não pode ser avaliada sem uma foto da carta.",
+    "history_auth_no_photo": "A autenticidade visual não pode ser avaliada sem uma imagem física da carta.",
+    "history_conservation_no_photo": "Nenhuma imagem física foi fornecida para avaliação de conservação.",
+    "history_general_card_name": "Nome da carta",
+    "history_general_set_name": "Coleção / Set",
+    "history_general_card_number": "Número da carta",
+    "history_general_rarity": "Raridade",
+    "history_general_illustrated_by": "Ilustrador",
+    "history_general_set_release": "Data de lançamento do set",
     "field_name": "Nome da carta",
     "field_set": "Coleção / Set",
     "field_number": "Número da carta",
@@ -733,6 +753,16 @@ UI_TEXT["Português (BR)"].update({
 })
 
 UI_TEXT["Español"].update({
+    "history_name_input_reason": "No se proporcionó una imagen física; el análisis utiliza la entrada del catálogo seleccionada explícitamente por el usuario.",
+    "history_condition_no_photo": "El estado físico no puede evaluarse sin una foto de la carta.",
+    "history_auth_no_photo": "La autenticidad visual no puede evaluarse sin una imagen física de la carta.",
+    "history_conservation_no_photo": "No se proporcionó una imagen física para evaluar la conservación.",
+    "history_general_card_name": "Nombre de la carta",
+    "history_general_set_name": "Colección / Set",
+    "history_general_card_number": "Número de carta",
+    "history_general_rarity": "Rareza",
+    "history_general_illustrated_by": "Ilustrado por",
+    "history_general_set_release": "Fecha de lanzamiento del set",
     "field_name": "Nombre de la carta",
     "field_set": "Colección / Set",
     "field_number": "Número de carta",
@@ -859,6 +889,16 @@ UI_TEXT["Español"].update({
 })
 
 UI_TEXT["日本語"].update({
+    "history_name_input_reason": "現物画像は提供されていません。分析にはユーザーが明示的に選択したカタログ情報を使用します。",
+    "history_condition_no_photo": "カードの写真がないため、物理的な状態は評価できません。",
+    "history_auth_no_photo": "現物カードの画像がないため、視覚的な真贋評価はできません。",
+    "history_conservation_no_photo": "保存状態を評価するための現物画像は提供されていません。",
+    "history_general_card_name": "カード名",
+    "history_general_set_name": "セット名",
+    "history_general_card_number": "カード番号",
+    "history_general_rarity": "レアリティ",
+    "history_general_illustrated_by": "イラストレーター",
+    "history_general_set_release": "セット発売日",
     "field_name": "カード名",
     "field_set": "コレクション / セット",
     "field_number": "カード番号",
@@ -1602,7 +1642,11 @@ def formatar_resultado_estruturado(dados, tipo_resultado=None, idioma=None):
             f"**{t('image_label', idioma)}:** {rotulos_qualidade.get(qualidade, t('quality_na', idioma))}",
         ]
 
-    motivo = dados.get("motivo_qualidade_imagem")
+    if analise_por_nome:
+        motivo = t("history_name_input_reason", idioma)
+    else:
+        motivo = dados.get("motivo_qualidade_imagem")
+
     if motivo:
         linhas.append(f"\n{motivo}")
 
@@ -1621,7 +1665,73 @@ def formatar_resultado_estruturado(dados, tipo_resultado=None, idioma=None):
             ]
         )
 
-    gerais = dados.get("informacoes_gerais") or []
+    if analise_por_nome:
+        gerais = []
+
+        nome_geral = dados.get("nome_carta")
+        set_geral = dados.get("colecao_set")
+        numero_geral = dados.get("numero_carta")
+        raridade_geral = dados.get("raridade")
+
+        # Para análises por nome selecionadas no catálogo, os dados objetivos
+        # são reconstruídos no idioma atual em vez de reutilizar frases
+        # persistidas no idioma em que a análise foi criada.
+        artista_geral = None
+        data_set_geral = None
+
+        for item in dados.get("informacoes_gerais") or []:
+            item_texto = str(item or "").strip()
+            item_lower = item_texto.lower()
+
+            if any(
+                prefixo in item_lower
+                for prefixo in [
+                    "illustrated by:",
+                    "ilustrador:",
+                    "ilustrado por:",
+                    "イラストレーター:",
+                ]
+            ):
+                artista_geral = item_texto.split(":", 1)[-1].strip()
+
+            if any(
+                prefixo in item_lower
+                for prefixo in [
+                    "set release date:",
+                    "data de lançamento do set:",
+                    "fecha de lanzamiento del set:",
+                    "セット発売日:",
+                ]
+            ):
+                data_set_geral = item_texto.split(":", 1)[-1].strip()
+
+        if nome_geral:
+            gerais.append(
+                f"{t('history_general_card_name', idioma)}: {nome_geral}"
+            )
+        if set_geral:
+            gerais.append(
+                f"{t('history_general_set_name', idioma)}: {set_geral}"
+            )
+        if numero_geral:
+            gerais.append(
+                f"{t('history_general_card_number', idioma)}: {numero_geral}"
+            )
+        if raridade_geral:
+            gerais.append(
+                f"{t('history_general_rarity', idioma)}: {raridade_geral}"
+            )
+        if artista_geral:
+            gerais.append(
+                f"{t('history_general_illustrated_by', idioma)}: {artista_geral}"
+            )
+        if data_set_geral:
+            gerais.append(
+                f"{t('history_general_set_release', idioma)}: {data_set_geral}"
+            )
+    else:
+        gerais = dados.get("informacoes_gerais") or []
+
     if gerais:
         linhas.extend(["", t("general_info_title", idioma)])
         linhas.extend([f"- {item}" for item in gerais])
@@ -1649,8 +1759,11 @@ def formatar_resultado_estruturado(dados, tipo_resultado=None, idioma=None):
                 ),
             ]
         )
-    for item in condicao.get("observacoes") or []:
-        linhas.append(f"- {item}")
+    if analise_por_nome:
+        linhas.append(f"- {t('history_condition_no_photo', idioma)}")
+    else:
+        for item in condicao.get("observacoes") or []:
+            linhas.append(f"- {item}")
 
     autenticidade = dados.get("autenticidade_visual") or {}
     rotulos_autenticidade = {
@@ -1663,13 +1776,20 @@ def formatar_resultado_estruturado(dados, tipo_resultado=None, idioma=None):
         linhas.extend(["", t("auth_no_photo_title", idioma), f"**{t('status_label', idioma)}:** {rotulos_autenticidade.get(autenticidade.get('status'), t('auth_na', idioma))}"])
     else:
         linhas.extend(["", t("auth_triage_title", idioma), f"**{t('status_label', idioma)}:** {rotulos_autenticidade.get(autenticidade.get('status'), t('auth_indeterminate', idioma))}"])
-    for item in autenticidade.get("observacoes") or []:
-        linhas.append(f"- {item}")
+    if analise_por_nome:
+        linhas.append(f"- {t('history_auth_no_photo', idioma)}")
+    else:
+        for item in autenticidade.get("observacoes") or []:
+            linhas.append(f"- {item}")
     linhas.append("\n" + t("auth_disclaimer", idioma))
 
     linhas.extend(["", t("market_title", idioma), t("market_note", idioma)])
 
-    conservacao = dados.get("conservacao") or []
+    if analise_por_nome:
+        conservacao = [t("history_conservation_no_photo", idioma)]
+    else:
+        conservacao = dados.get("conservacao") or []
+
     if conservacao:
         linhas.extend(["", t("conservation_title", idioma)])
         linhas.extend([f"- {item}" for item in conservacao])
