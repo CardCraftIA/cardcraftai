@@ -481,7 +481,7 @@ UI_TEXT = {
 # ============================================================
 
 UI_TEXT["English"].update({
-    "history_name_input_reason": "No physical image was provided; the analysis uses the catalog entry explicitly selected by the user.",
+    "history_name_input_reason": "No physical image was provided; the analysis uses the entered text and, when a card was selected, its catalog data.",
     "history_condition_no_photo": "Physical condition cannot be evaluated without a photo of the card.",
     "history_auth_no_photo": "Visual authenticity cannot be assessed without a physical-card image.",
     "history_conservation_no_photo": "No physical image was provided for conservation assessment.",
@@ -617,7 +617,7 @@ UI_TEXT["English"].update({
 })
 
 UI_TEXT["Português (BR)"].update({
-    "history_name_input_reason": "Nenhuma imagem física foi fornecida; a análise usa a entrada do catálogo selecionada explicitamente pelo usuário.",
+    "history_name_input_reason": "Nenhuma imagem física foi fornecida; a análise usa o texto informado e, quando uma carta foi selecionada, seus dados do catálogo.",
     "history_condition_no_photo": "A condição física não pode ser avaliada sem uma foto da carta.",
     "history_auth_no_photo": "A autenticidade visual não pode ser avaliada sem uma imagem física da carta.",
     "history_conservation_no_photo": "Nenhuma imagem física foi fornecida para avaliação de conservação.",
@@ -753,7 +753,7 @@ UI_TEXT["Português (BR)"].update({
 })
 
 UI_TEXT["Español"].update({
-    "history_name_input_reason": "No se proporcionó una imagen física; el análisis utiliza la entrada del catálogo seleccionada explícitamente por el usuario.",
+    "history_name_input_reason": "No se proporcionó una imagen física; el análisis utiliza el texto introducido y, cuando se seleccionó una carta, sus datos del catálogo.",
     "history_condition_no_photo": "El estado físico no puede evaluarse sin una foto de la carta.",
     "history_auth_no_photo": "La autenticidad visual no puede evaluarse sin una imagen física de la carta.",
     "history_conservation_no_photo": "No se proporcionó una imagen física para evaluar la conservación.",
@@ -889,7 +889,7 @@ UI_TEXT["Español"].update({
 })
 
 UI_TEXT["日本語"].update({
-    "history_name_input_reason": "現物画像は提供されていません。分析にはユーザーが明示的に選択したカタログ情報を使用します。",
+    "history_name_input_reason": "現物画像は提供されていません。分析には入力されたテキストを使用し、カードが選択された場合はそのカタログ情報も使用します。",
     "history_condition_no_photo": "カードの写真がないため、物理的な状態は評価できません。",
     "history_auth_no_photo": "現物カードの画像がないため、視覚的な真贋評価はできません。",
     "history_conservation_no_photo": "保存状態を評価するための現物画像は提供されていません。",
@@ -5590,6 +5590,13 @@ def salvar_sessao(resposta):
     return True
 
 
+def limpar_selecao_catalogo_nome():
+    """Invalida a seleção e os resultados vinculados aos campos anteriores."""
+    st.session_state.catalogo_selecionada_nome = None
+    st.session_state.catalogo_resultados_nome = []
+    st.session_state.catalogo_consulta_nome = None
+
+
 def limpar_sessao():
 
     st.session_state.access_token = None
@@ -8610,6 +8617,7 @@ elif pagina == "search":
             t("card_name", idioma),
             placeholder="Ex.: Charizard GX",
             key="termo_busca",
+            on_change=limpar_selecao_catalogo_nome,
         )
 
     with col2:
@@ -8617,6 +8625,7 @@ elif pagina == "search":
             t("set_name", idioma),
             placeholder="Ex.: SM Black Star Promos",
             key="colecao_busca",
+            on_change=limpar_selecao_catalogo_nome,
         )
 
     if st.button(
