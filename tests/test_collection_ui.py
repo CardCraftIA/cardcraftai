@@ -166,3 +166,72 @@ class CollectionUITests(unittest.TestCase):
             next(b for b in app.button if b.label == 'Preparar arquivo').click().run()
             self.assertFalse(app.exception)
             self.assertEqual(len(app.get('download_button')), 1)
+
+    def test_toolbar_filters_survive_list_switch_and_export(self):
+        app = self.editor()
+        app.default_timeout = 10
+        self.select(app, 'Coleção').select('Favoritos').run()
+        next(c for c in app.checkbox if c.label == 'Somente lista de desejos').check().run()
+        app.text_input[0].set_value('002').run()
+        self.assertEqual(len(app.number_input), 1)
+        next(r for r in app.radio if r.label == 'Visualização').set_value('list').run()
+        self.assertFalse(app.exception)
+        self.assertEqual(app.dataframe[0].value['Carta'].tolist(), ['Pikachu'])
+        with patch('collection.export_collection', return_value=b'export') as export:
+            next(b for b in app.button if b.label == 'Preparar arquivo').click().run()
+            self.assertEqual([row['card_name'] for row in export.call_args.args[0]], ['Pikachu'])
+        next(r for r in app.radio if r.label == 'Visualização').set_value('album').run()
+        self.assertFalse(app.exception)
+        self.assertEqual(len(app.number_input), 1)
+        self.assertEqual(app.text_input[0].value, '002')
+        self.assertEqual(self.select(app, 'Coleção').value, 'Favoritos')
+        self.assertTrue(next(c for c in app.checkbox if c.label == 'Somente lista de desejos').value)
+
+    def test_toolbar_no_results_disables_export(self):
+        app = self.editor()
+        app.text_input[0].set_value('no matching card').run()
+        self.assertFalse(app.exception)
+        self.assertEqual(len(app.number_input), 0)
+        self.assertTrue(next(b for b in app.button if b.label == 'Preparar arquivo').disabled)
+        self.assertTrue(any('Nenhuma carta' in info.value for info in app.info))
+
+    def test_editors_are_outside_card_columns(self):
+        app = self.editor()
+        form_ancestors = []
+
+        def visit(node, ancestors=()):
+            if node.type == 'form':
+                form_ancestors.append(ancestors)
+            for child in getattr(node, 'children', {}).values():
+                visit(child, ancestors + (node.type,))
+
+        visit(app.main)
+        self.assertEqual(len(form_ancestors), len(app.session_state['preview_items']))
+        for ancestors in form_ancestors:
+            self.assertIn('expander', ancestors)
+            self.assertNotIn('column', ancestors)
+        app.text_input[0].set_value('Pikachu').run()
+        form_ancestors.clear()
+        visit(app.main)
+        self.assertEqual(len(form_ancestors), 1)
+        self.assertNotIn('column', form_ancestors[0])
+
+    def test_empty_list_has_localized_message_and_count_without_table(self):
+        source = (Path(__file__).resolve().parents[1] / 'prototypes' / 'collection_preview.py').read_text(encoding='utf-8')
+        for portuguese in (True, False):
+            with self.subTest(portuguese=portuguese):
+                localized_source = source.replace("render_collection(st, DemoClient(), 'demo', True)",
+                                                  f"render_collection(st, DemoClient(), 'demo', {portuguese})")
+                app = AppTest.from_string(localized_source, default_timeout=10).run()
+                app.radio[0].set_value('list').run()
+                app.text_input[0].set_value('no matching card').run()
+                self.assertFalse(app.exception)
+                self.assertFalse(app.dataframe)
+                message = 'Nenhuma carta encontrada' if portuguese else 'No cards found'
+                count = '0 registros encontrados' if portuguese else '0 entries found'
+                self.assertTrue(any(message in info.value for info in app.info))
+                self.assertTrue(any(count == caption.value for caption in app.caption))
+                self.assertTrue(next(b for b in app.button if b.label in ('Preparar arquivo', 'Prepare file')).disabled)
+                app.text_input[0].set_value('Pikachu').run()
+                self.assertFalse(app.exception)
+                self.assertEqual(len(app.dataframe[0].value), 1)
