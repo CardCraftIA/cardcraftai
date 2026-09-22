@@ -18,6 +18,7 @@ from google import genai
 from google.genai import errors, types
 from PIL import Image
 from supabase import create_client
+from collection import catalog_record, render_collection
 
 
 # ============================================================
@@ -1268,6 +1269,15 @@ UI_TEXT["日本語"].update({
     "market_cm_no_values": "このカードについて利用可能な Cardmarket の価格データがカタログから提供されませんでした。",
 })
 
+for _language, _messages in {
+    'English': ('Changes saved successfully.', 'Could not save your changes. Your entries have been kept. Please try again.', 'Saving…'),
+    'Português (BR)': ('Alterações salvas com sucesso.', 'Não foi possível salvar as alterações. Seus dados foram mantidos. Tente novamente.', 'Salvando…'),
+    'Español': ('Cambios guardados correctamente.', 'No se pudieron guardar los cambios. Se conservaron los datos ingresados. Inténtalo de nuevo.', 'Guardando…'),
+    '日本語': ('変更を正常に保存しました。', '変更を保存できませんでした。入力内容は保持されています。もう一度お試しください。', '保存中…'),
+}.items():
+    UI_TEXT[_language].update(zip(('collection_saved', 'collection_save_error', 'collection_saving'), _messages))
+
+
 def idioma_interface_atual():
     if "idioma_interface" not in st.session_state:
         st.session_state.idioma_interface = "English"
@@ -1297,7 +1307,9 @@ LANGUAGE_WIDGET_KEYS = (
     "idioma_legal_widget",
 )
 
-NAVIGATION_OPTIONS = [
+COLLECTIONS_ENABLED = str(st.secrets.get("COLLECTIONS_ENABLED", "false")).lower() == "true"
+
+NAVIGATION_OPTIONS = (["collection"] if COLLECTIONS_ENABLED else []) + [
     "photo",
     "search",
     "plans",
@@ -4635,6 +4647,20 @@ def mostrar_galeria_catalogo(
                     st.caption(str(raridade))
 
                 carta_id = str(carta.get("id", inicio))
+
+                if COLLECTIONS_ENABLED and st.button(
+                    "＋ Adicionar à coleção" if idioma_interface_atual() == "Português (BR)" else "＋ Add to collection",
+                    key=f"collection_add_{contexto}_{carta_id}",
+                    use_container_width=True,
+                ):
+                    try:
+                        supabase.table("collection_items").insert(
+                            catalog_record(carta, st.session_state.user_id)
+                        ).execute()
+                    except Exception:
+                        st.error("Não foi possível salvar na coleção." if idioma_interface_atual() == "Português (BR)" else "Could not save to collection.")
+                    else:
+                        st.success("Exemplar adicionado à coleção." if idioma_interface_atual() == "Português (BR)" else "Entry added to collection.")
 
                 st.button(
                     t("select_this_card"),
@@ -8340,7 +8366,7 @@ if st.session_state.get("pagina_navegacao_widget") != pagina_atual:
 st.sidebar.radio(
     t("navigation", idioma),
     NAVIGATION_OPTIONS,
-    format_func=lambda pagina_id: t({
+    format_func=lambda pagina_id: ("🃏 Minha coleção" if idioma == "Português (BR)" else "🃏 My collection") if pagina_id == "collection" else t({
         "photo": "nav_photo",
         "search": "nav_search",
         "plans": "nav_plans",
@@ -8445,7 +8471,10 @@ def mostrar_resultado(
 # PÁGINA 1 - ANÁLISE POR FOTO
 # ============================================================
 
-if pagina == "photo":
+if pagina == "collection" and COLLECTIONS_ENABLED:
+    render_collection(st, supabase, st.session_state.user_id, idioma == "Português (BR)", translate=lambda key: t(key, idioma))
+
+elif pagina == "photo":
 
     st.header(t("photo_title", idioma))
 

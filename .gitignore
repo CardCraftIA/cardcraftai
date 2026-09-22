@@ -1,0 +1,12 @@
+# Local secrets - never commit
+.streamlit/secrets.toml
+
+# Python local cache
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Local QA artifacts and dependencies
+tmp/
+node_modules/
+/Imagem do Codex 18 de set. de 2026, 15_10_25.png
