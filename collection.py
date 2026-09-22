@@ -1,10 +1,27 @@
 """Private collection: authenticated Supabase client only; no AI or credit calls."""
 from urllib.parse import urlparse
+from html import escape
 from collection_exports import export_collection
 
 CONDITIONS = ('Not assessed', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged')
 CARD_LANGUAGES = ('', 'English', 'Portuguese', 'Spanish', 'Japanese', 'Korean', 'French', 'German', 'Italian', 'Chinese', 'Other')
 VARIANTS = ('', 'Regular', 'Holo', 'Reverse Holo', '1st Edition', 'Unlimited', 'Promo', 'Full Art', 'Alternate Art')
+
+
+def collection_metrics(items):
+    """Whole-binder totals. Set names are used because no set ID is stored."""
+    quantities = {}
+    sets = set()
+    for item in items:
+        if item['quantity'] > 0:
+            identity = item['catalog_id']
+            quantities[identity] = quantities.get(identity, 0) + item['quantity']
+            set_name = (item['set_name'] or '').strip()
+            if set_name:
+                sets.add(set_name)
+    return dict(copies=sum(quantities.values()), distinct=len(quantities), sets=len(sets),
+                duplicates=sum(max(quantity - 1, 0) for quantity in quantities.values()),
+                wishlist=sum(bool(item['wishlist']) for item in items))
 
 
 def safe_image(value):
@@ -60,13 +77,18 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
     def begin_save(key):
         st.session_state[key] = True
     st.markdown('''<style>
+    /* These ancestor rules apply only while the collection is rendered. */
+    [data-testid="stMain"]:has(.st-key-collection_v2) {background:#0b131d;}
+    .block-container:has(.st-key-collection_v2) {
+        max-width:none;padding-left:clamp(16px,2vw,32px);padding-right:clamp(16px,2vw,32px);
+    }
     .st-key-collection_v2 {
         background:radial-gradient(ellipse at top right,#193a35 0%,#111d27 40%,#0b131d 100%);
         color:#edf4f9;border:1px solid #2a3d49;border-radius:22px;
-        padding:clamp(16px,3vw,32px);box-shadow:0 18px 48px #06101a20;
+        padding:clamp(14px,2vw,24px);box-shadow:0 18px 48px #06101a20;
     }
     .st-key-collection_v2 h2 {color:#edf4f9;font-family:Georgia,serif;font-size:2rem;letter-spacing:-.025em;padding-top:0;}
-    .st-key-collection_v2 h3 {color:#edf4f9;font-size:1.12rem;line-height:1.4;overflow-wrap:anywhere;}
+    .st-key-collection_v2 h3 {color:#edf4f9;font-size:1.45rem;font-weight:700;line-height:1.3;overflow-wrap:anywhere;padding-top:0;}
     .st-key-collection_v2 [data-testid="stCaptionContainer"],
     .st-key-collection_v2 [data-testid="stCaptionContainer"] p {color:#aebfcb;}
     .st-key-collection_v2 [data-testid="stWidgetLabel"] p,
@@ -127,14 +149,23 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
     }
     .st-key-collection_v2 [class*="st-key-collection_card_"] {
         background:linear-gradient(145deg,#1c2d39,#111d28);border:1px solid #344958;
-        border-radius:16px;padding:16px;box-shadow:0 8px 20px #0002;
+        border-radius:16px;padding:12px;box-shadow:0 8px 20px #0002;
     }
+    .st-key-collection_v2 .collection-chips {display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    .st-key-collection_v2 .collection-chip {
+        color:#dbe9ef;background:#233944;border:1px solid #405966;border-radius:999px;
+        padding:4px 10px;font-size:.8rem;line-height:1.5;
+    }
+    .st-key-collection_v2 .collection-quantity {color:#8bf0cf;background:#183d34;border-color:#356858;font-weight:700;}
+    .st-key-collection_v2 .collection-wish {color:#d3bce9;background:#302c42;border-color:#514662;}
     .st-key-collection_v2 [data-testid="stImage"] {width:100%;text-align:center;}
     .st-key-collection_v2 [data-testid="stImage"] img {
-        width:100%;height:260px;object-fit:contain;border-radius:10px;filter:drop-shadow(0 8px 12px #0005);
+        width:100%;height:230px;object-fit:contain;padding:8px;box-sizing:border-box;
+        background:radial-gradient(ellipse at top,#26483f,#142330);border:1px solid #405766;
+        border-radius:10px;filter:drop-shadow(0 4px 8px #0003);
     }
     .st-key-collection_v2 .collection-no-image {
-        height:260px;border:1px dashed #486170;border-radius:10px;display:grid;place-content:center;
+        height:230px;border:1px dashed #486170;border-radius:10px;display:grid;place-content:center;
         text-align:center;gap:10px;background:radial-gradient(ellipse at top,#26483f,#142330);color:#adc9c5;
     }
     .st-key-collection_v2 .collection-no-image span {font-size:44px;color:#59cfae;}
@@ -170,10 +201,13 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
     except Exception:
         st.error(tr('Não foi possível carregar a coleção. Verifique se a migração foi aplicada e tente novamente.', 'Could not load the collection. Check that the migration was applied and try again.'))
         return
-    cols = st.columns(3)
-    cols[0].metric(tr('Exemplares', 'Copies'), sum(x['quantity'] for x in items))
-    cols[1].metric(tr('Cartas diferentes', 'Distinct cards'), len({x['catalog_id'] for x in items if x['quantity'] > 0}))
-    cols[2].metric(tr('Lista de desejos', 'Wishlist'), sum(bool(x['wishlist']) for x in items))
+    metrics = collection_metrics(items)
+    cols = st.columns(5)
+    cols[0].metric(tr('Exemplares', 'Copies'), metrics['copies'])
+    cols[1].metric(tr('Cartas diferentes', 'Distinct cards'), metrics['distinct'])
+    cols[2].metric(tr('Lista de desejos', 'Wishlist'), metrics['wishlist'])
+    cols[3].metric(tr('Coleções', 'Sets'), metrics['sets'])
+    cols[4].metric(tr('Repetidas', 'Duplicates'), metrics['duplicates'])
     if not items:
         st.info(tr('Busque uma carta no catálogo e use “Adicionar à coleção”.', 'Find a card in the catalog and use “Add to collection”.'))
         return
@@ -209,22 +243,42 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
     pages = max(1, (len(shown) + 23) // 24)
     page = page_col.selectbox(tr('Página', 'Page'), range(1, pages + 1))
     page_items = shown[(page - 1) * 24:page * 24]
-    # Only the image and summary use columns; the editor spans the entire item.
-    for item in page_items:
-        with st.container(key='collection_card_' + item['id']):
-            image_col, summary_col = st.columns([1, 3])
-            with image_col:
-                image = safe_image(item['image_url'])
-                if image:
-                    st.image(image, use_container_width=True)
-                else:
-                    st.markdown('<div class="collection-no-image"><span aria-hidden="true">◇</span><small>' + tr('Imagem indisponível', 'Image unavailable') + '</small></div>', unsafe_allow_html=True)
-            with summary_col:
-                st.subheader(item['card_name'])
-                st.caption(f"{item['set_name']} · #{item['card_number']} · {item['quantity']}×")
+    selection_key = f'collection_editor_{user_id}'
+
+    def select_editor(item_id):
+        st.session_state[selection_key] = item_id
+
+    for offset in range(0, len(page_items), 3):
+        row_items = page_items[offset:offset + 3]
+        with st.container(key=f'collection_album_row_{offset}'):
+            for col, item in zip(st.columns(3), row_items):
+                with col, st.container(key='collection_card_' + item['id']):
+                    image = safe_image(item['image_url'])
+                    if image:
+                        st.image(image, use_container_width=True)
+                    else:
+                        st.markdown('<div class="collection-no-image"><span aria-hidden="true">◇</span><small>' + tr('Imagem indisponível', 'Image unavailable') + '</small></div>', unsafe_allow_html=True)
+                    st.subheader(item['card_name'])
+                    st.caption(f"{item['set_name']} · #{item['card_number']}")
+                    chips = (
+                        '<div class="collection-chips"><span class="collection-chip collection-quantity">'
+                        + escape(tr('Quantidade', 'Quantity')) + ': ' + str(item['quantity']) + '×</span>'
+                        + '<span class="collection-chip">' + escape(item['condition']) + '</span>'
+                    )
+                    if item['wishlist']:
+                        chips += '<span class="collection-chip collection-wish">♡ ' + tr('Lista de desejos', 'Wishlist') + '</span>'
+                    st.markdown(chips + '</div>', unsafe_allow_html=True)
+                    st.button(tr('Editar', 'Edit'), key=f"collection_edit_{user_id}_{item['id']}",
+                              on_click=select_editor, args=(item['id'],))
+        # A sibling of the grid row, never a child of any card column.
+        item = next((entry for entry in row_items if entry['id'] == st.session_state.get(selection_key)), None)
+        if item is None:
+            continue
+        with st.container(key='collection_editor_panel'):
+            st.subheader(item['card_name'])
             state_key = f"collection_save_{user_id}_{item['id']}"
             result = st.session_state.pop(state_key + '_result', None)
-            with st.expander(tr('Editar exemplar', 'Edit entry'), expanded=result is not None):
+            with st.expander(tr('Editar exemplar', 'Edit entry'), expanded=True):
                 # Outside the form so choosing Custom immediately reveals its input.
                 variant_options = list(VARIANTS)
                 if item['variant'] not in variant_options:

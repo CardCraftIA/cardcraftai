@@ -18,8 +18,13 @@ class CollectionUITests(unittest.TestCase):
         # Remount the entry to load the fixture as a fresh saved record.
         app.session_state['preview_items'][0]['id'] = 'saved-entry'
         app.run()
+        self.open_editor(app)
         self.assertFalse(app.exception)
         return app
+
+    def open_editor(self, app, index=0):
+        [b for b in app.button if b.label == 'Editar'][index].click().run()
+        self.assertFalse(app.exception)
 
     def select(self, app, label):
         return next(s for s in app.selectbox if s.label == label)
@@ -83,6 +88,7 @@ class CollectionUITests(unittest.TestCase):
         source = source.replace("render_collection(st, DemoClient(), 'demo', True)",
                                 "render_collection(st, DemoClient(), 'demo', True, translate=lambda key: {'collection_saved': 'Changes saved successfully.', 'collection_saving': 'Saving…'}[key])")
         app = AppTest.from_string(source).run()
+        self.open_editor(app)
         self.save(app)
         self.assertEqual(app.get('toast')[0].proto.body, 'Changes saved successfully.')
         self.assertEqual(app.get('toast')[0].proto.icon, '✅')
@@ -141,6 +147,7 @@ class CollectionUITests(unittest.TestCase):
         app.session_state['preview_items'][1]['notes'] = 'Nota de outra carta'
         app.run()
         self.assertFalse(app.exception)
+        self.open_editor(app)
         self.assertEqual(app.text_area[0].value, 'Nota existente')
         self.assertEqual(app.text_area[0].max_chars, 2000)
         for notes in ('Nota editada\nSegunda linha', 'a' * 2000, ''):
@@ -155,11 +162,16 @@ class CollectionUITests(unittest.TestCase):
         app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'prototypes' / 'collection_preview.py')).run()
         self.assertFalse(app.exception)
         self.assertEqual(app.metric[0].value, '11')
+        self.assertEqual(app.metric[3].value, '2')
+        self.assertEqual(app.metric[4].value, '6')
+        self.open_editor(app)
         app.number_input[0].set_value(4)
         next(b for b in app.button if b.label == 'Salvar').click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.metric[0].value, '13')
+        self.assertEqual(app.metric[4].value, '8')
         app.text_input[0].set_value('Pikachu').run()
+        self.open_editor(app)
         self.assertEqual(len(app.number_input), 1)
         for fmt in ['xlsx', 'pdf', 'docx']:
             next(s for s in app.selectbox if s.label == 'Formato').set_value(fmt).run()
@@ -173,6 +185,7 @@ class CollectionUITests(unittest.TestCase):
         self.select(app, 'Coleção').select('Favoritos').run()
         next(c for c in app.checkbox if c.label == 'Somente lista de desejos').check().run()
         app.text_input[0].set_value('002').run()
+        self.open_editor(app)
         self.assertEqual(len(app.number_input), 1)
         next(r for r in app.radio if r.label == 'Visualização').set_value('list').run()
         self.assertFalse(app.exception)
@@ -206,15 +219,62 @@ class CollectionUITests(unittest.TestCase):
                 visit(child, ancestors + (node.type,))
 
         visit(app.main)
-        self.assertEqual(len(form_ancestors), len(app.session_state['preview_items']))
+        self.assertEqual(len(form_ancestors), 1)
         for ancestors in form_ancestors:
             self.assertIn('expander', ancestors)
             self.assertNotIn('column', ancestors)
         app.text_input[0].set_value('Pikachu').run()
+        self.open_editor(app)
         form_ancestors.clear()
         visit(app.main)
         self.assertEqual(len(form_ancestors), 1)
         self.assertNotIn('column', form_ancestors[0])
+
+    def test_album_grid_pagination_list_and_metrics(self):
+        app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'prototypes' / 'collection_preview.py'), default_timeout=10).run()
+        seed = app.session_state['preview_items'][0]
+        app.session_state['preview_items'] = [dict(seed, id=str(i), catalog_id=f'card-{i}') for i in range(30)]
+        app.run()
+        self.assertFalse(app.exception)
+        self.assertFalse(app.number_input)
+        self.assertEqual(len([b for b in app.button if b.label == 'Editar']), 24)
+        rows = []
+
+        def visit(node):
+            if any(child.type == 'column' for child in getattr(node, 'children', {}).values()):
+                edits = [b for b in node.get('button') if b.label == 'Editar']
+                if edits:
+                    rows.append(len(edits))
+            for child in getattr(node, 'children', {}).values():
+                visit(child)
+
+        visit(app.main)
+        self.assertEqual(rows, [3] * 8)
+        metrics = [m.value for m in app.metric]
+        self.open_editor(app)
+        self.select(app, 'Página').select(2).run()
+        self.assertFalse(app.number_input)
+        self.assertEqual(len([b for b in app.button if b.label == 'Editar']), 6)
+        app.radio[0].set_value('list').run()
+        self.assertFalse(app.exception)
+        self.assertEqual(len(app.dataframe[0].value), 30)
+        self.assertFalse(app.number_input)
+        self.assertFalse([b for b in app.button if b.label == 'Editar'])
+        self.assertEqual([m.value for m in app.metric], metrics)
+
+    def test_selecting_another_card_keeps_only_one_editor(self):
+        app = self.editor()
+        original = [dict(item) for item in app.session_state['preview_items']]
+        self.open_editor(app, 1)
+        self.assertEqual(len(app.number_input), 1)
+        self.assertEqual(len(app.text_area), 1)
+        self.assertEqual(app.session_state['collection_editor_demo'], original[1]['id'])
+        app.text_area[0].set_value('Only the selected card')
+        self.save(app)
+        self.assertEqual(app.session_state['preview_items'][0], original[0])
+        self.assertEqual(app.session_state['preview_items'][1]['notes'], 'Only the selected card')
+        self.assertEqual(len(app.get('toast')), 1)
+        self.assertEqual(len(app.number_input), 1)
 
     def test_empty_list_has_localized_message_and_count_without_table(self):
         source = (Path(__file__).resolve().parents[1] / 'prototypes' / 'collection_preview.py').read_text(encoding='utf-8')
