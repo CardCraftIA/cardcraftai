@@ -1,4 +1,4 @@
-"""Search suggestions only. Does not participate in catalog confirmation."""
+"""Shared local search primitives; never used to confirm catalog identity or charge credits."""
 import unicodedata
 from difflib import SequenceMatcher
 
@@ -19,6 +19,16 @@ def normalize_search(value, fold_accents=True):
     return ' '.join(text.split())
 
 
+SEARCH_FIELDS = ('card_name', 'set_name', 'card_number', 'condition', 'language', 'variant')
+
+
+def fuzzy_similarity(needle, candidate):
+    """Compare normalized names while preserving gender identity symbols."""
+    if {c for c in needle if c in '♀♂'} != {c for c in candidate if c in '♀♂'}:
+        return 0.0
+    return SequenceMatcher(None, needle, candidate, autojunk=False).ratio()
+
+
 def rank_entries(query, entries, limit=5):
     needle = normalize_search(query)
     if len(needle) < 3:
@@ -36,9 +46,7 @@ def rank_entries(query, entries, limit=5):
         elif needle in value:
             priority, score = 2, len(needle) / len(value)
         else:
-            if {c for c in needle if c in '♀♂'} != {c for c in value if c in '♀♂'}:
-                continue
-            score = SequenceMatcher(None, needle, value, autojunk=False).ratio()
+            score = fuzzy_similarity(needle, value)
             if score < FUZZY_CUTOFF:
                 continue
             priority = 3
@@ -52,3 +60,38 @@ def rank_entries(query, entries, limit=5):
 def rank_names(query, names, limit=5):
     entries = [dict(display_name=name, normalized_name=normalize_search(name)) for name in names]
     return [entry['display_name'] for entry in rank_entries(query, entries, limit)]
+
+
+def search_collection(items, query):
+    """Exact field matches precede partial matches; never return fuzzy results silently."""
+    needle = normalize_search(query)
+    if not needle:
+        return list(items)
+    ranked = []
+    for item in items:
+        fields = [normalize_search(item.get(field, '')) for field in SEARCH_FIELDS]
+        if needle in fields:
+            ranked.append((0, item))
+        elif any(needle in value for value in fields) or needle in ' '.join(fields):
+            # A supplied denominator must match the complete number, not its tail.
+            if '/' in needle and any(char.isdigit() for char in needle):
+                continue
+            ranked.append((1, item))
+    return [item for _, item in sorted(ranked, key=lambda pair: pair[0])]
+
+
+def suggest_collection_names(items, query):
+    """At most five distinct saved names from the already filtered private records."""
+    needle = normalize_search(query)
+    if len(needle) < 3 or search_collection(items, query):
+        return []
+    candidates = {}
+    for item in items:
+        name = item.get('card_name', '')
+        normalized = normalize_search(name)
+        if not normalized:
+            continue
+        score = fuzzy_similarity(needle, normalized)
+        if score >= FUZZY_CUTOFF and normalized not in candidates:
+            candidates[normalized] = (score, name)
+    return [name for _, name in sorted(candidates.values(), key=lambda pair: (-pair[0], pair[1]))[:5]]
