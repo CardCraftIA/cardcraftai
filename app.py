@@ -45,13 +45,170 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .block-container {
-        max-width: 1200px;
-        padding-top: 3.25rem;
-        padding-bottom: 2rem;
+    :root {
+        --cc-surface: rgba(17, 28, 46, 0.82);
+        --cc-surface-strong: rgba(20, 33, 54, 0.96);
+        --cc-border: rgba(148, 163, 184, 0.18);
+        --cc-muted: #9fb0c7;
+        --cc-violet: #8b6cff;
+        --cc-blue: #38bdf8;
+        --cc-glow: rgba(124, 92, 252, 0.18);
     }
 
-    /* Reliability 2.6.16: evita recorte vertical de rótulos no topo. */
+    html, body, [class*="st-"] {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    [data-testid="stAppViewContainer"] {
+        background:
+            radial-gradient(circle at 88% 5%, rgba(124, 92, 252, 0.14), transparent 26rem),
+            radial-gradient(circle at 12% 92%, rgba(56, 189, 248, 0.08), transparent 30rem),
+            #0B1220;
+    }
+
+    [data-testid="stHeader"] {
+        background: rgba(11, 18, 32, 0.76);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+    }
+
+    .block-container {
+        max-width: 1280px;
+        padding-top: 2.15rem;
+        padding-bottom: 3rem;
+        padding-left: clamp(1rem, 3vw, 2.25rem);
+        padding-right: clamp(1rem, 3vw, 2.25rem);
+    }
+
+    [data-testid="stSidebar"] {
+        background:
+            linear-gradient(180deg, rgba(17, 28, 46, 0.98) 0%, rgba(8, 15, 28, 0.98) 100%);
+        border-right: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    [data-testid="stSidebar"] [data-testid="stMetric"] {
+        background: rgba(124, 92, 252, 0.10);
+    }
+
+    .cc-hero {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: clamp(1.25rem, 2.5vw, 2rem);
+        margin-bottom: 1.35rem;
+        border: 1px solid rgba(139, 108, 255, 0.28);
+        border-radius: 22px;
+        background:
+            linear-gradient(135deg, rgba(124, 92, 252, 0.16), rgba(17, 28, 46, 0.74) 46%, rgba(56, 189, 248, 0.08));
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.22);
+    }
+
+    .cc-hero::after {
+        content: "";
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        right: -65px;
+        top: -95px;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(139, 108, 255, 0.28), transparent 68%);
+        pointer-events: none;
+    }
+
+    .cc-brand-row {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+    }
+
+    .cc-brand-icon {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        border-radius: 15px;
+        background: linear-gradient(145deg, #8b6cff, #4f46e5 58%, #2563eb);
+        box-shadow: 0 10px 26px rgba(79, 70, 229, 0.36);
+        font-size: 1.45rem;
+    }
+
+    .cc-kicker {
+        color: #a9b8cb;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        margin-bottom: 0.15rem;
+    }
+
+    .cc-hero h1 {
+        margin: 0;
+        font-size: clamp(1.65rem, 3vw, 2.4rem);
+        line-height: 1.05;
+        letter-spacing: -0.035em;
+        color: #f8fafc;
+    }
+
+    .cc-hero h1 span {
+        color: #9f8cff;
+        font-weight: 650;
+    }
+
+    .cc-hero p {
+        margin: 0.65rem 0 0;
+        max-width: 760px;
+        color: #a9b8cb;
+        font-size: 0.98rem;
+        line-height: 1.6;
+    }
+
+    .cc-hero-stats {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.55rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .cc-pill {
+        white-space: nowrap;
+        padding: 0.62rem 0.82rem;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(8, 15, 28, 0.68);
+        color: #e5e7eb;
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .cc-login-hero {
+        margin: 0 auto 1.6rem;
+        padding: 1.5rem 1.65rem;
+        border-radius: 22px;
+        border: 1px solid rgba(139, 108, 255, 0.24);
+        background: linear-gradient(135deg, rgba(124, 92, 252, 0.16), rgba(17, 28, 46, 0.86));
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.20);
+    }
+
+    .cc-login-hero h1 {
+        margin: 0;
+        color: #f8fafc;
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        letter-spacing: -0.04em;
+    }
+
+    .cc-login-hero p {
+        margin: 0.65rem 0 0;
+        color: #a9b8cb;
+        line-height: 1.55;
+    }
+
+    /* Reliability: evita recorte vertical de rótulos no topo. */
     div[data-testid="stSelectbox"] label,
     div[data-testid="stTextInput"] label,
     div[data-testid="stFileUploader"] label,
@@ -72,14 +229,97 @@ st.markdown(
     }
 
     div[data-testid="stMetric"] {
-        border: 1px solid rgba(120, 120, 120, 0.25);
+        border: 1px solid var(--cc-border);
         padding: 16px;
-        border-radius: 12px;
+        border-radius: 16px;
+        background: var(--cc-surface);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
     }
 
-    .stButton > button {
-        border-radius: 8px;
-        font-weight: 600;
+    div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .stButton > button,
+    .stLinkButton > a {
+        min-height: 2.7rem;
+        border-radius: 12px !important;
+        border: 1px solid rgba(139, 108, 255, 0.28) !important;
+        font-weight: 700 !important;
+        transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    .stButton > button:hover,
+    .stLinkButton > a:hover {
+        transform: translateY(-1px);
+        border-color: rgba(139, 108, 255, 0.72) !important;
+        box-shadow: 0 10px 28px rgba(124, 92, 252, 0.16);
+    }
+
+    button[kind="primary"] {
+        background: linear-gradient(135deg, #7c5cff, #5b48e8) !important;
+        border-color: transparent !important;
+        box-shadow: 0 10px 24px rgba(92, 72, 232, 0.28) !important;
+    }
+
+    [data-testid="stTextInput"] input,
+    [data-testid="stNumberInput"] input,
+    [data-testid="stSelectbox"] > div > div {
+        border-radius: 12px !important;
+    }
+
+    [data-testid="stTabs"] [data-baseweb="tab-list"] {
+        gap: 0.4rem;
+        background: rgba(17, 28, 46, 0.56);
+        padding: 0.32rem;
+        border-radius: 14px;
+    }
+
+    [data-testid="stTabs"] button[role="tab"] {
+        border-radius: 10px;
+        padding-left: 0.95rem;
+        padding-right: 0.95rem;
+    }
+
+    [data-testid="stAlert"] {
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.13);
+    }
+
+    [data-testid="stExpander"] {
+        border-radius: 14px !important;
+        border-color: rgba(148, 163, 184, 0.16) !important;
+        overflow: hidden;
+    }
+
+    [data-testid="stFileUploaderDropzone"],
+    [data-testid="stCameraInput"] {
+        border-radius: 16px;
+    }
+
+    div[data-testid="stImage"] img {
+        border-radius: 16px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.20);
+    }
+
+    hr {
+        border-color: rgba(148, 163, 184, 0.12) !important;
+    }
+
+    @media (max-width: 760px) {
+        .block-container {
+            padding-top: 1.35rem;
+        }
+
+        .cc-hero {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .cc-hero-stats {
+            justify-content: flex-start;
+        }
     }
     </style>
     """,
@@ -8003,9 +8243,21 @@ def tela_login():
         "idioma_login_widget",
     )
 
-    st.title("🃏 CardCraftAI")
-    st.subheader(t("tagline_login", idioma))
-    st.divider()
+    st.markdown(
+        f"""
+        <div class="cc-login-hero">
+            <div class="cc-brand-row">
+                <div class="cc-brand-icon">🃏</div>
+                <div>
+                    <div class="cc-kicker">TCG Intelligence</div>
+                    <h1>CardCraftAI</h1>
+                </div>
+            </div>
+            <p>{escape(t("tagline_login", idioma))}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.header(t("access_account", idioma))
     auth_status = st.session_state.get("auth_status")
     if auth_status in {"expired", "error", "email_unconfirmed"}:
@@ -8293,7 +8545,16 @@ def traduzir_pacote_ui(pacote, idioma):
 
 idioma = idioma_interface_atual()
 
-st.sidebar.title(t("panel", idioma))
+st.sidebar.markdown(
+    """
+    <div style="padding:0.35rem 0 0.15rem;">
+        <div style="font-size:0.72rem;font-weight:800;letter-spacing:0.16em;color:#9fb0c7;">CARDCRAFTAI</div>
+        <div style="font-size:1.35rem;font-weight:800;letter-spacing:-0.03em;color:#f8fafc;">TCG Intelligence</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+st.sidebar.caption(f"{t('panel', idioma)} · v{APP_VERSION}")
 
 st.sidebar.write(t("account", idioma))
 
@@ -8367,13 +8628,27 @@ if st.sidebar.button(
 # CABEÇALHO
 # ============================================================
 
-st.title(
-    "🃏 CardCraftAI"
+st.markdown(
+    f"""
+    <div class="cc-hero">
+        <div>
+            <div class="cc-brand-row">
+                <div class="cc-brand-icon">🃏</div>
+                <div>
+                    <div class="cc-kicker">TCG Intelligence</div>
+                    <h1>CardCraftAI <span>Workspace</span></h1>
+                </div>
+            </div>
+            <p>{escape(t("tagline_app", idioma))}</p>
+        </div>
+        <div class="cc-hero-stats">
+            <span class="cc-pill">💎 {creditos} {escape(t("credits_word", idioma))}</span>
+            <span class="cc-pill">◈ {escape(plano_exibicao)}</span>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
-
-st.caption(t("tagline_app", idioma))
-
-st.divider()
 
 if st.session_state.aviso_recuperacao:
     st.info(
