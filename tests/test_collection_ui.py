@@ -208,6 +208,27 @@ class CollectionUITests(unittest.TestCase):
         self.assertTrue(next(b for b in app.button if b.label == 'Preparar arquivo').disabled)
         self.assertTrue(any('Nenhuma carta' in info.value for info in app.info))
 
+    def test_fuzzy_click_preserves_filters_metrics_and_export(self):
+        app = self.editor()
+        metrics = [metric.value for metric in app.metric]
+        self.select(app, 'Coleção').select('Favoritos').run()
+        next(c for c in app.checkbox if c.label == 'Somente lista de desejos').check().run()
+        app.text_input[0].set_value('Picachu').run()
+        self.assertFalse(app.number_input)
+        self.assertTrue(any(c.value == 'Você quis dizer?' for c in app.caption))
+        next(b for b in app.button if b.label == 'Pikachu').click().run()
+        self.assertEqual(app.text_input[0].value, 'Pikachu')
+        self.assertFalse(app.number_input)
+        self.assertEqual(self.select(app, 'Coleção').value, 'Favoritos')
+        self.assertTrue(next(c for c in app.checkbox if c.label == 'Somente lista de desejos').value)
+        self.assertEqual([metric.value for metric in app.metric], metrics)
+        with patch('collection.export_collection', return_value=b'export') as export:
+            next(b for b in app.button if b.label == 'Preparar arquivo').click().run()
+            self.assertEqual([row['card_name'] for row in export.call_args.args[0]], ['Pikachu'])
+        app.text_input[0].set_value('Picachu').run()
+        self.select(app, 'Coleção').select('Promos').run()
+        self.assertFalse(any(b.label == 'Pikachu' for b in app.button))
+
     def test_editors_are_outside_card_columns(self):
         app = self.editor()
         form_ancestors = []

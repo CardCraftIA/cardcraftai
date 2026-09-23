@@ -2,6 +2,7 @@
 from urllib.parse import urlparse
 from html import escape
 from collection_exports import export_collection
+from search_utils import search_collection, suggest_collection_names
 
 CONDITIONS = ('Not assessed', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged')
 CARD_LANGUAGES = ('', 'English', 'Portuguese', 'Spanish', 'Japanese', 'Korean', 'French', 'German', 'Italian', 'Chinese', 'Other')
@@ -211,14 +212,28 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
     if not items:
         st.info(tr('Busque uma carta no catálogo e use “Adicionar à coleção”.', 'Find a card in the catalog and use “Add to collection”.'))
         return
+    search_key = f'collection_search_{user_id}'
+
+    def apply_suggestion(name):
+        st.session_state[search_key] = name
+
     with st.container(key='collection_toolbar'):
         search_col, set_col = st.columns([2, 1])
-        query = search_col.text_input(tr('Buscar no acervo', 'Search your binder'), placeholder=tr('Nome, coleção ou número…', 'Name, set or number…')).casefold().strip()
+        query = search_col.text_input(tr('Buscar em minha coleção', 'Search my collection'),
+                                     placeholder=tr('Nome, set, número, condição, idioma ou variante…', 'Name, set, number, condition, language or variant…'),
+                                     key=search_key)
         chosen_set = set_col.selectbox(tr('Coleção', 'Set'), [''] + sorted({x['set_name'] for x in items if x['set_name']}), format_func=lambda value: value or tr('Todas as coleções', 'All sets'))
         wishes = st.checkbox(tr('Somente lista de desejos', 'Wishlist only'))
         view_col, export_col = st.columns([1, 2])
         view = view_col.radio(tr('Visualização', 'View'), ['album', 'list'], format_func=lambda value: tr('Álbum', 'Album') if value == 'album' else tr('Lista', 'List'), horizontal=True)
-    shown = [x for x in items if (not wishes or x['wishlist']) and (not chosen_set or x['set_name'] == chosen_set) and query in f"{x['card_name']} {x['set_name']} {x['card_number']}".casefold()]
+    eligible = [x for x in items if (not wishes or x['wishlist']) and (not chosen_set or x['set_name'] == chosen_set)]
+    shown = search_collection(eligible, query)
+    suggestions = suggest_collection_names(eligible, query) if not shown else []
+    if suggestions:
+        st.caption(tr('Você quis dizer?', 'Did you mean?'))
+        for index, name in enumerate(suggestions):
+            st.button(name, key=f'collection_suggestion_{user_id}_{index}',
+                      on_click=apply_suggestion, args=(name,))
     with export_col.expander(tr('↓ Exportar coleção', '↓ Export collection')):
         st.caption(tr('Exporta todos os registros filtrados. PDF e Word são relatórios textuais nesta etapa.', 'Exports all filtered entries. PDF and Word are text reports at this stage.'))
         include_notes = st.checkbox(tr('Incluir notas privadas no arquivo', 'Include private notes in file'), key='collection_export_notes')
