@@ -17,7 +17,7 @@ number denominators, and suggestions limited to the owner's Set/Wishlist results
 Private notes are excluded. No private data enters the public cache.
 
 Run the entire suite with `python -B scripts/run_tests.py` after installing
-`requirements-dev.txt`. The runner blocks real HTTP and socket connections and
+`requirements-dev.txt`. The runner blocks real HTTP and external socket connections (local asyncio IPC is allowed) and
 fails if any test is skipped. No credentials are supplied or loaded. Catalog
 UI tests extract the real page with fake clients; collection UI tests use the
 in-memory preview. Operational tests extract real functions without executing
@@ -28,7 +28,7 @@ unavailable external catalog, collection fields and legacy values, Set/Wishlist,
 Album/List/grid/editor, suggestion clicks, exports, metrics, no-network searches,
 unchanged free-search credit balances, and paid-analysis failure orchestration.
 
-GitHub Actions runs on pushes and pull requests **targeting `codex/**` branches**,
+GitHub Actions runs on pushes to `codex/**` and pull requests targeting `main` or `codex/**`,
 on Python 3.12 and 3.14. It installs dev requirements, runs `pip check`, the full
 offline suite, and a whitespace diff check. New-branch pushes check the tip commit;
 later pushes check all changes since the previous remote tip, and PRs compare
@@ -62,7 +62,8 @@ checkout credentials are not persisted, and no deploy or migration job exists.
   proven by these offline tests. Validate them in TEST before a production rollout.
 - Full catalog searches still perform sequential detail requests and may fall
   back to the legacy provider. They can be slower than local suggestions; changing
-  their retry/cache/ranking architecture remains outside this consolidation.
+  the RC bounds detail requests and propagates refresh through cache layers, but
+  sequential provider timeouts can still delay complete searches.
 - Requirements use lower bounds rather than a complete lockfile. CI validates a
   clean installation, but future dependency releases can change compatibility.
 - Streamlit reports deprecation warnings for existing `use_container_width`
