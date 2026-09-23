@@ -19,6 +19,7 @@ from google.genai import errors, types
 from PIL import Image
 from supabase import create_client
 from collection import catalog_record, render_collection
+from catalog_search import render_suggestions
 
 
 # ============================================================
@@ -1276,6 +1277,24 @@ for _language, _messages in {
     '日本語': ('変更を正常に保存しました。', '変更を保存できませんでした。入力内容は保持されています。もう一度お試しください。', '保存中…'),
 }.items():
     UI_TEXT[_language].update(zip(('collection_saved', 'collection_save_error', 'collection_saving'), _messages))
+
+
+for _language, _messages in {
+    'English': ('Did you mean?', 'Search suggestions are temporarily unavailable.', 'Representative image; several editions may exist. Choose a name, then click Search catalog.', 'Image unavailable', 'No matching cards found.', 'The catalog is temporarily unavailable.'),
+    'Português (BR)': ('Você quis dizer?', 'As sugestões de busca estão temporariamente indisponíveis.', 'Imagem representativa; pode haver várias edições. Escolha um nome e clique em Buscar no catálogo.', 'Imagem indisponível', 'Nenhuma carta correspondente encontrada.', 'O catálogo está temporariamente indisponível.'),
+    'Español': ('¿Quisiste decir?', 'Las sugerencias están temporalmente no disponibles.', 'Imagen representativa; puede haber varias ediciones. Elige un nombre y pulsa Buscar en el catálogo.', 'Imagen no disponible', 'No se encontraron cartas coincidentes.', 'El catálogo está temporalmente no disponible.'),
+    '日本語': ('もしかして？', '検索候補は一時的に利用できません。', '代表画像です。複数の版が存在する場合があります。名前を選び、カタログ検索を押してください。', '画像なし', '一致するカードが見つかりませんでした。', 'カタログは一時的に利用できません。'),
+}.items():
+    UI_TEXT[_language].update(zip(('search_did_you_mean', 'search_suggestions_unavailable', 'search_representative_image', 'search_image_unavailable', 'search_no_matches', 'search_catalog_unavailable'), _messages))
+
+
+for _language, _hint in {
+    'English': 'Press Enter to see name suggestions.',
+    'Português (BR)': 'Pressione Enter para ver sugestões de nomes.',
+    'Español': 'Pulsa Enter para ver sugerencias de nombres.',
+    '日本語': 'Enterキーを押すと名前の候補が表示されます。',
+}.items():
+    UI_TEXT[_language]['search_suggestions_hint'] = _hint
 
 
 def idioma_interface_atual():
@@ -5623,6 +5642,11 @@ def limpar_selecao_catalogo_nome():
     st.session_state.catalogo_consulta_nome = None
 
 
+def escolher_sugestao_catalogo_nome(nome):
+    st.session_state.termo_busca = nome
+    limpar_selecao_catalogo_nome()
+
+
 def limpar_sessao():
 
     st.session_state.access_token = None
@@ -8649,6 +8673,8 @@ elif pagina == "search":
             on_change=limpar_selecao_catalogo_nome,
         )
 
+        st.caption(t("search_suggestions_hint", idioma))
+
     with col2:
         colecao_busca = st.text_input(
             t("set_name", idioma),
@@ -8656,6 +8682,11 @@ elif pagina == "search":
             key="colecao_busca",
             on_change=limpar_selecao_catalogo_nome,
         )
+
+    render_suggestions(
+        st, termo_busca, lambda key: t(key, idioma),
+        escolher_sugestao_catalogo_nome, provider="tcgdex", language="en",
+    )
 
     if st.button(
         t("search_catalog", idioma),
@@ -8697,7 +8728,7 @@ elif pagina == "search":
                     st.session_state.catalogo_selecionada_nome = None
 
                     st.error(
-                        t("catalog_error", idioma)
+                        t("search_catalog_unavailable", idioma)
                     )
                     status_catalogo = _status_http_catalogo_erro(erro)
                     if status_catalogo in {500, 502, 503, 504}:
@@ -8764,7 +8795,7 @@ elif pagina == "search":
             )
         else:
             st.warning(
-                t("no_catalog_results", idioma)
+                t("search_no_matches", idioma)
             )
 
     st.divider()
