@@ -2,10 +2,12 @@
 
 Work branch: `codex/cardcraftai-integration`. No production operations, Secrets
 changes, main merge, or deletion of original branches/stashes are part of this RC.
+Final technical pass began at `1c1d1b5daf46688e39e78cccc24438ba0114062b`,
+with a clean tree and `0 / 0` divergence after `git fetch origin`.
 
 ## AUTOMATICALLY VERIFIED
 
-- Full offline suite: **116 passing, no skipped tests**. Command:
+- Full offline suite: **128 passing, no skipped tests**. Command:
   `python -B scripts/run_tests.py`. HTTP and external sockets are blocked;
   loopback IPC remains available for Streamlit/asyncio on Windows.
 - Clean installation from `requirements-dev.txt` on Python 3.14; `pip check`
@@ -27,6 +29,15 @@ changes, main merge, or deletion of original branches/stashes are part of this R
   Pikatchu 76 ms. Pikachu ranks first for each; Picachu also suggests Pichu.
   A synthetic 5,000-row collection search took 148 ms. These are local timings,
   not promises about full external catalog requests.
+- Final technical audit: all seven existing authenticated routes render in four
+  languages with explicit fake clients; actual sidebar callbacks preserve the
+  fixture credit balance. These checks do not establish live authentication/RLS.
+  Login was inspected at 1440px and 390px with no document horizontal overflow. There is
+  no separate Home route; the authenticated landing page is Photo Analysis.
+- This pass additionally clears prior photo/history evidence on identity change,
+  distinguishes purchase-history outages from empty results, translates the
+  collection sidebar entry in Spanish/Japanese, and removes a remaining
+  post-analysis diagnostic from the visible warning. Regression tests cover each.
 - Collection grid/editor, filters, metrics, legacy values, exports, both search
   flows, exact-name suppression, offline snapshot failures and free searches
   remain covered. Confidence Engine criteria and stored schema are unchanged.
@@ -69,6 +80,22 @@ catalog export. No claim of complete provider pagination is made.
 These are production-readiness gates, not proven by mocks. They require TEST
 service access and can be automated once a dedicated environment is available.
 
+**2026-09-23 actual-service results:** approved TEST URL matched; Auth health and
+Auth settings with the public key returned HTTP 200. A randomly named nonexistent
+account was rejected with HTTP 400 / `invalid_credentials`, without a session.
+REST schema requests returned HTTP 401, including the standard Authorization
+header; the administrative key specifically received `Invalid API key`. The
+public key works with Auth and must not be described as globally invalid.
+Signup/email confirmation, two-user authenticated flows, effective RLS and credit
+RPC verification are **BLOCKED**: no controlled TEST inbox/account credentials
+were supplied and administrative provisioning is unavailable. The anonymous
+collection request also returned 401; this alone does not prove owner isolation.
+No credentials were modified, accounts created or stored rows changed.
+TCGdex returned HTTP 200 and the expected Pikachu for `base1-58`. Gemini model
+metadata was accessible, including both configured primary/fallback models;
+no generation or end-to-end charged analysis was run.
+The latter remains **BLOCKED** by unavailable TEST Auth/credit/audit integration.
+
 - Supabase signup/email confirmation, login, expiration/refresh, recovery and
   logout against actual Auth configuration. Verify profile creation, initial
   credits and legal acceptance with two independent accounts.
@@ -88,6 +115,10 @@ service access and can be automated once a dedicated environment is available.
   webhook signature and provider-side payment lookup, pending/approved/rejected,
   duplicate/reordered delivery and exactly-once credit fulfillment. Use TEST
   buyers only. Confirm returned checkout URL matches the Brazilian allowlist.
+  `payment_webhook.py` now supplies tested signature verification and an
+  authenticated fixed-host provider lookup, but is not wired to an endpoint.
+  It cannot grant credits or prove fulfillment. Payments are **NOT READY TO SELL**.
+  See [payment audit](payment-audit.md) for the missing transactional contract.
 - Real Gemini analysis and audit/completion/refund across failures, and TCGdex
   timeout/availability behavior. No paid analysis or payment was performed here.
 - Deployment service configuration, required Secrets, package runtime and

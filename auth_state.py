@@ -3,7 +3,7 @@
 
 def clear_identity(state, status='signed_out'):
     for key in list(state):
-        if key.startswith('collection_'):
+        if key.startswith(('collection_', 'catalogo_validacao_foto_', 'historico_')):
             del state[key]
     for key in ('resultado_analise', 'resultado_tipo', 'analysis_run_id_atual',
                 'analysis_request_id_atual', 'analysis_tipo_atual', 'checkout_preference',
@@ -11,6 +11,12 @@ def clear_identity(state, status='signed_out'):
         state[key] = None
     state['catalogo_resultados_nome'] = []
     state['analysis_in_progress'] = False
+    state['analise_reaberta_historico'] = False
+    state['aviso_analise_reaberta'] = False
+    state['aviso_auditoria'] = None
+    state['aviso_credito'] = None
+    state['aviso_recuperacao'] = None
+    state['ultima_recuperacao_runs'] = None
     for key in ('access_token', 'refresh_token', 'user_id', 'user_email'):
         state[key] = None
     state['email_confirmado'] = False

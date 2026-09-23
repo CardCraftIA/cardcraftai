@@ -5895,7 +5895,7 @@ def buscar_compras_usuario(
 
     except Exception:
 
-        return []
+        return None
 
 
 def formatar_data_conta(valor):
@@ -8328,7 +8328,7 @@ if st.session_state.get("pagina_navegacao_widget") != pagina_atual:
 st.sidebar.radio(
     t("navigation", idioma),
     NAVIGATION_OPTIONS,
-    format_func=lambda pagina_id: ("🃏 Minha coleção" if idioma == "Português (BR)" else "🃏 My collection") if pagina_id == "collection" else t({
+    format_func=lambda pagina_id: ("🃏 Minha coleção" if idioma == "Português (BR)" else "🃏 " + t("collection_ui:My collection", idioma)) if pagina_id == "collection" else t({
         "photo": "nav_photo",
         "search": "nav_search",
         "plans": "nav_plans",
@@ -8869,13 +8869,7 @@ elif pagina == "search":
                             )
 
                     except Exception as erro_catalogo_pos_analise:
-                        st.session_state.aviso_auditoria = (
-                            "A análise foi concluída e preservada. "
-                            "A etapa complementar de registro do catálogo "
-                            "falhou, mas nenhum novo crédito é necessário. "
-                            f"Detalhe técnico: "
-                            f"{_sanitizar_detalhe_tecnico(erro_catalogo_pos_analise, 600)}"
-                        )
+                        st.session_state.aviso_auditoria = t("catalog_audit_failed", idioma)
 
                 st.rerun()
 
@@ -9021,7 +9015,9 @@ elif pagina == "account":
 
     compras = buscar_compras_usuario()
 
-    if not compras:
+    if compras is None:
+        st.warning(t("purchase_history_error", idioma))
+    elif not compras:
         st.info(
             t("no_purchases", idioma)
         )
