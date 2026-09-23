@@ -7,6 +7,7 @@ import time
 import unittest
 from unittest.mock import Mock
 import uuid
+from security_utils import redact_diagnostic
 
 SOURCE = (Path(__file__).resolve().parents[1] / 'app.py').read_text(encoding='utf-8')
 
@@ -41,8 +42,9 @@ class OperationalSafetyTests(unittest.TestCase):
         ns = app_definitions(
             'CardCraftOperationalError', '_sanitizar_detalhe_tecnico',
             '_classificar_erro_gemini', '_mensagem_falha_credito_pos_analise',
-            'executar_analise_com_credito',
+            'executar_analise_com_credito', '_executar_analise_reservada',
             st=SimpleNamespace(session_state=state), uuid=uuid, time=time,
+            redact_diagnostic=redact_diagnostic, t=lambda key, *args: key,
             GEMINI_API_KEY='', SUPABASE_KEY='', SUPABASE_SERVICE_ROLE_KEY='',
             POKEMON_TCG_API_KEY='', AI_MODEL='fake-model',
             reservar_credito=Mock(), iniciar_registro_analise=Mock(return_value='run'),
@@ -61,6 +63,43 @@ class OperationalSafetyTests(unittest.TestCase):
         self.assertEqual(ns['falhar_registro_analise'].call_args.args[1], 'selected_catalog_identity_lock_failed')
         ns['concluir_uso_credito'].assert_not_called()
         self.assertEqual(ns['reservar_credito'].call_args.args[1], ns['devolver_credito'].call_args.args[0])
+
+    def test_reentrant_analysis_does_not_reserve_twice(self):
+        ns, state = self.analysis()
+        def analyze(**kwargs):
+            self.assertTrue(state.analysis_in_progress)
+            with self.assertRaises(RuntimeError):
+                ns['executar_analise_com_credito']('English')
+            return {'name': 'Pikachu'}, 'fake-model'
+        ns['analisar_carta'].side_effect = analyze
+        ns['executar_analise_com_credito']('English')
+        ns['reservar_credito'].assert_called_once()
+        self.assertFalse(state.analysis_in_progress)
+        self.assertEqual(state.analysis_request_id_atual, str(ns['reservar_credito'].call_args.args[1]))
+
+    def test_reservation_failure_never_calls_ai_and_releases_busy_state(self):
+        ns, state = self.analysis()
+        ns['reservar_credito'].side_effect = RuntimeError('reservation unavailable')
+        with self.assertRaises(RuntimeError): ns['executar_analise_com_credito']('English')
+        ns['analisar_carta'].assert_not_called()
+        ns['devolver_credito'].assert_not_called()
+        self.assertFalse(state.analysis_in_progress)
+        self.assertTrue(state.analysis_request_id_atual)
+
+    def test_audit_start_failure_refunds_before_any_ai_call(self):
+        ns, _ = self.analysis()
+        ns['iniciar_registro_analise'].side_effect = RuntimeError('audit unavailable')
+        with self.assertRaises(RuntimeError): ns['executar_analise_com_credito']('English')
+        ns['devolver_credito'].assert_called_once()
+        ns['analisar_carta'].assert_not_called()
+
+    def test_audit_completion_failure_still_charges_once_without_repeating_ai(self):
+        ns, _ = self.analysis()
+        ns['concluir_registro_analise'].side_effect = RuntimeError('audit unavailable')
+        ns['executar_analise_com_credito']('English')
+        ns['analisar_carta'].assert_called_once()
+        ns['concluir_uso_credito'].assert_called_once()
+        ns['devolver_credito'].assert_not_called()
 
     def test_failed_refund_does_not_claim_success_or_retry(self):
         ns, state = self.analysis()

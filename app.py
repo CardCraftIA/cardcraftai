@@ -16,10 +16,14 @@ import requests
 import streamlit as st
 from google import genai
 from google.genai import errors, types
-from PIL import Image
 from supabase import create_client
 from collection import catalog_record, render_collection
 from catalog_search import render_suggestions
+from auth_state import accept_session, confirmed_email, restore_session, clear_identity, auth_error_status
+from image_utils import load_upload
+from security_utils import redact_diagnostic
+from ui_messages import install_messages
+from payment_utils import package_code as validate_package_code, safe_checkout_url
 
 
 # ============================================================
@@ -1297,6 +1301,8 @@ for _language, _hint in {
     UI_TEXT[_language]['search_suggestions_hint'] = _hint
 
 
+install_messages(UI_TEXT)
+
 def idioma_interface_atual():
     if "idioma_interface" not in st.session_state:
         st.session_state.idioma_interface = "English"
@@ -2128,6 +2134,7 @@ def _executar_requisicao_catalogo(
 
 @st.cache_data(
     ttl=3600,
+    max_entries=256,
     show_spinner=False,
 )
 def consultar_catalogo_pokemon(
@@ -2264,6 +2271,7 @@ def consultar_catalogo_pokemon(
 
 @st.cache_data(
     ttl=3600,
+    max_entries=256,
     show_spinner=False,
 )
 def _set_id_catalogo_por_colecao(colecao):
@@ -2522,6 +2530,7 @@ def consultar_catalogo_pokemon_por_numero(
 
 @st.cache_data(
     ttl=3600,
+    max_entries=256,
     show_spinner=False,
 )
 def consultar_catalogo_pokemon_por_nome_e_colecao(
@@ -2787,12 +2796,14 @@ def ranquear_cartas_catalogo(
 
 @st.cache_data(
     ttl=3600,
+    max_entries=256,
     show_spinner=False,
 )
 def _executar_requisicao_tcgdex(
     caminho,
     params=None,
     tentativas=2,
+    cache_buster=0,
 ):
     """
     Reliability 2.6.30
@@ -2869,7 +2880,10 @@ def _executar_requisicao_tcgdex(
             ) from erro
 
         try:
-            return resposta.json()
+            payload = resposta.json()
+            if not isinstance(payload, (dict, list)):
+                raise ValueError('Unexpected catalog payload')
+            return payload
         except ValueError as erro:
             raise RuntimeError(
                 "O catálogo TCGdex respondeu em formato inválido."
@@ -3052,6 +3066,7 @@ def _adaptar_carta_tcgdex(
 
 @st.cache_data(
     ttl=3600,
+    max_entries=256,
     show_spinner=False,
 )
 def _resolver_set_tcgdex(
@@ -3069,7 +3084,7 @@ def _resolver_set_tcgdex(
         try:
             direto = _executar_requisicao_tcgdex(
                 f"sets/{set_id_sugerido}",
-                tentativas=2,
+                tentativas=2, cache_buster=cache_buster,
             )
         except RuntimeError:
             direto = None
@@ -3087,7 +3102,7 @@ def _resolver_set_tcgdex(
         params={
             "name": colecao,
         },
-        tentativas=2,
+        tentativas=2, cache_buster=cache_buster,
     )
 
     if not isinstance(resultado, list):
@@ -3130,7 +3145,7 @@ def _resolver_set_tcgdex(
 
     completo = _executar_requisicao_tcgdex(
         f"sets/{set_id}",
-        tentativas=2,
+        tentativas=2, cache_buster=cache_buster,
     )
 
     return (
@@ -3142,6 +3157,7 @@ def _resolver_set_tcgdex(
 
 @st.cache_data(
     ttl=3600,
+    max_entries=256,
     show_spinner=False,
 )
 def consultar_catalogo_tcgdex(
@@ -3180,7 +3196,7 @@ def consultar_catalogo_tcgdex(
     if set_id_sugerido and numero_principal:
         carta_direta = _executar_requisicao_tcgdex(
             f"cards/{set_id_sugerido}-{numero_principal}",
-            tentativas=2,
+            tentativas=2, cache_buster=cache_buster,
         )
 
         if isinstance(carta_direta, dict):
@@ -3232,7 +3248,7 @@ def consultar_catalogo_tcgdex(
         resultado = _executar_requisicao_tcgdex(
             "cards",
             params=params,
-            tentativas=2,
+            tentativas=2, cache_buster=cache_buster,
         )
 
         if isinstance(resultado, list):
@@ -3275,12 +3291,10 @@ def consultar_catalogo_tcgdex(
     )
 
     # Buscamos detalhes apenas dos candidatos que realmente serão úteis.
-    max_detalhes = max(
-        int(limite or 12) * 2,
-        16,
-    )
+    max_detalhes = min(max(int(limite or 12) * 2, 16), 48)
 
     adaptadas = []
+    erro_detalhe = None
     ids_vistos = set()
 
     for _, brief in candidatos[:max_detalhes]:
@@ -3293,10 +3307,13 @@ def consultar_catalogo_tcgdex(
 
         ids_vistos.add(card_id)
 
-        detalhe = _executar_requisicao_tcgdex(
-            f"cards/{card_id}",
-            tentativas=2,
-        )
+        try:
+            detalhe = _executar_requisicao_tcgdex(
+                f"cards/{card_id}", tentativas=1, cache_buster=cache_buster,
+            )
+        except RuntimeError as error:
+            erro_detalhe = error
+            continue
 
         if not isinstance(detalhe, dict):
             # Ainda conseguimos montar uma carta resumida.
@@ -3316,6 +3333,8 @@ def consultar_catalogo_tcgdex(
         if adaptada:
             adaptadas.append(adaptada)
 
+    if not adaptadas and erro_detalhe is not None:
+        raise erro_detalhe
     return adaptadas
 
 
@@ -3442,6 +3461,9 @@ def buscar_cartas_catalogo_pokemon(
             numero=numero,
             limite=limite,
         )
+
+    if erro_tcgdex is None:
+        return []
 
     # Se nenhum dos dois provedores conseguiu responder, preservamos
     # o erro mais informativo sem consumir crédito.
@@ -5128,7 +5150,7 @@ def _mostrar_falha_validacao_catalogo_foto(erro):
     else:
         st.warning(t("catalog_generic_failure"))
         if erro:
-            st.caption(str(erro))
+            st.caption(t("try_again_later"))
 
 def mostrar_catalogo_para_analise_foto(
     resultado,
@@ -5366,12 +5388,17 @@ def mostrar_catalogo_para_analise_foto(
 # GEMINI
 # ============================================================
 
-gemini_client = genai.Client(
-    api_key=GEMINI_API_KEY,
-    http_options=types.HttpOptions(
-        timeout=GEMINI_TIMEOUT_MS,
-    ),
-)
+try:
+    gemini_client = genai.Client(
+        api_key=GEMINI_API_KEY,
+        http_options=types.HttpOptions(
+            timeout=GEMINI_TIMEOUT_MS,
+        ),
+    )
+except Exception:
+    st.error(t("auth_error"))
+    st.stop()
+
 
 
 # ============================================================
@@ -5498,14 +5525,7 @@ if st.session_state.pricing_currency not in PRICING_CURRENCIES:
 # ============================================================
 
 def _email_confirmado_no_usuario(usuario):
-    """Retorna True somente quando o Supabase marca o e-mail como confirmado."""
-    if not usuario:
-        return False
-
-    return bool(
-        getattr(usuario, "email_confirmed_at", None)
-        or getattr(usuario, "confirmed_at", None)
-    )
+    return confirmed_email(usuario)
 
 
 # ============================================================
@@ -5519,68 +5539,17 @@ def criar_cliente_supabase():
         SUPABASE_KEY,
     )
 
-    access_token = st.session_state.get(
-        "access_token"
-    )
-
-    refresh_token = st.session_state.get(
-        "refresh_token"
-    )
-
-    if access_token and refresh_token:
-
-        try:
-            resposta = cliente.auth.set_session(
-                access_token,
-                refresh_token,
-            )
-
-            if resposta.session:
-
-                st.session_state.access_token = (
-                    resposta.session.access_token
-                )
-
-                st.session_state.refresh_token = (
-                    resposta.session.refresh_token
-                )
-
-            if resposta.user:
-
-                if _email_confirmado_no_usuario(
-                    resposta.user
-                ):
-
-                    st.session_state.user_id = (
-                        resposta.user.id
-                    )
-
-                    st.session_state.user_email = (
-                        resposta.user.email
-                    )
-
-                    st.session_state.email_confirmado = True
-
-                else:
-
-                    st.session_state.access_token = None
-                    st.session_state.refresh_token = None
-                    st.session_state.user_id = None
-                    st.session_state.user_email = None
-                    st.session_state.email_confirmado = False
-
-        except Exception:
-
-            st.session_state.access_token = None
-            st.session_state.refresh_token = None
-            st.session_state.user_id = None
-            st.session_state.user_email = None
-            st.session_state.email_confirmado = False
+    restore_session(cliente, st.session_state)
 
     return cliente
 
 
-supabase = criar_cliente_supabase()
+try:
+    supabase = criar_cliente_supabase()
+except Exception:
+    st.error(t("auth_error"))
+    st.stop()
+
 
 
 def criar_cliente_supabase_service():
@@ -5591,7 +5560,12 @@ def criar_cliente_supabase_service():
     )
 
 
-supabase_service = criar_cliente_supabase_service()
+try:
+    supabase_service = criar_cliente_supabase_service()
+except Exception:
+    st.error(t("auth_error"))
+    st.stop()
+
 
 
 # ============================================================
@@ -5599,40 +5573,7 @@ supabase_service = criar_cliente_supabase_service()
 # ============================================================
 
 def salvar_sessao(resposta):
-
-    if not resposta:
-        return False
-
-    if not resposta.session:
-        return False
-
-    if not resposta.user:
-        return False
-
-    if not _email_confirmado_no_usuario(
-        resposta.user
-    ):
-        return False
-
-    st.session_state.access_token = (
-        resposta.session.access_token
-    )
-
-    st.session_state.refresh_token = (
-        resposta.session.refresh_token
-    )
-
-    st.session_state.user_id = (
-        resposta.user.id
-    )
-
-    st.session_state.user_email = (
-        resposta.user.email
-    )
-
-    st.session_state.email_confirmado = True
-
-    return True
+    return accept_session(st.session_state, resposta)
 
 
 def limpar_selecao_catalogo_nome():
@@ -5648,6 +5589,13 @@ def escolher_sugestao_catalogo_nome(nome):
 
 
 def limpar_sessao():
+    clear_identity(st.session_state)
+    for key in list(st.session_state):
+        if key.startswith('collection_') or key in {
+            'senha_login', 'senha_cadastro', 'senha_confirmar', 'nova_senha_recuperacao',
+            'confirmar_nova_senha_recuperacao', 'recovery_link_processed', 'analysis_in_progress'
+        }:
+            del st.session_state[key]
 
     st.session_state.access_token = None
     st.session_state.refresh_token = None
@@ -5691,13 +5639,11 @@ def limpar_sessao():
 
 def usuario_logado():
 
-    return (
-        st.session_state.user_id is not None
-        and
-        st.session_state.access_token is not None
-        and
-        st.session_state.email_confirmado is True
-    )
+    return bool(st.session_state.get("user_id") and st.session_state.get("access_token")
+                and st.session_state.get("refresh_token")
+                and st.session_state.get("email_confirmado") is True
+                and st.session_state.get("auth_status") == "authenticated")
+
 
 
 PASSWORD_MIN_LENGTH = 8
@@ -5811,6 +5757,11 @@ def processar_link_recuperacao_senha():
         st.session_state.recovery_link_processed = None
 
         st.session_state.erro_recuperacao_senha = t("recovery_invalid")
+    finally:
+        for key in ("token_hash", "type"):
+            if key in st.query_params:
+                del st.query_params[key]
+
 
 
 def tela_redefinir_senha():
@@ -6121,10 +6072,7 @@ def criar_preferencia_mercadopago(package_code):
         or ""
     ).strip()
 
-    codigo = str(
-        package_code
-        or ""
-    ).strip().upper()
+    codigo = validate_package_code(package_code)
 
     if not access_token:
         raise RuntimeError(
@@ -6180,7 +6128,7 @@ def criar_preferencia_mercadopago(package_code):
         )
 
         if detalhe:
-            raise RuntimeError(str(detalhe))
+            raise RuntimeError("O serviço de pagamento não pôde iniciar o checkout.")
 
         raise RuntimeError(
             f"O serviço de pagamento respondeu com HTTP {resposta.status_code}."
@@ -6210,6 +6158,9 @@ def criar_preferencia_mercadopago(package_code):
         or ""
     ).strip().upper()
 
+    if pacote_retorno.get("currency") not in (None, "BRL"):
+        raise RuntimeError("O checkout retornou uma moeda inesperada.")
+
     if codigo_retorno and codigo_retorno != codigo:
         raise RuntimeError(
             "O checkout retornou um pacote diferente do solicitado."
@@ -6220,7 +6171,7 @@ def criar_preferencia_mercadopago(package_code):
             "O checkout foi criado sem identificador de preferência."
         )
 
-    if not checkout_url.startswith("https://"):
+    if not safe_checkout_url(checkout_url):
         raise RuntimeError(
             "O serviço de pagamento não retornou uma URL HTTPS válida."
         )
@@ -6687,7 +6638,7 @@ def atualizar_registro_catalogo(
             "catalog_status": "error",
             "catalog_http_status": http_status,
             "catalog_payload": {
-                "error": str(erro)[:4000],
+                "error": _sanitizar_detalhe_tecnico(erro),
             },
             "catalog_latency_ms": catalogo_latency_ms,
             "confidence_level": _nivel_confianca_banco(confianca),
@@ -6767,7 +6718,7 @@ def atualizar_registro_catalogo(
         st.session_state.aviso_auditoria = (
             "A análise foi preservada, mas o histórico técnico do catálogo "
             "não pôde ser atualizado nesta execução. "
-            f"Detalhe técnico: {_sanitizar_detalhe_tecnico(erro_auditoria, 600)}"
+            "Tente consultar o histórico novamente mais tarde."
         )
         return False
 
@@ -6806,12 +6757,7 @@ def _sanitizar_detalhe_tecnico(valor, limite=4000):
         st.session_state.get("refresh_token"),
     ]
 
-    for segredo in segredos:
-        segredo = str(segredo or "")
-        if segredo and len(segredo) >= 8:
-            texto = texto.replace(segredo, "[REDACTED]")
-
-    return texto[:limite]
+    return redact_diagnostic(texto, segredos, limite)
 
 
 def _classificar_erro_gemini(erro):
@@ -7212,9 +7158,25 @@ def executar_analise_com_credito(
     resultado_transformer=None,
 ):
 
+    if st.session_state.get("analysis_in_progress"):
+        raise RuntimeError(t("analysis_busy", idioma))
+    st.session_state.analysis_in_progress = True
+    request_id = uuid.uuid4()
+    st.session_state.analysis_request_id_atual = str(request_id)
+    try:
+        return _executar_analise_reservada(
+            idioma, request_id, imagem_pil, nome_carta_info, tipo_acao, resultado_transformer
+        )
+    finally:
+        st.session_state.analysis_in_progress = False
+
+
+def _executar_analise_reservada(
+    idioma, request_id, imagem_pil=None, nome_carta_info=None,
+    tipo_acao="analise", resultado_transformer=None,
+):
     # Cada análise recebe um identificador único, compartilhado entre
     # consumo de crédito e histórico técnico.
-    request_id = uuid.uuid4()
     run_id = None
 
     st.session_state.aviso_credito = None
@@ -7363,7 +7325,7 @@ def executar_analise_com_credito(
         st.session_state.aviso_auditoria = (
             "A análise foi concluída, mas o histórico técnico não pôde "
             "ser finalizado nesta execução. "
-            f"Detalhe técnico: {_sanitizar_detalhe_tecnico(erro_auditoria, 600)}"
+            "Tente consultar o histórico novamente mais tarde."
         )
 
     # ========================================================
@@ -8012,10 +7974,7 @@ def tela_aceite_legal_pendente():
                 st.rerun()
             except Exception as erro:
                 st.error(
-                    "Não foi possível registrar o aceite agora."
-                )
-                st.caption(
-                    f"Detalhe técnico: {erro}"
+                    t("legal_save_failed", idioma_legal)
                 )
 
     st.divider()
@@ -8048,6 +8007,9 @@ def tela_login():
     st.subheader(t("tagline_login", idioma))
     st.divider()
     st.header(t("access_account", idioma))
+    auth_status = st.session_state.get("auth_status")
+    if auth_status in {"expired", "error", "email_unconfirmed"}:
+        st.info(t("auth_" + auth_status, idioma))
 
     if st.session_state.senha_redefinida_sucesso:
         st.success(t("password_reset_success", idioma))
@@ -8093,9 +8055,10 @@ def tela_login():
                         st.success(t("login_success", idioma))
                         st.rerun()
                     else:
-                        st.error(t("session_failed", idioma))
-                except Exception:
-                    st.error(t("login_failed", idioma))
+                        st.error(t("auth_" + st.session_state.get("auth_status", "error"), idioma))
+                except Exception as error:
+                    clear_identity(st.session_state, auth_error_status(error))
+                    st.error(t("auth_" + st.session_state.auth_status, idioma))
                     st.info(t("check_credentials", idioma))
 
         if st.button(t("forgot_password", idioma), use_container_width=True, key="btn_mostrar_recuperacao_senha"):
@@ -8171,6 +8134,7 @@ def tela_login():
                         except Exception:
                             pass
                     limpar_sessao()
+                    st.session_state.auth_status = "email_unconfirmed"
                     st.success(t("signup_success", idioma))
                     st.info(t("confirmation_sent", idioma, email=email_cadastro))
                     st.warning(t("confirmation_required", idioma))
@@ -8219,14 +8183,7 @@ try:
     aceite_legal_vigente = buscar_aceite_legal_vigente()
 except Exception as erro:
     st.error(
-        "Não foi possível verificar os documentos legais da sua conta."
-    )
-    st.info(
-        "Por segurança, o acesso às funções do CardCraftAI permanece "
-        "bloqueado até essa verificação funcionar novamente."
-    )
-    st.caption(
-        f"Detalhe técnico: {erro}"
+        t("legal_check_failed")
     )
 
     if st.button(
@@ -8262,15 +8219,9 @@ perfil = buscar_perfil()
 if not perfil:
 
     st.error(
-        "Seu login funcionou, mas o perfil de créditos "
-        "não foi encontrado no Supabase."
+        t("profile_unavailable")
     )
 
-    st.info(
-        "Saia da conta e entre novamente. "
-        "Se continuar acontecendo, "
-        "precisaremos verificar o trigger."
-    )
 
     if st.button(
         "🚪 Sair e tentar novamente"
@@ -8545,8 +8496,7 @@ elif pagina == "photo":
                 st.error(t("upload_too_large", idioma, max_mb=MAX_UPLOAD_MB))
             else:
                 try:
-                    imagem = Image.open(uploaded_file)
-                    imagem.load()
+                    imagem = load_upload(uploaded_file, max_bytes=MAX_UPLOAD_BYTES)
 
                     st.image(
                         imagem,

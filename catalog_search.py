@@ -2,10 +2,10 @@
 import json
 import re
 from pathlib import Path
-from urllib.parse import urlparse
 
 import streamlit as st
 from search_utils import normalize_search, rank_entries
+from security_utils import safe_public_image
 
 INDEX_TTL = 24 * 60 * 60
 DATA_DIRECTORY = Path(__file__).resolve().parent / 'data'
@@ -17,8 +17,7 @@ class IndexUnavailable(RuntimeError):
 
 def representative_image(card):
     url = card.get('image', '').rstrip('/')
-    parsed = urlparse(url)
-    if parsed.scheme == 'https' and parsed.hostname == 'assets.tcgdex.net':
+    if safe_public_image(url, ('assets.tcgdex.net',)):
         return url + '/low.webp'
     return ''
 
@@ -38,9 +37,11 @@ def read_snapshot(path, provider='tcgdex', language='en'):
                 raise ValueError('Invalid entry')
             if not all(entry[key].strip() for key in fields[:3]) or entry['display_name'] in seen:
                 raise ValueError('Invalid name')
+            if entry['normalized_name'] != normalize_search(entry['display_name']):
+                raise ValueError('Invalid normalized name')
             seen.add(entry['display_name'])
             image = entry['representative_image']
-            if image and (urlparse(image).scheme != 'https' or urlparse(image).hostname != 'assets.tcgdex.net'):
+            if image and not safe_public_image(image, ('assets.tcgdex.net',)):
                 raise ValueError('Invalid image source')
         return entries
     except (OSError, ValueError, TypeError) as error:

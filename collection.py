@@ -1,8 +1,8 @@
 """Private collection: authenticated Supabase client only; no AI or credit calls."""
-from urllib.parse import urlparse
 from html import escape
 from collection_exports import export_collection
 from search_utils import search_collection, suggest_collection_names
+from security_utils import safe_public_image
 
 CONDITIONS = ('Not assessed', 'Near Mint', 'Lightly Played', 'Moderately Played', 'Heavily Played', 'Damaged')
 CARD_LANGUAGES = ('', 'English', 'Portuguese', 'Spanish', 'Japanese', 'Korean', 'French', 'German', 'Italian', 'Chinese', 'Other')
@@ -26,9 +26,7 @@ def collection_metrics(items):
 
 
 def safe_image(value):
-    value = str(value or '')
-    parsed = urlparse(value)
-    return value if parsed.scheme == 'https' and parsed.hostname in {'assets.tcgdex.net', 'images.pokemontcg.io'} else ''
+    return safe_public_image(value)
 
 
 def catalog_record(card, user_id):
@@ -52,9 +50,33 @@ def validate_edit(quantity, condition, language, variant, notes, wishlist):
     return dict(quantity=quantity, condition=condition, wishlist=bool(wishlist), **values)
 
 
-def save_edit(client, user_id, item_id, values):
+EDIT_FIELDS = ('quantity', 'condition', 'language', 'variant', 'notes', 'wishlist')
+
+
+class EditConflict(RuntimeError):
+    pass
+
+
+def save_edit(client, user_id, item_id, values, expected=None):
     # Explicit owner filter is defense in depth; RLS remains authoritative.
-    return client.table('collection_items').update(values).eq('user_id', user_id).eq('id', item_id).execute()
+    query = client.table('collection_items').update(values).eq('user_id', user_id).eq('id', item_id)
+    if expected is not None:
+        for field in EDIT_FIELDS:
+            query = query.eq(field, expected[field])
+    return query.execute()
+
+
+def load_collection_items(client, user_id, page_size=500):
+    items, seen = [], set()
+    while True:
+        batch = client.table('collection_items').select('*').eq('user_id', user_id).order('id').range(len(items), len(items) + page_size - 1).execute().data or []
+        if not batch:
+            return items
+        for item in batch:
+            if item['id'] in seen or item.get('user_id', user_id) != user_id:
+                raise ValueError('Inconsistent collection page')
+            seen.add(item['id'])
+        items.extend(batch)
 
 
 def render_collection(st, client, user_id, portuguese=False, translate=None):
@@ -65,6 +87,11 @@ def render_collection(st, client, user_id, portuguese=False, translate=None):
 
 def _render_collection(st, client, user_id, portuguese=False, translate=None):
     def tr(pt, en):
+        if not portuguese and translate is not None:
+            key = 'collection_ui:' + en
+            result = translate(key)
+            if result != key:
+                return result
         return pt if portuguese else en
     def feedback(key):
         if translate is not None:
@@ -73,6 +100,7 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
             'collection_saved': tr('Alterações salvas com sucesso.', 'Changes saved successfully.'),
             'collection_save_error': tr('Não foi possível salvar as alterações. Seus dados foram mantidos. Tente novamente.', 'Could not save your changes. Your entries have been kept. Please try again.'),
             'collection_saving': tr('Salvando…', 'Saving…'),
+            'collection_save_conflict': tr('Não foi possível confirmar a atualização. Seus dados foram mantidos. Reabra o editor para revisar a versão atual antes de salvar.', 'Update could not be confirmed. Your entries were kept. Reopen the editor to review the current version before saving.'),
         }[key]
 
     def begin_save(key):
@@ -193,12 +221,7 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
     st.caption(tr('Seu acervo privado. Organizar cartas não consome créditos.', 'Your private binder. Organizing cards uses no credits.'))
     try:
         # Explicit pagination avoids silently truncating at the Supabase row limit.
-        items = []
-        while True:
-            batch = client.table('collection_items').select('*').eq('user_id', user_id).order('id').range(len(items), len(items) + 499).execute().data or []
-            items.extend(batch)
-            if len(batch) < 500:
-                break
+        items = load_collection_items(client, user_id)
     except Exception:
         st.error(tr('Não foi possível carregar a coleção. Verifique se a migração foi aplicada e tente novamente.', 'Could not load the collection. Check that the migration was applied and try again.'))
         return
@@ -247,7 +270,7 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
                 st.download_button(tr('Baixar arquivo', 'Download file'), data, file_name='cardcraftai-collection.' + format_name,
                                    mime={'xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','pdf':'application/pdf','docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}[format_name])
     result_col, page_col = st.columns([3, 1])
-    result_col.caption(tr(f'{len(shown)} registros encontrados', f'{len(shown)} entries found'))
+    result_col.caption(tr('{count} registros encontrados', '{count} entries found').format(count=len(shown)))
     if not shown:
         with st.container(key='collection_empty'):
             st.info(tr('Nenhuma carta encontrada. Ajuste os filtros para tentar novamente.', 'No cards found. Try adjusting your filters.'))
@@ -259,9 +282,11 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
     page = page_col.selectbox(tr('Página', 'Page'), range(1, pages + 1))
     page_items = shown[(page - 1) * 24:page * 24]
     selection_key = f'collection_editor_{user_id}'
+    baseline_key = f'collection_baseline_{user_id}'
 
     def select_editor(item_id):
         st.session_state[selection_key] = item_id
+        st.session_state[baseline_key] = dict(next(entry for entry in items if entry['id'] == item_id))
 
     for offset in range(0, len(page_items), 3):
         row_items = page_items[offset:offset + 3]
@@ -293,41 +318,46 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
             st.subheader(item['card_name'])
             state_key = f"collection_save_{user_id}_{item['id']}"
             result = st.session_state.pop(state_key + '_result', None)
+            if result == 'success' or baseline_key not in st.session_state:
+                st.session_state[baseline_key] = dict(item)
+            editing = st.session_state[baseline_key]
             with st.expander(tr('Editar exemplar', 'Edit entry'), expanded=True):
                 # Outside the form so choosing Custom immediately reveals its input.
                 variant_options = list(VARIANTS)
-                if item['variant'] not in variant_options:
-                    variant_options.append(item['variant'])
+                if editing['variant'] not in variant_options:
+                    variant_options.append(editing['variant'])
                 variant_options.append(0)  # UI-only sentinel; never stored.
                 variant = st.selectbox(
                     tr('Variante', 'Variant'), variant_options,
-                    index=variant_options.index(item['variant']),
-                    format_func=lambda value: 'Other / Custom' if value == 0 else (value or 'Not specified'),
+                    index=variant_options.index(editing['variant']),
+                    format_func=lambda value: tr('Outra / Personalizada', 'Other / Custom') if value == 0 else (value or tr('Não especificado', 'Not specified')),
                     key=f"collection_variant_{user_id}_{item['id']}",
                 )
                 with st.form('collection_' + item['id']):
-                    quantity = st.number_input(tr('Quantidade', 'Quantity'), min_value=0, max_value=9999, value=item['quantity'], step=1)
-                    condition = st.selectbox(tr('Condição', 'Condition'), CONDITIONS, index=CONDITIONS.index(item['condition']))
+                    quantity = st.number_input(tr('Quantidade', 'Quantity'), min_value=0, max_value=9999, value=editing['quantity'], step=1)
+                    condition = st.selectbox(tr('Condição', 'Condition'), CONDITIONS, index=CONDITIONS.index(editing['condition']))
                     language_options = list(CARD_LANGUAGES)
-                    if item['language'] not in language_options:
-                        language_options.append(item['language'])
+                    if editing['language'] not in language_options:
+                        language_options.append(editing['language'])
                     language = st.selectbox(
                         tr('Idioma da carta', 'Card language'), language_options,
-                        index=language_options.index(item['language']),
-                        format_func=lambda value: value or 'Not specified',
+                        index=language_options.index(editing['language']),
+                        format_func=lambda value: value or tr('Não especificado', 'Not specified'),
                     )
                     if variant == 0:
                         variant = st.text_input(
                             tr('Variante personalizada', 'Custom variant'),
-                            item['variant'] if item['variant'] not in VARIANTS else '',
+                            editing['variant'] if editing['variant'] not in VARIANTS else '',
                             max_chars=120,
                         )
-                    notes = st.text_area(tr('Notas privadas', 'Private notes'), item['notes'], max_chars=2000)
-                    wishlist = st.checkbox(tr('Na lista de desejos', 'On wishlist'), value=item['wishlist'])
+                    notes = st.text_area(tr('Notas privadas', 'Private notes'), editing['notes'], max_chars=2000)
+                    wishlist = st.checkbox(tr('Na lista de desejos', 'On wishlist'), value=editing['wishlist'])
                     if result == 'success':
                         st.toast(feedback('collection_saved'), icon='✅')
                     elif result == 'error':
                         st.error(feedback('collection_save_error'))
+                    elif result == 'conflict':
+                        st.error(feedback('collection_save_conflict'))
                     saving = st.session_state.get(state_key, False)
                     st.form_submit_button(
                         feedback('collection_saving') if saving else tr('Salvar', 'Save'),
@@ -336,9 +366,11 @@ def _render_collection(st, client, user_id, portuguese=False, translate=None):
                     )
                     if saving:
                         try:
-                            response = save_edit(client, user_id, item['id'], validate_edit(quantity, condition, language, variant, notes, wishlist))
+                            response = save_edit(client, user_id, item['id'], validate_edit(quantity, condition, language, variant, notes, wishlist), st.session_state[baseline_key])
                             if not response.data:
-                                raise ValueError('Update not confirmed')
+                                raise EditConflict('Update not confirmed')
+                        except EditConflict:
+                            st.session_state[state_key + '_result'] = 'conflict'
                         except Exception:
                             st.session_state[state_key + '_result'] = 'error'
                         else:

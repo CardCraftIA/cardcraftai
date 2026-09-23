@@ -240,6 +240,28 @@ class CollectionUITests(unittest.TestCase):
             self.assertEqual(app.text_input[0].value, 'Pikachu')
             network.assert_not_called()
 
+    def test_concurrent_edit_is_not_silently_overwritten(self):
+        app = self.editor()
+        app.text_area[0].set_value('My unsaved note')
+        app.session_state['preview_items'][0]['notes'] = 'Saved in another session'
+        self.save(app)
+        self.assertEqual(app.session_state['preview_items'][0]['notes'], 'Saved in another session')
+        self.assertEqual(app.text_area[0].value, 'My unsaved note')
+        self.assertFalse(app.get('toast'))
+        self.assertIn('Reabra o editor', app.error[0].value)
+
+    def test_spanish_and_japanese_collection_labels(self):
+        source = (Path(__file__).resolve().parents[1] / 'prototypes' / 'collection_preview.py').read_text(encoding='utf-8')
+        from ui_messages import install_messages, LANGUAGES
+        tables = {language: {} for language in LANGUAGES}
+        install_messages(tables)
+        for language in ('Español', '日本語'):
+            replacement = f"render_collection(st, DemoClient(), 'demo', False, translate=lambda key: {tables[language]!r}.get(key, key))"
+            app = AppTest.from_string(source.replace("render_collection(st, DemoClient(), 'demo', True)", replacement)).run()
+            self.assertFalse(app.exception)
+            self.assertEqual(app.header[0].value, tables[language]['collection_ui:My collection'])
+            self.assertEqual(app.text_input[0].label, tables[language]['collection_ui:Search my collection'])
+
     def test_editors_are_outside_card_columns(self):
         app = self.editor()
         form_ancestors = []
