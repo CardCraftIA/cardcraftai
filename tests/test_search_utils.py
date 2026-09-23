@@ -1,9 +1,14 @@
 import unittest
 from copy import deepcopy
-from search_utils import normalize_search, search_collection, suggest_collection_names
+from search_utils import normalize_search, search_collection, suggest_collection_names, rank_names
 
 
 class SearchTests(unittest.TestCase):
+    def test_public_and_private_candidates_stay_separate(self):
+        self.assertEqual(rank_names('Picachu', ['Pikachu', 'Pichu']), ['Pikachu', 'Pichu'])
+        self.assertEqual(suggest_collection_names([{'card_name': 'Pichu'}], 'Picachu'), ['Pichu'])
+        self.assertEqual(suggest_collection_names([], 'Picachu'), [])
+
     def setUp(self):
         self.item = dict(card_name='Pikachu', set_name='Pokémon Base', card_number='SM211/248',
                          condition='Near Mint', language='Português (Brasil)', variant='Edição-antiga',

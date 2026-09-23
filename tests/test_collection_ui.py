@@ -229,6 +229,17 @@ class CollectionUITests(unittest.TestCase):
         self.select(app, 'Coleção').select('Promos').run()
         self.assertFalse(any(b.label == 'Pikachu' for b in app.button))
 
+    def test_search_suggestions_are_offline_and_do_not_charge_credits(self):
+        with patch('requests.sessions.Session.request', side_effect=AssertionError('Unexpected HTTP')) as network:
+            app = self.editor()
+            app.session_state['creditos'] = 5
+            app.text_input[0].set_value('Picachu').run()
+            next(b for b in app.button if b.label == 'Pikachu').click().run()
+            self.assertFalse(app.exception)
+            self.assertEqual(app.session_state['creditos'], 5)
+            self.assertEqual(app.text_input[0].value, 'Pikachu')
+            network.assert_not_called()
+
     def test_editors_are_outside_card_columns(self):
         app = self.editor()
         form_ancestors = []

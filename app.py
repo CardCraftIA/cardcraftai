@@ -6064,8 +6064,7 @@ def buscar_pacotes_ativos(currency="BRL"):
     except Exception as erro:
 
         raise RuntimeError(
-            "Não foi possível carregar os planos e preços por moeda.\n\n"
-            f"Detalhes: {erro}"
+            "Não foi possível carregar os planos e preços por moeda. Tente novamente mais tarde."
         )
 
 
@@ -6803,6 +6802,8 @@ def _sanitizar_detalhe_tecnico(valor, limite=4000):
         SUPABASE_KEY,
         SUPABASE_SERVICE_ROLE_KEY,
         POKEMON_TCG_API_KEY,
+        st.session_state.get("access_token"),
+        st.session_state.get("refresh_token"),
     ]
 
     for segredo in segredos:
@@ -7287,25 +7288,11 @@ def executar_analise_com_credito(
                     resultado
                 )
             except Exception as erro_transformacao:
-                falhar_registro_analise(
-                    run_id,
+                # The outer failure handler records and refunds exactly once.
+                raise CardCraftOperationalError(
                     "selected_catalog_identity_lock_failed",
-                    _sanitizar_detalhe_tecnico(
-                        erro_transformacao
-                    ),
-                )
-
-                try:
-                    devolver_credito(
-                        request_id
-                    )
-                except Exception:
-                    pass
-
-                raise RuntimeError(
-                    "A análise não pôde preservar com segurança a carta "
-                    "selecionada no catálogo. O crédito foi devolvido "
-                    "automaticamente."
+                    "A análise não pôde preservar com segurança a carta selecionada no catálogo.",
+                    _sanitizar_detalhe_tecnico(erro_transformacao),
                 ) from erro_transformacao
 
     except Exception as erro_gemini:
@@ -9370,9 +9357,6 @@ elif pagina == "plans":
                             except Exception as erro:
                                 st.error(
                                     t("checkout_error", idioma)
-                                )
-                                st.caption(
-                                    str(erro)
                                 )
 
                     checkout_atual = st.session_state.get(
