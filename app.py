@@ -1617,10 +1617,10 @@ HOME_TEXT = {
 }
 
 CHAT_NAV = {
-    'English': ('Assistant', 'Ask about cards, your collection and places to browse offers.'),
-    'Português (BR)': ('Assistente', 'Pergunte sobre cartas, sua coleção e onde procurar ofertas.'),
-    'Español': ('Asistente', 'Pregunta por cartas, tu colección y dónde buscar ofertas.'),
-    '日本語': ('アシスタント', 'カード、コレクション、購入先について質問できます。'),
+    'English': ('Atlas', 'Ask about cards, your collection and places to browse offers.'),
+    'Português (BR)': ('Atlas', 'Pergunte sobre cartas, sua coleção e onde procurar ofertas.'),
+    'Español': ('Atlas', 'Pregunta por cartas, tu colección y dónde buscar ofertas.'),
+    '日本語': ('Atlas', 'カード、コレクション、購入先について質問できます。'),
 }
 
 def home_text(idioma):

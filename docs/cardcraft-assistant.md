@@ -1,4 +1,4 @@
-# CardCraft Assistant (TEST)
+# Atlas · CardCraftAI (TEST)
 
 The assistant is available in Home, the sidebar, and from a selected catalog
 card. Its decision order is:
@@ -51,3 +51,17 @@ Manual TEST checks: select a card from search, open the assistant, ask about
 its characteristics and price, test an unknown general question, and confirm
 that the Gemini request is only made for the unanswered question. Repeat with
 another account to check collection isolation. No production changes.
+
+## Atualização semanal do conhecimento
+
+Atlas consulta primeiro o catálogo canônico e a coleção do próprio usuário. A
+rotina semanal compara fontes TCG públicas com licença compatível, registra
+revisão, hash, data e divergências e só incorpora registros verificados no
+ambiente TEST. Informações geradas pela IA não são fatos do catálogo. A
+expansão para outros jogos exige identificar fontes, licença e esquema de
+variantes antes da importação. Cotações e anúncios precisam de fonte e data
+próprias; a revisão do catálogo não torna preços em tempo real.
+
+A rotina recorrente é operacional, fora do processo Streamlit. A importação
+completa do snapshot TCGdex não deve ser feita sem avaliar tamanho da base,
+limites de armazenamento e conflitos. Produção exige promoção separada.

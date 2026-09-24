@@ -15,7 +15,7 @@ from chatbot_attachments import prepare_attachment, is_text_request, extract_tex
 
 LABELS = {
     'Português (BR)': {
-        'title': 'Assistente CardCraft', 'intro': 'Pergunte sobre cartas, sua coleção ou onde procurar ofertas. Consulto os dados antes de usar IA.',
+        'title': 'Atlas · CardCraftAI', 'intro': 'Pergunte sobre cartas, sua coleção ou onde procurar ofertas. Consulto os dados antes de usar IA.',
         'card': 'Nome da carta (opcional)', 'card_hint': 'Ex.: Pikachu; deixe vazio para usar a carta selecionada no catálogo.',
         'set': 'Set (opcional)', 'number': 'Número (opcional)',
         'prompt': 'Pergunte sobre uma carta ou sua coleção…', 'catalog': 'Catálogo CardCraft', 'external': 'Catálogo TCGdex',
@@ -38,7 +38,7 @@ LABELS = {
         'pdf_text': 'Texto extraído do PDF', 'attachment_question': 'Identifique a carta e descreva o que está visível.',
     },
     'English': {
-        'title': 'CardCraft Assistant', 'intro': 'Ask about cards, your collection or where to browse offers. I check data before using AI.',
+        'title': 'Atlas · CardCraftAI', 'intro': 'Ask about cards, your collection or where to browse offers. I check data before using AI.',
         'card': 'Card name (optional)', 'card_hint': 'E.g. Pikachu; leave blank to use your selected catalog card.',
         'set': 'Set (optional)', 'number': 'Number (optional)',
         'prompt': 'Ask about a card or your collection…', 'catalog': 'CardCraft catalog', 'external': 'TCGdex catalog',
@@ -61,7 +61,7 @@ LABELS = {
         'pdf_text': 'Text extracted from PDF', 'attachment_question': 'Identify the card and describe what is visible.',
     },
     'Español': {
-        'title': 'Asistente CardCraft', 'intro': 'Pregunta sobre cartas, tu colección o dónde buscar ofertas. Consulto los datos antes de usar IA.',
+        'title': 'Atlas · CardCraftAI', 'intro': 'Pregunta sobre cartas, tu colección o dónde buscar ofertas. Consulto los datos antes de usar IA.',
         'card': 'Nombre de la carta (opcional)', 'card_hint': 'Ej.: Pikachu; deja vacío para usar la carta seleccionada.',
         'set': 'Set (opcional)', 'number': 'Número (opcional)',
         'prompt': 'Pregunta sobre una carta o tu colección…', 'catalog': 'Catálogo CardCraft', 'external': 'Catálogo TCGdex',
@@ -84,7 +84,7 @@ LABELS = {
         'pdf_text': 'Texto extraído del PDF', 'attachment_question': 'Identifica la carta y describe lo visible.',
     },
     '日本語': {
-        'title': 'CardCraft アシスタント', 'intro': 'カード、コレクション、購入先について質問できます。AIの前にデータを確認します。',
+        'title': 'Atlas · CardCraftAI', 'intro': 'カード、コレクション、購入先について質問できます。AIの前にデータを確認します。',
         'card': 'カード名（任意）', 'card_hint': '例：ピカチュウ。空欄なら選択中のカードを使用します。',
         'set': 'セット（任意）', 'number': '番号（任意）',
         'prompt': 'カードやコレクションについて質問…', 'catalog': 'CardCraft カタログ', 'external': 'TCGdex カタログ',
