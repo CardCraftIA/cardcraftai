@@ -55,8 +55,29 @@ st.markdown(
         --cc-glow: rgba(124, 92, 252, 0.18);
     }
 
-    html, body, [class*="st-"] {
+    html, body {
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    /* Preserve Streamlit/Material icon fonts. Overriding every st-* class
+       makes ligature names such as "visibility" and "arrow_right" render
+       as plain text. */
+    .material-symbols-rounded,
+    .material-symbols-outlined,
+    .material-icons,
+    [data-testid="stIconMaterial"] {
+        font-family: "Material Symbols Rounded", "Material Symbols Outlined", "Material Icons" !important;
+        font-weight: normal !important;
+        font-style: normal !important;
+        line-height: 1 !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+        white-space: nowrap !important;
+        word-wrap: normal !important;
+        direction: ltr !important;
+        -webkit-font-feature-settings: "liga" !important;
+        -webkit-font-smoothing: antialiased !important;
+        font-feature-settings: "liga" !important;
     }
 
     [data-testid="stAppViewContainer"] {
@@ -74,7 +95,7 @@ st.markdown(
 
     .block-container {
         max-width: 1280px;
-        padding-top: 2.15rem;
+        padding-top: 3.6rem;
         padding-bottom: 3rem;
         padding-left: clamp(1rem, 3vw, 2.25rem);
         padding-right: clamp(1rem, 3vw, 2.25rem);
@@ -309,7 +330,7 @@ st.markdown(
 
     @media (max-width: 760px) {
         .block-container {
-            padding-top: 1.35rem;
+            padding-top: 2.6rem;
         }
 
         .cc-hero {
