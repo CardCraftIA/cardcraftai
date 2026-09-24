@@ -2,10 +2,13 @@ name: Tests
 
 on:
   push:
-    branches: ['codex/**']
+    branches:
+      - staging
+      - 'codex/**'
   pull_request:
     branches:
       - main
+      - staging
       - 'codex/**'
 
 permissions:
