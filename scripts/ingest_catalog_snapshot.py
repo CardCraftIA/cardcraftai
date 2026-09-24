@@ -176,7 +176,10 @@ def build_localization_rows(record: dict, card_id: str) -> list[dict]:
                 "name": name,
                 "name_search": normalize_search(name),
                 "description": str(localization.get("description") or ""),
-                "rules": record.get("card", {}).get("attributes") or {},
+                # Rules/attacks that are shared across languages stay once on
+                # catalog_cards.attributes. Repeating that payload for every
+                # localization would multiply database size dramatically.
+                "rules": {},
                 "image_url": str(localization.get("image_url") or ""),
                 "image_small_url": str(localization.get("image_small_url") or ""),
                 "image_status": "remote_reference"
@@ -223,13 +226,23 @@ def build_variant_rows(record: dict, card_id: str) -> list[dict]:
 
 def source_record_row(record: dict, source_id: int) -> dict:
     canonical = json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     return {
         "source_id": source_id,
         "source_key": str(record.get("source_key") or ""),
         "language": "und",
         "entity_type": "card",
-        "payload_hash": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
-        "payload": record,
+        "payload_hash": digest,
+        # The complete source snapshot is preserved as a build artifact with
+        # its own SHA-256. Keeping the full ~source record again in Postgres
+        # would duplicate tens of megabytes and reduce the space available for
+        # canonical cards, languages and variants.
+        "payload": {
+            "schema_version": record.get("schema_version"),
+            "provider": record.get("provider"),
+            "source_key": record.get("source_key"),
+            "record_sha256": digest,
+        },
         "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
 
