@@ -774,6 +774,11 @@ def _render_composer(st, supabase, user_id, labels):
     st.subheader(labels["publish_title"])
     st.caption(labels["publish_intro"])
 
+    if st.session_state.pop("community_clear_composer", False):
+        st.session_state["community_post_title"] = ""
+        st.session_state["community_post_body"] = ""
+        st.session_state["community_attach_card"] = False
+
     type_key = st.selectbox(
         labels["post_type"],
         POST_TYPE_ORDER,
@@ -833,9 +838,7 @@ def _render_composer(st, supabase, user_id, labels):
                 "comments_enabled": bool(allow_comments),
             }).execute()
             st.success(labels["published"])
-            st.session_state["community_post_title"] = ""
-            st.session_state["community_post_body"] = ""
-            st.session_state["community_attach_card"] = False
+            st.session_state["community_clear_composer"] = True
             st.rerun()
         except Exception:
             st.error(labels["action_error"])
