@@ -24,6 +24,7 @@ from image_utils import load_upload
 from security_utils import redact_diagnostic
 from ui_messages import install_messages
 from payment_utils import package_code as validate_package_code, safe_checkout_url
+from community import render_community, community_nav_label
 
 
 # ============================================================
@@ -1594,15 +1595,20 @@ LANGUAGE_WIDGET_KEYS = (
 )
 
 COLLECTIONS_ENABLED = str(st.secrets.get("COLLECTIONS_ENABLED", "false")).lower() == "true"
+COMMUNITY_ENABLED = str(st.secrets.get("COMMUNITY_ENABLED", "true")).lower() == "true"
 
-NAVIGATION_OPTIONS = (["collection"] if COLLECTIONS_ENABLED else []) + [
-    "photo",
-    "search",
-    "plans",
-    "account",
-    "terms",
-    "privacy",
-]
+NAVIGATION_OPTIONS = (
+    (["community"] if COMMUNITY_ENABLED else [])
+    + (["collection"] if COLLECTIONS_ENABLED else [])
+    + [
+        "photo",
+        "search",
+        "plans",
+        "account",
+        "terms",
+        "privacy",
+    ]
+)
 
 
 def _sincronizar_idioma_widget(widget_key):
@@ -8610,14 +8616,26 @@ if st.session_state.get("pagina_navegacao_widget") != pagina_atual:
 st.sidebar.radio(
     t("navigation", idioma),
     NAVIGATION_OPTIONS,
-    format_func=lambda pagina_id: ("🃏 Minha coleção" if idioma == "Português (BR)" else "🃏 " + t("collection_ui:My collection", idioma)) if pagina_id == "collection" else t({
-        "photo": "nav_photo",
-        "search": "nav_search",
-        "plans": "nav_plans",
-        "account": "nav_account",
-        "terms": "nav_terms",
-        "privacy": "nav_privacy",
-    }[pagina_id], idioma),
+    format_func=lambda pagina_id: (
+        community_nav_label(idioma)
+        if pagina_id == "community"
+        else (
+            "🃏 Minha coleção"
+            if pagina_id == "collection" and idioma == "Português (BR)"
+            else (
+                "🃏 " + t("collection_ui:My collection", idioma)
+                if pagina_id == "collection"
+                else t({
+                    "photo": "nav_photo",
+                    "search": "nav_search",
+                    "plans": "nav_plans",
+                    "account": "nav_account",
+                    "terms": "nav_terms",
+                    "privacy": "nav_privacy",
+                }[pagina_id], idioma)
+            )
+        )
+    ),
     key="pagina_navegacao_widget",
     on_change=_sincronizar_pagina_widget,
 )
@@ -8729,7 +8747,15 @@ def mostrar_resultado(
 # PÁGINA 1 - ANÁLISE POR FOTO
 # ============================================================
 
-if pagina == "collection" and COLLECTIONS_ENABLED:
+if pagina == "community" and COMMUNITY_ENABLED:
+    render_community(
+        st,
+        supabase,
+        st.session_state.user_id,
+        idioma,
+    )
+
+elif pagina == "collection" and COLLECTIONS_ENABLED:
     render_collection(st, supabase, st.session_state.user_id, idioma == "Português (BR)", translate=lambda key: t(key, idioma))
 
 elif pagina == "photo":
