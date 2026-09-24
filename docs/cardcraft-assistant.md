@@ -3,6 +3,17 @@
 The assistant is available in Home, the sidebar, and from a selected catalog
 card. Its decision order is:
 
+The chat input accepts typed or pasted text, attached/pasted JPG, PNG or WEBP
+images, and PDF files. Streamlit 1.64 or later is required for clipboard file
+pasting. The application validates the actual file content; images are limited
+to 15 MB and 25 megapixels, then reduced to at most 1600 pixels per side. PDFs
+are limited to 8 MB and five pages; encrypted documents are rejected. When a
+user specifically asks for the text of a searchable PDF, the text is extracted
+locally without Gemini. Visual interpretation of a photo or PDF uses one of the
+session's three Gemini attempts and is labeled as unverified. Attachment bytes
+are neither written to Supabase nor kept in chat history; only the filename is
+shown after the request.
+
 The assistant detects the language of each question independently of the
 interface language. Deterministic replies and Gemini prompts use that language.
 When a short query contains no language signal (for example a card name alone),
@@ -35,7 +46,7 @@ rollout. Chat history is session-only, bounded to 32 messages and deleted on
 sign-out. The local catalog's current TEST pilot is four cards, so external
 catalog fallback will be common until coverage expands.
 
-Validation: `python -m unittest tests.test_chatbot tests.test_navigation`.
+Validation: `python -m unittest tests.test_chatbot tests.test_chatbot_attachments tests.test_navigation`.
 Manual TEST checks: select a card from search, open the assistant, ask about
 its characteristics and price, test an unknown general question, and confirm
 that the Gemini request is only made for the unanswered question. Repeat with

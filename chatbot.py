@@ -11,6 +11,7 @@ import re
 from urllib.parse import quote_plus
 
 from collection import collection_metrics, load_collection_items
+from chatbot_attachments import prepare_attachment, is_text_request, extract_text_answer, ask_attachment_ai
 
 LABELS = {
     'Português (BR)': {
@@ -32,6 +33,9 @@ LABELS = {
         'not_owned': 'Não encontrei essa carta na sua coleção.', 'owned': 'Na sua coleção:',
         'rarity': 'Raridade', 'artist': 'Artista', 'category': 'Categoria', 'types': 'Tipos',
         'stage': 'Estágio', 'attacks': 'Ataques', 'variants': 'Variantes',
+        'attachment_hint': 'Anexe foto ou PDF; também é possível colar uma imagem no campo de mensagem. Arquivos que exigem interpretação visual são enviados ao Gemini.',
+        'attachment_error': 'Não consegui abrir o anexo. Use JPG, PNG ou WEBP até 15 MB, ou PDF de até 8 MB e 5 páginas.',
+        'pdf_text': 'Texto extraído do PDF', 'attachment_question': 'Identifique a carta e descreva o que está visível.',
     },
     'English': {
         'title': 'CardCraft Assistant', 'intro': 'Ask about cards, your collection or where to browse offers. I check data before using AI.',
@@ -52,6 +56,9 @@ LABELS = {
         'not_owned': 'I could not find this card in your collection.', 'owned': 'In your collection:',
         'rarity': 'Rarity', 'artist': 'Artist', 'category': 'Category', 'types': 'Types',
         'stage': 'Stage', 'attacks': 'Attacks', 'variants': 'Variants',
+        'attachment_hint': 'Attach a photo or PDF, or paste an image into the message field. Files needing visual interpretation are sent to Gemini.',
+        'attachment_error': 'Could not open the attachment. Use JPG, PNG or WEBP up to 15 MB, or a PDF up to 8 MB and 5 pages.',
+        'pdf_text': 'Text extracted from PDF', 'attachment_question': 'Identify the card and describe what is visible.',
     },
     'Español': {
         'title': 'Asistente CardCraft', 'intro': 'Pregunta sobre cartas, tu colección o dónde buscar ofertas. Consulto los datos antes de usar IA.',
@@ -72,6 +79,9 @@ LABELS = {
         'not_owned': 'No encontré esa carta en tu colección.', 'owned': 'En tu colección:',
         'rarity': 'Rareza', 'artist': 'Artista', 'category': 'Categoría', 'types': 'Tipos',
         'stage': 'Etapa', 'attacks': 'Ataques', 'variants': 'Variantes',
+        'attachment_hint': 'Adjunta una foto o PDF, o pega una imagen en el mensaje. Los archivos que requieren interpretación visual se envían a Gemini.',
+        'attachment_error': 'No pude abrir el archivo. Usa JPG, PNG o WEBP hasta 15 MB, o PDF hasta 8 MB y 5 páginas.',
+        'pdf_text': 'Texto extraído del PDF', 'attachment_question': 'Identifica la carta y describe lo visible.',
     },
     '日本語': {
         'title': 'CardCraft アシスタント', 'intro': 'カード、コレクション、購入先について質問できます。AIの前にデータを確認します。',
@@ -92,6 +102,9 @@ LABELS = {
         'not_owned': 'コレクション内にこのカードは見つかりません。', 'owned': 'コレクション内：',
         'rarity': 'レアリティ', 'artist': 'イラストレーター', 'category': '分類', 'types': 'タイプ',
         'stage': '進化段階', 'attacks': 'ワザ', 'variants': 'バリエーション',
+        'attachment_hint': '写真やPDFを添付するか、メッセージ欄に画像を貼り付けてください。画像の解析が必要な場合はGeminiへ送信します。',
+        'attachment_error': '添付ファイルを開けませんでした。画像は15 MB以下のJPG・PNG・WEBP、PDFは8 MB以下・5ページまでです。',
+        'pdf_text': 'PDFから抽出したテキスト', 'attachment_question': 'カードを識別し、見える特徴を説明してください。',
     },
 }
 
@@ -352,6 +365,7 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
     interface_labels = LABELS.get(language, LABELS['English'])
     st.header('✦ ' + interface_labels['title'])
     st.caption(interface_labels['intro'] + ' ' + interface_labels['credits'])
+    st.caption(interface_labels['attachment_hint'])
     state_key = f'cardcraft_chat_{user_id}'
     history = st.session_state.setdefault(state_key, [])
     name = st.text_input(interface_labels['card'], help=interface_labels['card_hint'], key=f'cardcraft_chat_card_{user_id}')
@@ -364,36 +378,62 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
     for entry in history[-16:]:
         with st.chat_message(entry['role']):
             st.markdown(entry['text'])
+            if entry.get('attachment_name'):
+                st.caption('📎 ' + entry['attachment_name'])
             if entry.get('source'):
                 entry_labels = LABELS.get(entry.get('language'), interface_labels)
                 st.caption(entry_labels['source'] + ': ' + entry['source'])
             for title, url in entry.get('links', []):
                 st.link_button(title, url)
-    question = st.chat_input(interface_labels['prompt'], key=f'cardcraft_chat_prompt_{user_id}')
-    if not question or not question.strip():
+    submission = st.chat_input(
+        interface_labels['prompt'], key=f'cardcraft_chat_prompt_{user_id}',
+        accept_file=True, file_type=['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+        max_upload_size=15, max_chars=800,
+    )
+    if submission is None:
         return
-    question = question.strip()[:800]
+    question = (submission if isinstance(submission, str) else submission.text or '').strip()[:800]
+    files = [] if isinstance(submission, str) else (submission.files or [])
+    if not question and not files:
+        return
     previous_language = next((item['language'] for item in reversed(history)
                               if item.get('role') == 'assistant' and item.get('language')), language)
     response_language = question_language(question, previous_language)
     labels = LABELS[response_language]
-    history.append({'role': 'user', 'text': question})
+    history.append({'role': 'user', 'text': question or labels['attachment_question'],
+                    'attachment_name': str(files[0].name)[:120] if files else ''})
     try:
-        result = answer(question, name, selected, client, user_id, response_language, external_search, set_name, card_number)
-        if result.get('needs_ai'):
+        attachment = prepare_attachment(files[0]) if files else None
+        if attachment and attachment['kind'] == 'pdf' and is_text_request(question) and extract_text_answer(attachment):
+            result = {'text': extract_text_answer(attachment), 'source': labels['pdf_text'], 'links': []}
+        elif attachment:
             usage_key = f'cardcraft_chat_ai_calls_{user_id}'
             calls = int(st.session_state.get(usage_key, 0))
             if calls >= 3:
                 result = {'text': labels['ai_limit'], 'source': '', 'links': []}
             else:
-                # Count attempts before the request so repeated failures do not loop.
                 st.session_state[usage_key] = calls + 1
-                result = {'text': (result['text'] + '\n\n' if result['text'] else '')
-                          + ask_ai(ai_client, model, question, response_language), 'source': labels['ai'], 'links': []}
+                result = {'text': ask_attachment_ai(ai_client, model, question or labels['attachment_question'],
+                                                     response_language, attachment),
+                          'source': labels['ai'], 'links': []}
+        else:
+            result = answer(question, name, selected, client, user_id, response_language, external_search, set_name, card_number)
+            if result.get('needs_ai'):
+                usage_key = f'cardcraft_chat_ai_calls_{user_id}'
+                calls = int(st.session_state.get(usage_key, 0))
+                if calls >= 3:
+                    result = {'text': labels['ai_limit'], 'source': '', 'links': []}
+                else:
+                    # Count attempts before the request so repeated failures do not loop.
+                    st.session_state[usage_key] = calls + 1
+                    result = {'text': (result['text'] + '\n\n' if result['text'] else '')
+                              + ask_ai(ai_client, model, question, response_language), 'source': labels['ai'], 'links': []}
         if not result['text']:
             result['text'] = labels['empty']
+    except ValueError:
+        result = {'text': labels['attachment_error'] if files else labels['ai_error'], 'source': '', 'links': []}
     except Exception:
-        result = {'text': labels['error'], 'source': '', 'links': []}
+        result = {'text': labels['ai_error'] if files else labels['error'], 'source': '', 'links': []}
     history.append({'role': 'assistant', 'language': response_language, **result})
     st.session_state[state_key] = history[-32:]
     st.rerun()
