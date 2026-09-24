@@ -208,6 +208,25 @@ st.markdown(
         font-weight: 700;
     }
 
+    .cc-home-intro {
+        padding: 1.3rem 1.5rem;
+        margin: 0 0 1.2rem;
+        border: 1px solid rgba(56, 189, 248, 0.24);
+        border-radius: 20px;
+        background: linear-gradient(125deg, rgba(56, 189, 248, 0.12), rgba(124, 92, 252, 0.12) 65%, rgba(17, 28, 46, 0.86));
+    }
+    .cc-home-intro h2 { color: #f8fafc; margin: 0 0 0.35rem; letter-spacing: -0.03em; }
+    .cc-home-intro p { color: #c0cee0; margin: 0; line-height: 1.55; }
+    .cc-home-card {
+        min-height: 7.7rem;
+        padding: 1.1rem 1.15rem;
+        border: 1px solid var(--cc-border);
+        border-radius: 17px;
+        background: linear-gradient(145deg, rgba(27, 42, 68, 0.96), rgba(15, 24, 42, 0.96));
+    }
+    .cc-home-card strong { display: block; color: #f8fafc; font-size: 1.05rem; margin-bottom: 0.4rem; }
+    .cc-home-card span { color: #a9b8cb; font-size: 0.9rem; line-height: 1.5; }
+
     .cc-login-hero {
         margin: 0 auto 1.6rem;
         padding: 1.5rem 1.65rem;
@@ -1565,6 +1584,40 @@ for _language, _hint in {
 
 install_messages(UI_TEXT)
 
+HOME_TEXT = {
+    "English": ("Home", "Your collection starts here", "Identify, verify and explore your cards. Choose where to go next.",
+                "Photo analysis", "Identify a card from a photo and review the evidence.",
+                "Search catalog", "Find a card by name and compare its editions.",
+                "My collection", "Organize the cards you own in one place.",
+                "CardCraft Community", "Share discoveries and connect with collectors.",
+                "Plans & credits", "See your balance and available plans.",
+                "My account", "View your profile and analysis history.", "Open"),
+    "Português (BR)": ("Início", "Sua coleção começa aqui", "Identifique, verifique e explore suas cartas. Escolha seu próximo passo.",
+                "Análise por foto", "Identifique uma carta pela foto e veja as evidências.",
+                "Buscar no catálogo", "Encontre uma carta pelo nome e compare edições.",
+                "Minha coleção", "Organize as cartas que você possui.",
+                "CardCraft Community", "Compartilhe descobertas e encontre colecionadores.",
+                "Planos e créditos", "Consulte seu saldo e os planos disponíveis.",
+                "Minha conta", "Veja seu perfil e histórico de análises.", "Abrir"),
+    "Español": ("Inicio", "Tu colección empieza aquí", "Identifica, verifica y explora tus cartas. Elige tu próximo paso.",
+                "Análisis por foto", "Identifica una carta por foto y revisa las evidencias.",
+                "Buscar en el catálogo", "Busca una carta por nombre y compara ediciones.",
+                "Mi colección", "Organiza las cartas que tienes.",
+                "CardCraft Community", "Comparte descubrimientos y conoce coleccionistas.",
+                "Planes y créditos", "Consulta tu saldo y los planes disponibles.",
+                "Mi cuenta", "Consulta tu perfil y el historial de análisis.", "Abrir"),
+    "日本語": ("ホーム", "コレクションはここから", "カードを識別・検証・探索できます。次に進む場所を選んでください。",
+                "写真で分析", "写真からカードを識別し、根拠を確認します。",
+                "カタログ検索", "名前でカードを探し、版を比較します。",
+                "マイコレクション", "所有するカードを整理します。",
+                "CardCraft Community", "発見を共有し、コレクターとつながります。",
+                "プランとクレジット", "残高と利用可能なプランを確認します。",
+                "マイアカウント", "プロフィールと分析履歴を確認します。", "開く"),
+}
+
+def home_text(idioma):
+    return HOME_TEXT.get(idioma, HOME_TEXT["English"])
+
 def idioma_interface_atual():
     if "idioma_interface" not in st.session_state:
         st.session_state.idioma_interface = "English"
@@ -1598,7 +1651,8 @@ COLLECTIONS_ENABLED = str(st.secrets.get("COLLECTIONS_ENABLED", "false")).lower(
 COMMUNITY_ENABLED = str(st.secrets.get("COMMUNITY_ENABLED", "true")).lower() == "true"
 
 NAVIGATION_OPTIONS = (
-    (["community"] if COMMUNITY_ENABLED else [])
+    ["home"]
+    + (["community"] if COMMUNITY_ENABLED else [])
     + (["collection"] if COLLECTIONS_ENABLED else [])
     + [
         "photo",
@@ -1643,15 +1697,20 @@ def renderizar_seletor_idioma(container, widget_key):
 
 
 def pagina_interface_atual():
-    pagina = st.session_state.get("pagina_interface", "photo")
+    pagina = st.session_state.get("pagina_interface", "home")
     if pagina not in NAVIGATION_OPTIONS:
-        pagina = "photo"
+        pagina = "home"
         st.session_state.pagina_interface = pagina
     return pagina
 
 
 def _sincronizar_pagina_widget():
     pagina = st.session_state.get("pagina_navegacao_widget")
+    if pagina in NAVIGATION_OPTIONS:
+        st.session_state.pagina_interface = pagina
+
+
+def abrir_pagina(pagina):
     if pagina in NAVIGATION_OPTIONS:
         st.session_state.pagina_interface = pagina
 
@@ -5901,7 +5960,7 @@ def limpar_sessao():
     # chave do widget de navegação aqui porque, no logout, esse widget já
     # foi instanciado nesta execução do Streamlit. A sincronização ocorrerá
     # antes de o widget ser criado na próxima sessão autenticada.
-    st.session_state.pagina_interface = "photo"
+    st.session_state.pagina_interface = "home"
 
 
 def usuario_logado():
@@ -8330,7 +8389,7 @@ def tela_login():
                         # execução, portanto pode ser preparada com segurança.
                         st.session_state.idioma_interface = idioma
                         st.session_state.idioma_sidebar_widget = idioma
-                        st.session_state.pagina_interface = "photo"
+                        st.session_state.pagina_interface = "home"
                         st.success(t("login_success", idioma))
                         st.rerun()
                     else:
@@ -8617,7 +8676,9 @@ st.sidebar.radio(
     t("navigation", idioma),
     NAVIGATION_OPTIONS,
     format_func=lambda pagina_id: (
-        community_nav_label(idioma)
+        "⌂ " + home_text(idioma)[0]
+        if pagina_id == "home"
+        else community_nav_label(idioma)
         if pagina_id == "community"
         else (
             "🃏 Minha coleção"
@@ -8747,7 +8808,47 @@ def mostrar_resultado(
 # PÁGINA 1 - ANÁLISE POR FOTO
 # ============================================================
 
-if pagina == "community" and COMMUNITY_ENABLED:
+if pagina == "home":
+    (home_label, home_title, home_intro, photo_label, photo_description,
+     search_label, search_description, collection_label, collection_description,
+     community_label, community_description, plans_label, plans_description,
+     account_label, account_description, open_label) = home_text(idioma)
+    st.markdown(
+        f'<div class="cc-home-intro"><h2>{escape(home_title)}</h2>'
+        f'<p>{escape(home_intro)}</p></div>',
+        unsafe_allow_html=True,
+    )
+    shortcuts = [
+        ("photo", "📸", photo_label, photo_description),
+        ("search", "🔎", search_label, search_description),
+    ]
+    if COLLECTIONS_ENABLED:
+        shortcuts.append(("collection", "🃏", collection_label, collection_description))
+    if COMMUNITY_ENABLED:
+        shortcuts.append(("community", "✨", community_label, community_description))
+    shortcuts.extend([
+        ("plans", "💎", plans_label, plans_description),
+        ("account", "👤", account_label, account_description),
+    ])
+    for offset in range(0, len(shortcuts), 2):
+        columns = st.columns(2, gap="medium")
+        for column, (destination, icon, title, description) in zip(columns, shortcuts[offset:offset + 2]):
+            with column:
+                st.markdown(
+                    f'<div class="cc-home-card"><strong>{icon} {escape(title)}</strong>'
+                    f'<span>{escape(description)}</span></div>',
+                    unsafe_allow_html=True,
+                )
+                st.button(
+                    f"{open_label} · {title}",
+                    key=f"home_open_{destination}",
+                    use_container_width=True,
+                    type="primary" if destination in ("photo", "community") else "secondary",
+                    on_click=abrir_pagina,
+                    args=(destination,),
+                )
+
+elif pagina == "community" and COMMUNITY_ENABLED:
     render_community(
         st,
         supabase,

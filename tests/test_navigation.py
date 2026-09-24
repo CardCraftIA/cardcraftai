@@ -29,7 +29,7 @@ class Query:
 
 
 class NavigationTests(TestCase):
-    def render_app(self, page, language='English', fail_purchases=False, subsequent=()):
+    def render_app(self, page, language='English', fail_purchases=False, subsequent=(), shortcut=None):
         fake = Mock()
         fake.auth.set_session.return_value = Obj(
             user=Obj(id='fixture-owner', email='fixture@example.invalid', email_confirmed_at='confirmed-by-fake'),
@@ -52,18 +52,23 @@ class NavigationTests(TestCase):
                 self.assertFalse(app.exception)
                 self.assertEqual(app.session_state['pagina_interface'], destination)
                 self.assertEqual(app.sidebar.metric[0].value, '5')
+            if shortcut:
+                next(button for button in app.button if button.key == f'home_open_{shortcut}').click().run()
+                self.assertFalse(app.exception)
+                self.assertEqual(app.session_state['pagina_interface'], shortcut)
+                self.assertEqual(app.sidebar.radio[0].value, shortcut)
+                self.assertEqual(app.sidebar.metric[0].value, '5')
         self.assertFalse(app.exception, [error.message for error in app.exception])
         fake.rpc.assert_not_called()
         ai.models.generate_content.assert_not_called()
-        self.assertEqual(app.sidebar.radio[0].value, subsequent[-1] if subsequent else page)
-        if page != 'community':
+        self.assertEqual(app.sidebar.radio[0].value, shortcut or (subsequent[-1] if subsequent else page))
+        if page not in ('community', 'home'):
             self.assertTrue(app.header)
         return app
 
     def test_every_authenticated_route_in_all_four_languages(self):
-        # No separate home route exists; photo is the current landing page.
         for language in LANGUAGES:
-            for page in ('community', 'photo', 'search', 'collection', 'account', 'plans', 'terms', 'privacy'):
+            for page in ('home', 'community', 'photo', 'search', 'collection', 'account', 'plans', 'terms', 'privacy'):
                 with self.subTest(language=language, page=page):
                     app = self.render_app(page, language)
                     self.assertFalse(app.error)
@@ -73,7 +78,10 @@ class NavigationTests(TestCase):
                         self.assertIn(expected, app.sidebar.radio[0].options)
 
     def test_sidebar_navigation_callbacks_preserve_credit_balance(self):
-        self.render_app('photo', subsequent=('community', 'search', 'collection', 'account', 'plans', 'terms', 'privacy', 'photo'))
+        self.render_app('home', subsequent=('community', 'search', 'collection', 'account', 'plans', 'terms', 'privacy', 'photo', 'home'))
+
+    def test_home_shortcut_opens_community_without_consuming_credits(self):
+        self.render_app('home', language='Português (BR)', shortcut='community')
 
     def test_purchase_outage_is_not_presented_as_empty_history(self):
         app = self.render_app('account', fail_purchases=True)
