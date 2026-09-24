@@ -3,6 +3,13 @@
 The assistant is available in Home, the sidebar, and from a selected catalog
 card. Its decision order is:
 
+The assistant detects the language of each question independently of the
+interface language. Deterministic replies and Gemini prompts use that language.
+When a short query contains no language signal (for example a card name alone),
+it continues in the last detected conversation language, then falls back to
+the interface language. Catalog names and source-specific variant values remain
+as recorded by the source.
+
 1. The signed-in user's private `collection_items`, only for collection and
    ownership questions. Queries retain an explicit `user_id` filter and RLS.
 2. `search_catalog_core` on the CardCraft catalog, requiring an exact name

@@ -7,6 +7,29 @@ import chatbot
 
 
 class ChatbotTests(TestCase):
+    def test_question_language_overrides_ui_for_four_languages(self):
+        cases = [
+            ('Quanto vale minha coleção?', 'English', 'Português (BR)'),
+            ('¿Cuánto vale mi colección?', 'Português (BR)', 'Español'),
+            ('What is this card worth?', '日本語', 'English'),
+            ('このカードの価格はいくらですか？', 'Español', '日本語'),
+        ]
+        for question, ui, expected in cases:
+            with self.subTest(question=question):
+                self.assertEqual(chatbot.question_language(question, ui), expected)
+
+    def test_ambiguous_short_followup_uses_conversation_language(self):
+        self.assertEqual(chatbot.question_language('Pikachu?', 'Português (BR)'), 'Português (BR)')
+
+    def test_deterministic_collection_answer_follows_question_language(self):
+        client = Mock()
+        with patch('chatbot.load_collection_items', return_value=[]):
+            question = '¿Cuántas cartas hay en mi colección?'
+            language = chatbot.question_language(question, 'English')
+            result = chatbot.answer(question, '', None, client, 'owner-1', language)
+        self.assertIn('ejemplares', result['text'])
+        self.assertEqual(result['source'], 'Tu colección privada')
+
     def test_local_exact_match_answers_without_external_or_ai(self):
         client = Mock()
         client.rpc.return_value.execute.return_value.data = [{
@@ -88,3 +111,6 @@ class ChatbotTests(TestCase):
         prompt = ai.interactions.create.call_args.kwargs['input']
         self.assertIn('Do not claim access to a live catalog', prompt)
         self.assertNotIn('private notes', prompt)
+        question = 'O que é uma carta holográfica?'
+        chatbot.ask_ai(ai, 'test-model', question, chatbot.question_language(question, 'English'))
+        self.assertIn('Answer in Português (BR)', ai.interactions.create.call_args.kwargs['input'])

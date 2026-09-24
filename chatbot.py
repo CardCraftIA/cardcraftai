@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import unicodedata
 from datetime import datetime, timezone
+import re
 from urllib.parse import quote_plus
 
 from collection import collection_metrics, load_collection_items
@@ -29,6 +30,8 @@ LABELS = {
         'clear': 'Limpar conversa', 'source': 'Fonte', 'credits': 'Este chat não consome créditos de análise.',
         'copies': 'exemplares', 'distinct': 'cartas diferentes', 'duplicates': 'repetidas', 'sets': 'sets',
         'not_owned': 'Não encontrei essa carta na sua coleção.', 'owned': 'Na sua coleção:',
+        'rarity': 'Raridade', 'artist': 'Artista', 'category': 'Categoria', 'types': 'Tipos',
+        'stage': 'Estágio', 'attacks': 'Ataques', 'variants': 'Variantes',
     },
     'English': {
         'title': 'CardCraft Assistant', 'intro': 'Ask about cards, your collection or where to browse offers. I check data before using AI.',
@@ -47,6 +50,8 @@ LABELS = {
         'clear': 'Clear conversation', 'source': 'Source', 'credits': 'This chat does not use analysis credits.',
         'copies': 'copies', 'distinct': 'distinct cards', 'duplicates': 'duplicates', 'sets': 'sets',
         'not_owned': 'I could not find this card in your collection.', 'owned': 'In your collection:',
+        'rarity': 'Rarity', 'artist': 'Artist', 'category': 'Category', 'types': 'Types',
+        'stage': 'Stage', 'attacks': 'Attacks', 'variants': 'Variants',
     },
     'Español': {
         'title': 'Asistente CardCraft', 'intro': 'Pregunta sobre cartas, tu colección o dónde buscar ofertas. Consulto los datos antes de usar IA.',
@@ -65,6 +70,8 @@ LABELS = {
         'clear': 'Borrar conversación', 'source': 'Fuente', 'credits': 'Este chat no consume créditos de análisis.',
         'copies': 'ejemplares', 'distinct': 'cartas diferentes', 'duplicates': 'repetidas', 'sets': 'sets',
         'not_owned': 'No encontré esa carta en tu colección.', 'owned': 'En tu colección:',
+        'rarity': 'Rareza', 'artist': 'Artista', 'category': 'Categoría', 'types': 'Tipos',
+        'stage': 'Etapa', 'attacks': 'Ataques', 'variants': 'Variantes',
     },
     '日本語': {
         'title': 'CardCraft アシスタント', 'intro': 'カード、コレクション、購入先について質問できます。AIの前にデータを確認します。',
@@ -83,10 +90,12 @@ LABELS = {
         'clear': '会話を消去', 'source': '出典', 'credits': 'このチャットでは分析クレジットを消費しません。',
         'copies': '枚', 'distinct': '種類', 'duplicates': '重複', 'sets': 'セット',
         'not_owned': 'コレクション内にこのカードは見つかりません。', 'owned': 'コレクション内：',
+        'rarity': 'レアリティ', 'artist': 'イラストレーター', 'category': '分類', 'types': 'タイプ',
+        'stage': '進化段階', 'attacks': 'ワザ', 'variants': 'バリエーション',
     },
 }
 
-PRICE_WORDS = ('preço', 'preco', 'price', 'precio', 'valor', 'value', 'worth', 'cotação', 'cotizacion', '価格', '相場', '最安')
+PRICE_WORDS = ('preço', 'preco', 'price', 'precio', 'valor', 'vale', 'value', 'worth', 'cotação', 'cotizacion', '価格', '相場', '最安')
 BUY_WORDS = ('comprar', 'compra', 'buy', 'purchase', 'comprar', 'dónde', 'onde', 'where', 'oferta', 'offer', '購入', 'どこ')
 COLLECTION_WORDS = ('coleção', 'colecao', 'collection', 'colección', 'mi colección', 'my binder', 'コレクション')
 OWN_WORDS = ('tenho', 'possuo', 'minha carta', 'i own', 'do i have', 'mis cartas', 'tengo', '持って')
@@ -95,6 +104,39 @@ OWN_WORDS = ('tenho', 'possuo', 'minha carta', 'i own', 'do i have', 'mis cartas
 def folded(value):
     text = unicodedata.normalize('NFKD', str(value or '').casefold())
     return ''.join(char for char in text if not unicodedata.combining(char)).strip()
+
+
+LANGUAGE_MARKERS = {
+    'Português (BR)': {'qual', 'quanto', 'quantas', 'quais', 'minha', 'meu', 'tenho', 'cartas', 'carta',
+                       'colecao', 'preco', 'comprar', 'onde', 'sobre', 'voce', 'raridade', 'estou', 'sao',
+                       'uma', 'um', 'como', 'posso', 'quero'},
+    'Español': {'cual', 'cuanto', 'cuantas', 'donde', 'tengo', 'mis', 'coleccion', 'precio', 'comprar',
+                'sobre', 'rareza', 'carta', 'cartas', 'puedo', 'esta', 'son', 'una', 'quiero'},
+    'English': {'what', 'which', 'how', 'many', 'where', 'can', 'you', 'the', 'this', 'card', 'cards',
+                'collection', 'price', 'buy', 'worth', 'rarity', 'my', 'is', 'are', 'tell', 'about'},
+}
+
+
+def question_language(question, fallback='English'):
+    """Detect the question language, independent of the UI selection.
+
+    Card names, numbers and one-word queries are ambiguous; callers retain the
+    last detected conversation language, then use the UI language as fallback.
+    """
+    text = str(question or '')
+    if re.search(r'[\u3040-\u30ff\u3400-\u9fff]', text):
+        return '日本語'
+    if '¿' in text or '¡' in text or 'ñ' in text.lower():
+        return 'Español'
+    if re.search(r'[ãõ]|ç|ções|ção', text.lower()):
+        return 'Português (BR)'
+    tokens = set(re.findall(r'[a-z]+', folded(text)))
+    scores = {language: len(tokens & markers) for language, markers in LANGUAGE_MARKERS.items()}
+    best = max(scores.values())
+    if not best:
+        return fallback if fallback in LABELS else 'English'
+    winners = [language for language, score in scores.items() if score == best]
+    return winners[0] if len(winners) == 1 else (fallback if fallback in winners else 'English')
 
 
 def intent(question):
@@ -217,16 +259,16 @@ def collection_answer(client, user_id, kind, name, labels):
 
 def card_answer(card, labels):
     fields = [card['name'], f"{card.get('set_name') or '?'} · #{card.get('number') or '?'}"]
-    for label, key in [('Rarity', 'rarity'), ('Artist', 'illustrator'), ('Category', 'category'), ('HP', 'hp')]:
+    for label, key in [('rarity', 'rarity'), ('artist', 'illustrator'), ('category', 'category'), ('HP', 'hp')]:
         if card.get(key) not in (None, ''):
-            fields.append(f'{label}: {card[key]}')
+            fields.append(f'{labels.get(label, label)}: {card[key]}')
     attrs = card.get('attributes') or {}
-    for label, key in [('Types', 'types'), ('Stage', 'stage')]:
+    for label, key in [('types', 'types'), ('stage', 'stage')]:
         value = attrs.get(key)
         if isinstance(value, str) and value:
-            fields.append(f'{label}: {value[:100]}')
+            fields.append(f'{labels[label]}: {value[:100]}')
         elif isinstance(value, list) and value:
-            fields.append(f'{label}: {", ".join(str(v)[:40] for v in value[:5])}')
+            fields.append(f'{labels[label]}: {", ".join(str(v)[:40] for v in value[:5])}')
     attacks = attrs.get('attacks') or []
     if isinstance(attacks, list):
         names = []
@@ -237,9 +279,9 @@ def card_answer(card, labels):
             if isinstance(name, str) and name:
                 names.append(name[:80])
         if names:
-            fields.append('Attacks: ' + ', '.join(names))
+            fields.append(labels['attacks'] + ': ' + ', '.join(names))
     if card.get('variants'):
-        fields.append('Variants: ' + ', '.join(card['variants'][:8]))
+        fields.append(labels['variants'] + ': ' + ', '.join(card['variants'][:8]))
     return '\n\n'.join(fields)
 
 
@@ -307,32 +349,37 @@ def ask_ai(client, model, question, language):
 
 
 def render_chatbot(st, client, ai_client, model, user_id, language, selected=None, external_search=None):
-    labels = LABELS.get(language, LABELS['English'])
-    st.header('✦ ' + labels['title'])
-    st.caption(labels['intro'] + ' ' + labels['credits'])
+    interface_labels = LABELS.get(language, LABELS['English'])
+    st.header('✦ ' + interface_labels['title'])
+    st.caption(interface_labels['intro'] + ' ' + interface_labels['credits'])
     state_key = f'cardcraft_chat_{user_id}'
     history = st.session_state.setdefault(state_key, [])
-    name = st.text_input(labels['card'], help=labels['card_hint'], key=f'cardcraft_chat_card_{user_id}')
+    name = st.text_input(interface_labels['card'], help=interface_labels['card_hint'], key=f'cardcraft_chat_card_{user_id}')
     set_col, number_col = st.columns([2, 1])
-    set_name = set_col.text_input(labels['set'], key=f'cardcraft_chat_set_{user_id}')
-    card_number = number_col.text_input(labels['number'], key=f'cardcraft_chat_number_{user_id}')
-    if st.button(labels['clear'], key=f'cardcraft_chat_clear_{user_id}'):
+    set_name = set_col.text_input(interface_labels['set'], key=f'cardcraft_chat_set_{user_id}')
+    card_number = number_col.text_input(interface_labels['number'], key=f'cardcraft_chat_number_{user_id}')
+    if st.button(interface_labels['clear'], key=f'cardcraft_chat_clear_{user_id}'):
         st.session_state[state_key] = []
         history = st.session_state[state_key]
     for entry in history[-16:]:
         with st.chat_message(entry['role']):
             st.markdown(entry['text'])
             if entry.get('source'):
-                st.caption(labels['source'] + ': ' + entry['source'])
+                entry_labels = LABELS.get(entry.get('language'), interface_labels)
+                st.caption(entry_labels['source'] + ': ' + entry['source'])
             for title, url in entry.get('links', []):
                 st.link_button(title, url)
-    question = st.chat_input(labels['prompt'], key=f'cardcraft_chat_prompt_{user_id}')
+    question = st.chat_input(interface_labels['prompt'], key=f'cardcraft_chat_prompt_{user_id}')
     if not question or not question.strip():
         return
     question = question.strip()[:800]
+    previous_language = next((item['language'] for item in reversed(history)
+                              if item.get('role') == 'assistant' and item.get('language')), language)
+    response_language = question_language(question, previous_language)
+    labels = LABELS[response_language]
     history.append({'role': 'user', 'text': question})
     try:
-        result = answer(question, name, selected, client, user_id, language, external_search, set_name, card_number)
+        result = answer(question, name, selected, client, user_id, response_language, external_search, set_name, card_number)
         if result.get('needs_ai'):
             usage_key = f'cardcraft_chat_ai_calls_{user_id}'
             calls = int(st.session_state.get(usage_key, 0))
@@ -342,11 +389,11 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
                 # Count attempts before the request so repeated failures do not loop.
                 st.session_state[usage_key] = calls + 1
                 result = {'text': (result['text'] + '\n\n' if result['text'] else '')
-                          + ask_ai(ai_client, model, question, language), 'source': labels['ai'], 'links': []}
+                          + ask_ai(ai_client, model, question, response_language), 'source': labels['ai'], 'links': []}
         if not result['text']:
             result['text'] = labels['empty']
     except Exception:
         result = {'text': labels['error'], 'source': '', 'links': []}
-    history.append({'role': 'assistant', **result})
+    history.append({'role': 'assistant', 'language': response_language, **result})
     st.session_state[state_key] = history[-32:]
     st.rerun()
