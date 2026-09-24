@@ -25,6 +25,7 @@ from security_utils import redact_diagnostic
 from ui_messages import install_messages
 from payment_utils import package_code as validate_package_code, safe_checkout_url
 from community import render_community, community_nav_label
+from chatbot import render_chatbot
 
 
 # ============================================================
@@ -1615,6 +1616,13 @@ HOME_TEXT = {
                 "マイアカウント", "プロフィールと分析履歴を確認します。", "開く"),
 }
 
+CHAT_NAV = {
+    'English': ('Assistant', 'Ask about cards, your collection and places to browse offers.'),
+    'Português (BR)': ('Assistente', 'Pergunte sobre cartas, sua coleção e onde procurar ofertas.'),
+    'Español': ('Asistente', 'Pregunta por cartas, tu colección y dónde buscar ofertas.'),
+    '日本語': ('アシスタント', 'カード、コレクション、購入先について質問できます。'),
+}
+
 def home_text(idioma):
     return HOME_TEXT.get(idioma, HOME_TEXT["English"])
 
@@ -1652,6 +1660,7 @@ COMMUNITY_ENABLED = str(st.secrets.get("COMMUNITY_ENABLED", "true")).lower() == 
 
 NAVIGATION_OPTIONS = (
     ["home"]
+    + ["chatbot"]
     + (["community"] if COMMUNITY_ENABLED else [])
     + (["collection"] if COLLECTIONS_ENABLED else [])
     + [
@@ -5687,6 +5696,10 @@ def mostrar_catalogo_para_analise_foto(
             selecionada,
             titulo=t("user_selected_match_title"),
         )
+        st.button(
+            '✦ ' + CHAT_NAV.get(idioma_interface_atual(), CHAT_NAV['English'])[0],
+            key='chat_about_selected_photo', on_click=abrir_pagina, args=('chatbot',),
+        )
     else:
         melhor = validacao.get("melhor")
         if (
@@ -5917,7 +5930,7 @@ def escolher_sugestao_catalogo_nome(nome):
 def limpar_sessao():
     clear_identity(st.session_state)
     for key in list(st.session_state):
-        if key.startswith('collection_') or key in {
+        if key.startswith(('collection_', 'cardcraft_chat_')) or key in {
             'senha_login', 'senha_cadastro', 'senha_confirmar', 'nova_senha_recuperacao',
             'confirmar_nova_senha_recuperacao', 'recovery_link_processed', 'analysis_in_progress'
         }:
@@ -8678,6 +8691,8 @@ st.sidebar.radio(
     format_func=lambda pagina_id: (
         "⌂ " + home_text(idioma)[0]
         if pagina_id == "home"
+        else "✦ " + CHAT_NAV.get(idioma, CHAT_NAV['English'])[0]
+        if pagina_id == "chatbot"
         else community_nav_label(idioma)
         if pagina_id == "community"
         else (
@@ -8821,6 +8836,7 @@ if pagina == "home":
     shortcuts = [
         ("photo", "📸", photo_label, photo_description),
         ("search", "🔎", search_label, search_description),
+        ("chatbot", "✦", *CHAT_NAV.get(idioma, CHAT_NAV['English'])),
     ]
     if COLLECTIONS_ENABLED:
         shortcuts.append(("collection", "🃏", collection_label, collection_description))
@@ -8847,6 +8863,13 @@ if pagina == "home":
                     on_click=abrir_pagina,
                     args=(destination,),
                 )
+
+elif pagina == "chatbot":
+    render_chatbot(
+        st, supabase, gemini_client, AI_MODEL, st.session_state.user_id, idioma,
+        selected=st.session_state.get('catalogo_selecionada_nome') or st.session_state.get('catalogo_selecionada_foto'),
+        external_search=buscar_cartas_catalogo_pokemon,
+    )
 
 elif pagina == "community" and COMMUNITY_ENABLED:
     render_community(
@@ -9130,6 +9153,10 @@ elif pagina == "search":
         )
 
         st.info(t("selection_registered"))
+        st.button(
+            '✦ ' + CHAT_NAV.get(idioma, CHAT_NAV['English'])[0],
+            key='chat_about_selected_name', on_click=abrir_pagina, args=('chatbot',),
+        )
 
     if consulta_catalogo:
         st.divider()

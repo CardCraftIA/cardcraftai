@@ -68,7 +68,7 @@ class NavigationTests(TestCase):
 
     def test_every_authenticated_route_in_all_four_languages(self):
         for language in LANGUAGES:
-            for page in ('home', 'community', 'photo', 'search', 'collection', 'account', 'plans', 'terms', 'privacy'):
+            for page in ('home', 'chatbot', 'community', 'photo', 'search', 'collection', 'account', 'plans', 'terms', 'privacy'):
                 with self.subTest(language=language, page=page):
                     app = self.render_app(page, language)
                     self.assertFalse(app.error)
@@ -78,7 +78,7 @@ class NavigationTests(TestCase):
                         self.assertIn(expected, app.sidebar.radio[0].options)
 
     def test_sidebar_navigation_callbacks_preserve_credit_balance(self):
-        self.render_app('home', subsequent=('community', 'search', 'collection', 'account', 'plans', 'terms', 'privacy', 'photo', 'home'))
+        self.render_app('home', subsequent=('chatbot', 'community', 'search', 'collection', 'account', 'plans', 'terms', 'privacy', 'photo', 'home'))
 
     def test_home_shortcut_opens_community_without_consuming_credits(self):
         self.render_app('home', language='Português (BR)', shortcut='community')
