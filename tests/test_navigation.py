@@ -38,7 +38,8 @@ class NavigationTests(TestCase):
         fake.rpc.side_effect = AssertionError('Rendering must not charge, refund or mutate')
         ai = Mock()
         secrets = dict(SUPABASE_URL='https://fixture.invalid', SUPABASE_KEY='fake',
-                       SUPABASE_SERVICE_ROLE_KEY='fake', GEMINI_API_KEY='fake', COLLECTIONS_ENABLED=True)
+                       SUPABASE_SERVICE_ROLE_KEY='fake', GEMINI_API_KEY='fake', COLLECTIONS_ENABLED=True,
+                       COMMUNITY_ENABLED=True)
         app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'app.py'), default_timeout=15)
         for key, value in dict(user_id='fixture-owner', access_token='FAKE_ACCESS', refresh_token='FAKE_REFRESH',
                                idioma_interface=language, pagina_interface=page, pagina_navegacao_widget=page).items():
@@ -61,7 +62,7 @@ class NavigationTests(TestCase):
     def test_every_authenticated_route_in_all_four_languages(self):
         # No separate home route exists; photo is the current landing page.
         for language in LANGUAGES:
-            for page in ('photo', 'search', 'collection', 'account', 'plans', 'terms', 'privacy'):
+            for page in ('community', 'photo', 'search', 'collection', 'account', 'plans', 'terms', 'privacy'):
                 with self.subTest(language=language, page=page):
                     app = self.render_app(page, language)
                     self.assertFalse(app.error)
@@ -71,7 +72,7 @@ class NavigationTests(TestCase):
                         self.assertIn(expected, app.sidebar.radio[0].options)
 
     def test_sidebar_navigation_callbacks_preserve_credit_balance(self):
-        self.render_app('photo', subsequent=('search', 'collection', 'account', 'plans', 'terms', 'privacy', 'photo'))
+        self.render_app('photo', subsequent=('community', 'search', 'collection', 'account', 'plans', 'terms', 'privacy', 'photo'))
 
     def test_purchase_outage_is_not_presented_as_empty_history(self):
         app = self.render_app('account', fail_purchases=True)
