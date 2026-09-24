@@ -1,0 +1,68 @@
+name: Build Catalog Snapshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - staging
+    paths:
+      - '.catalog-build-trigger'
+
+permissions:
+  contents: read
+
+jobs:
+  build-tcgdex:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout CardCraftAI
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: app
+          persist-credentials: false
+
+      - name: Checkout TCGdex database
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: tcgdex/cards-database
+          ref: master
+          path: tcgdex
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: tcgdex/package-lock.json
+
+      - name: Install TCGdex build dependencies
+        working-directory: tcgdex
+        run: npm ci
+
+      - name: Validate upstream TypeScript database
+        working-directory: tcgdex
+        run: npm run validate
+
+      - name: Export CardCraft source snapshot
+        run: |
+          mkdir -p artifacts/tcgdex
+          node app/scripts/export_tcgdex_repository.js \
+            --repo tcgdex \
+            --output artifacts/tcgdex/tcgdex_cards.jsonl
+          cp tcgdex/LICENSE artifacts/tcgdex/TCGDEX-LICENSE.txt
+          git -C tcgdex rev-parse HEAD > artifacts/tcgdex/source-revision.txt
+          sha256sum artifacts/tcgdex/tcgdex_cards.jsonl > artifacts/tcgdex/SHA256SUMS
+
+      - name: Show snapshot stats
+        run: cat artifacts/tcgdex/tcgdex_cards.jsonl.stats.json
+
+      - name: Upload catalog source artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cardcraft-tcgdex-source-snapshot
+          path: artifacts/tcgdex/
+          if-no-files-found: error
+          retention-days: 14
