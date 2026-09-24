@@ -55,16 +55,16 @@ function imageBase(language, serieId, setId, localId) {
   return "https://assets.tcgdex.net/" + pieces.join("/");
 }
 
-const cardFiles = globSync("data/*/*/*.ts", {
-  cwd: repoRoot,
-  nodir: true,
-}).sort();
+// Asian releases are stored in a separate tree, not under data/.
+const cardFiles = ["data/*/*/*.ts", "data-asia/*/*/*.ts"]
+  .flatMap(pattern => globSync(pattern, { cwd: repoRoot, nodir: true }))
+  .sort();
 
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-const out = fs.createWriteStream(outputPath, { encoding: "utf8" });
 let emitted = 0;
 let variantCount = 0;
 let localizationCount = 0;
+const records = new Map();
 const games = new Map();
 const sets = new Map();
 const languageCounts = new Map();
@@ -76,12 +76,17 @@ for (const relativePath of cardFiles) {
   if (!card || typeof card !== "object" || !card.set || !card.set.id) continue;
 
   const parts = relativePath.split(path.sep);
+  const asianRelease = parts[0] === "data-asia";
   const topSeriesDirectory = parts[1] || "";
   const localId = path.basename(relativePath, ".ts");
   const set = card.set || {};
   const serie = set.serie || {};
   const gameSlug = topSeriesDirectory === "Pokémon TCG Pocket" ? "pokemon-pocket" : "pokemon";
-  const sourceKey = String(set.id) + "-" + String(localId);
+  // Separate release trees can reuse the same set ID and collector number.
+  // Keep them distinct until a reviewer establishes that they are identical.
+  const sourceSetId = (asianRelease ? "asia:" : "") + String(set.id);
+  const sourceKey = sourceSetId + "-" + String(localId);
+  const scopedKey = gameSlug + ":" + sourceKey;
   const names = card.name && typeof card.name === "object" ? card.name : {};
   const setNames = set.name && typeof set.name === "object" ? set.name : {};
   const seriesNames = serie.name && typeof serie.name === "object" ? serie.name : {};
@@ -105,8 +110,6 @@ for (const relativePath of cardFiles) {
       image_small_url: base ? base + "/low.webp" : "",
       image_url: base ? base + "/high.webp" : "",
     });
-    localizationCount += 1;
-    languageCounts.set(language, (languageCounts.get(language) || 0) + 1);
   }
 
   const rawVariants = Array.isArray(card.variants) && card.variants.length
@@ -123,7 +126,6 @@ for (const relativePath of cardFiles) {
       Object.entries(variant || {}).filter(([key]) => !["type", "subtype", "size", "stamp", "thirdParty"].includes(key))
     ),
   }));
-  variantCount += variants.length;
 
   const cardWithoutSet = Object.fromEntries(
     Object.entries(card).filter(([key]) => !["set", "name", "description", "variants"].includes(key))
@@ -136,7 +138,7 @@ for (const relativePath of cardFiles) {
     game_slug: gameSlug,
     local_id: String(localId),
     set: {
-      source_id: String(set.id || ""),
+      source_id: sourceSetId,
       code: String((set.abbreviations || {}).official || set.tcgOnline || set.id || ""),
       names: setNames,
       series_source_id: String(serie.id || ""),
@@ -160,12 +162,39 @@ for (const relativePath of cardFiles) {
     variants,
   };
 
-  out.write(JSON.stringify(record) + "\n");
-  emitted += 1;
+  if (records.has(scopedKey)) {
+    // TCGdex occasionally stores distinct language fragments of one printing
+    // in different source files. Combine them without dropping translations.
+    const previous = records.get(scopedKey);
+    for (const localized of localizations) {
+      const old = previous.localizations.find(item => item.language === localized.language);
+      if (old && old.name !== localized.name) {
+        throw new Error("Conflicting localized identity: " + scopedKey + "/" + localized.language);
+      }
+      if (!old) previous.localizations.push(localized);
+    }
+    for (const variant of variants) {
+      if (!previous.variants.some(item => item.variant_key === variant.variant_key)) {
+        previous.variants.push(variant);
+      }
+    }
+  } else {
+    records.set(scopedKey, record);
+  }
 
   delete require.cache[require.resolve(absolutePath)];
 }
 
+const out = fs.createWriteStream(outputPath, { encoding: "utf8" });
+for (const record of records.values()) {
+  out.write(JSON.stringify(record) + "\n");
+  emitted += 1;
+  variantCount += record.variants.length;
+  localizationCount += record.localizations.length;
+  for (const localized of record.localizations) {
+    languageCounts.set(localized.language, (languageCounts.get(localized.language) || 0) + 1);
+  }
+}
 out.end();
 out.on("finish", () => {
   const stats = {

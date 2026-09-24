@@ -267,9 +267,25 @@ def upsert_batches(client, table: str, rows: list[dict], on_conflict: str, batch
 def ingest_batch(client, source_id: int, records: list[dict], batch_size: int) -> tuple[int, int]:
     now = datetime.now(timezone.utc).isoformat()
 
+    # A periodic source refresh must not silently replace a reviewed or
+    # multi-source canonical record. Those disagreements require reconciliation.
+    card_keys = [canonical_card_key(record) for record in records]
+    for key_batch in chunks(card_keys, batch_size):
+        existing = (
+            client.table("catalog_cards")
+            .select("canonical_key,verification_status,source_count")
+            .in_("canonical_key", key_batch)
+            .execute()
+        )
+        for row in existing.data or []:
+            if row.get("verification_status") != "source_verified" or int(row.get("source_count") or 0) > 1:
+                raise ValueError(f"Canonical record requires review: {row['canonical_key']}")
+
     set_rows_by_key = {canonical_set_key(record): build_set_row(record) for record in records}
     upsert_batches(client, "catalog_sets", list(set_rows_by_key.values()), "canonical_key", batch_size)
     set_ids = get_id_map(client, "catalog_sets", "canonical_key", list(set_rows_by_key))
+    if len(set_ids) != len(set_rows_by_key):
+        raise RuntimeError("Some catalog sets could not be resolved")
 
     card_rows = [
         build_card_row(record, set_ids.get(canonical_set_key(record)))
@@ -282,6 +298,8 @@ def ingest_batch(client, source_id: int, records: list[dict], batch_size: int) -
         "canonical_key",
         [canonical_card_key(record) for record in records],
     )
+    if len(card_ids) != len(card_rows):
+        raise RuntimeError("Some catalog cards could not be resolved")
 
     localizations: list[dict] = []
     variants: list[dict] = []
@@ -360,7 +378,7 @@ def ingest_batch(client, source_id: int, records: list[dict], batch_size: int) -
     return len(card_rows), len(localizations)
 
 
-def read_records(path: Path, limit: int = 0) -> Iterable[dict]:
+def read_records(path: Path, limit: int = 0, source_keys: set[str] | None = None) -> Iterable[dict]:
     emitted = 0
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, 1):
@@ -372,10 +390,51 @@ def read_records(path: Path, limit: int = 0) -> Iterable[dict]:
                 raise ValueError(f"Unsupported snapshot row at line {line_number}")
             if not record.get("source_key") or not record.get("local_id"):
                 raise ValueError(f"Missing identity at line {line_number}")
+            if not (record.get("set") or {}).get("source_id"):
+                raise ValueError(f"Missing set identity at line {line_number}")
+            if not record.get("localizations"):
+                raise ValueError(f"Card has no localized name at line {line_number}")
+            if source_keys is not None and record["source_key"] not in source_keys:
+                continue
             yield record
             emitted += 1
             if limit and emitted >= limit:
                 return
+
+
+def verify_snapshot(path: Path, *, require_provenance: bool) -> dict:
+    """Validate the artifact's source revision, license and full-file checksum."""
+    import re as _re
+
+    directory = path.parent
+    revision_path = directory / "source-revision.txt"
+    license_path = directory / "TCGDEX-LICENSE.txt"
+    checksums_path = directory / "SHA256SUMS"
+    if not all(item.is_file() for item in (revision_path, license_path, checksums_path)):
+        if require_provenance:
+            raise ValueError("Snapshot needs source-revision.txt, TCGDEX-LICENSE.txt and SHA256SUMS")
+        return {"verified": False}
+    revision = revision_path.read_text(encoding="utf-8").strip()
+    if not _re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise ValueError("Invalid source revision")
+    license_text = license_path.read_text(encoding="utf-8")
+    if "MIT License" not in license_text:
+        raise ValueError("Unexpected source license")
+    expected = None
+    for line in checksums_path.read_text(encoding="utf-8").splitlines():
+        match = _re.fullmatch(r"([0-9a-f]{64})\s+\*?(.+)", line.strip())
+        if match and Path(match.group(2)).name == path.name:
+            expected = match.group(1)
+            break
+    if not expected:
+        raise ValueError("Snapshot checksum missing")
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    if digest.hexdigest() != expected:
+        raise ValueError("Snapshot checksum mismatch")
+    return {"verified": True, "source_revision": revision, "sha256": expected}
 
 
 def main() -> None:
@@ -384,10 +443,25 @@ def main() -> None:
     parser.add_argument("--source", default="tcgdex")
     parser.add_argument("--batch-size", type=int, default=150)
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--source-key", action="append", default=[],
+                        help="Select an exact source key for a curated TEST pilot (repeatable)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
+    if args.limit < 0 or (args.limit and args.source_key):
+        parser.error("Use either a nonnegative --limit or --source-key selections")
 
-    records = list(read_records(args.snapshot, args.limit))
+    provenance = verify_snapshot(args.snapshot, require_provenance=not args.dry_run)
+    selected_keys = set(args.source_key) if args.source_key else None
+    records = list(read_records(args.snapshot, args.limit, selected_keys))
+    if selected_keys and {record["source_key"] for record in records} != selected_keys:
+        raise ValueError("Some selected source keys are absent from the snapshot")
+    if not records:
+        raise ValueError("Snapshot selection contains no cards")
+    if any(record.get("provider") != args.source for record in records):
+        raise ValueError("Snapshot provider does not match the registered source")
+    keys = [canonical_card_key(record) for record in records]
+    if len(keys) != len(set(keys)):
+        raise ValueError("Duplicate card identity in snapshot selection")
     print(f"Validated {len(records)} snapshot records from {args.snapshot}")
 
     if args.dry_run:
@@ -398,6 +472,8 @@ def main() -> None:
                     "localizations": sum(len(row.get("localizations") or []) for row in records),
                     "variants": sum(len(row.get("variants") or []) for row in records),
                     "sets": len({canonical_set_key(row) for row in records}),
+                    "provenance": provenance,
+                    "selected_keys": args.source_key,
                 },
                 indent=2,
             )
@@ -412,13 +488,15 @@ def main() -> None:
     client = create_client(url, service_key)
     source_response = (
         client.table("catalog_sources")
-        .select("id,code")
+        .select("id,code,active,redistribution_mode,terms_verified_at")
         .eq("code", args.source)
         .limit(1)
         .execute()
     )
-    if not source_response.data:
-        raise SystemExit(f"Catalog source {args.source!r} is not registered")
+    if not source_response.data or not source_response.data[0].get("active") \
+            or source_response.data[0].get("redistribution_mode") != "mirror_allowed" \
+            or not source_response.data[0].get("terms_verified_at"):
+        raise SystemExit(f"Catalog source {args.source!r} is not approved for mirroring")
     source_id = int(source_response.data[0]["id"])
 
     run = (
@@ -426,10 +504,12 @@ def main() -> None:
         .insert(
             {
                 "source_id": source_id,
-                "mode": "full_rebuild",
+                "mode": "hydrate" if args.limit or args.source_key else "full_rebuild",
                 "status": "running",
                 "discovered_count": len(records),
-                "metadata": {"snapshot": args.snapshot.name},
+                "source_revision": provenance["source_revision"],
+                "metadata": {"snapshot": args.snapshot.name, "sha256": provenance["sha256"],
+                             "selected_limit": args.limit, "selected_keys": args.source_key},
             }
         )
         .execute()
@@ -456,8 +536,11 @@ def main() -> None:
                         "inserted_count": inserted,
                         "updated_count": localized,
                         "metadata": {
-                            "snapshot": args.snapshot.name,
-                            "localizations": localized,
+                        "snapshot": args.snapshot.name,
+                        "localizations": localized,
+                        "sha256": provenance["sha256"],
+                        "selected_limit": args.limit,
+                        "selected_keys": args.source_key,
                         },
                     }
                 )

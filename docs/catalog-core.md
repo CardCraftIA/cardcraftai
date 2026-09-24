@@ -41,6 +41,18 @@ This is the basis for future CardCraft IDs and a field-level Confidence Engine.
 
 The first build source is the public `tcgdex/cards-database` repository.
 
+The exporter traverses both `data/` and `data-asia/`. It namespaces Asian
+release IDs because the two trees can reuse set/collector IDs for different
+printings. Separate files describing the same printing are merged by source
+identity, preserving distinct localized names and variants. A conflicting name
+for the same language stops the build for review.
+
+Inventory of upstream revision `feced2e7b99bcf2e2ab76f0309e16ce2c15b6a9a`
+(2026-09-24): 42,283 card records, 58,190 variants and 145,034
+localizations, including 13,448 Japanese localizations. The JSONL snapshot is
+about 133 MB before database indexes and Postgres overhead. These counts are
+snapshot records, not a claim of unique physical cards in existence.
+
 Why it is the first source:
 
 - the database itself is MIT-licensed;
@@ -72,6 +84,11 @@ The Streamlit app does not run this process.
 `scripts/ingest_catalog_snapshot.py` validates the snapshot, then upserts it into
 Catalog Core using the Supabase service role in a trusted maintenance environment.
 
+Before a write, ingestion checks the entire file checksum against `SHA256SUMS`,
+the source revision and the attached MIT license. An import of an existing
+reviewed/multi-source canonical record stops for reconciliation. Never replace
+the reviewed identity with one provider's current value.
+
 The command is resumable/idempotent by canonical/source keys. Service-role keys must
 never be committed to GitHub or exposed in the Streamlit client.
 
@@ -83,6 +100,22 @@ python scripts/ingest_catalog_snapshot.py artifacts/tcgdex/tcgdex_cards.jsonl --
 
 Real ingest requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the
 maintenance environment.
+
+For a curated TEST pilot, use the verified full snapshot and select exact keys:
+
+```bash
+python scripts/ingest_catalog_snapshot.py artifacts/tcgdex/tcgdex_cards.jsonl \
+  --source-key base1-58 --source-key base1-4 \
+  --source-key sv01-081 --source-key asia:miscp-001 --dry-run
+```
+
+Remove `--dry-run` only from a trusted maintenance environment connected to
+the TEST project. Selected runs are labeled `hydrate`.
+Check record and search counts, storage size, image URL behavior, and RLS
+before expanding the pilot. The snapshot artifact must remain available for
+field-level provenance: the database stores hashes and links, not full raw
+source payloads. GitHub Actions artifacts have finite retention and are not
+a permanent provenance archive.
 
 ## Organic growth: cards upstream catalogs miss
 

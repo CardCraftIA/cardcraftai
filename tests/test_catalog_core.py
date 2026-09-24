@@ -1,6 +1,10 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import hashlib
+import json
+import tempfile
+from unittest.mock import Mock
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "ingest_catalog_snapshot.py"
@@ -94,6 +98,30 @@ class CatalogCoreTests(unittest.TestCase):
 
     def test_quality_rewards_rich_records(self):
         self.assertGreaterEqual(module.data_quality(self.record), 90)
+
+    def test_snapshot_requires_matching_checksum_revision_and_license(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            snapshot = root / 'cards.jsonl'
+            snapshot.write_text(json.dumps(self.record) + '\n', encoding='utf-8')
+            (root / 'source-revision.txt').write_text('a' * 40 + '\n', encoding='utf-8')
+            (root / 'TCGDEX-LICENSE.txt').write_text('MIT License\n', encoding='utf-8')
+            digest = hashlib.sha256(snapshot.read_bytes()).hexdigest()
+            (root / 'SHA256SUMS').write_text(f'{digest}  {snapshot.name}\n', encoding='utf-8')
+            self.assertEqual(module.verify_snapshot(snapshot, require_provenance=True)['sha256'], digest)
+            snapshot.write_text(snapshot.read_text() + 'tampered\n', encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                module.verify_snapshot(snapshot, require_provenance=True)
+
+    def test_import_rejects_reviewed_canonical_record_before_writing(self):
+        client = Mock()
+        client.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
+            {'canonical_key': module.canonical_card_key(self.record),
+             'verification_status': 'community_verified', 'source_count': 2}
+        ]
+        with self.assertRaisesRegex(ValueError, 'requires review'):
+            module.ingest_batch(client, 1, [self.record], 10)
+        client.table.return_value.upsert.assert_not_called()
 
 
 if __name__ == "__main__":
