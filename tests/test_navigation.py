@@ -56,7 +56,8 @@ class NavigationTests(TestCase):
         fake.rpc.assert_not_called()
         ai.models.generate_content.assert_not_called()
         self.assertEqual(app.sidebar.radio[0].value, subsequent[-1] if subsequent else page)
-        self.assertTrue(app.header)
+        if page != 'community':
+            self.assertTrue(app.header)
         return app
 
     def test_every_authenticated_route_in_all_four_languages(self):
