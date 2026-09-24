@@ -21,8 +21,18 @@ function arg(name, fallback = "") {
 
 const repoRoot = path.resolve(arg("--repo", "."));
 const outputPath = path.resolve(arg("--output", "tcgdex_cards.jsonl"));
-const tsNodeRegister = path.join(repoRoot, "node_modules", "ts-node", "register", "transpile-only");
-require(tsNodeRegister);
+const tsNode = require(path.join(repoRoot, "node_modules", "ts-node"));
+tsNode.register({
+  transpileOnly: true,
+  skipProject: true,
+  compilerOptions: {
+    target: "ES2020",
+    module: "CommonJS",
+    moduleResolution: "Node",
+    esModuleInterop: true,
+    resolveJsonModule: true,
+  },
+});
 const { globSync } = require(path.join(repoRoot, "node_modules", "glob"));
 
 function localeValue(value, language) {
