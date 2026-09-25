@@ -471,9 +471,12 @@ def ask_ai(client, model, question, language):
     return output[:1800]
 
 
+ATLAS_AVATAR = '🃏'
+
+
 def render_chatbot(st, client, ai_client, model, user_id, language, selected=None, external_search=None):
     interface_labels = LABELS.get(language, LABELS['English'])
-    st.header('✦ ' + interface_labels['title'])
+    st.header(ATLAS_AVATAR + ' ' + interface_labels['title'])
     st.caption(interface_labels['intro'] + ' ' + interface_labels['credits'])
     st.caption(interface_labels['attachment_hint'])
     state_key = f'cardcraft_chat_{user_id}'
@@ -482,7 +485,7 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
         st.session_state[state_key] = []
         history = st.session_state[state_key]
     for entry in history[-16:]:
-        with st.chat_message(entry['role']):
+        with st.chat_message(entry['role'], avatar=ATLAS_AVATAR if entry['role'] == 'assistant' else None):
             st.markdown(entry['text'])
             if entry.get('attachment_name'):
                 st.caption('📎 ' + entry['attachment_name'])

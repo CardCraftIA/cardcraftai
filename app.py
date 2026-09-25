@@ -5737,7 +5737,7 @@ def mostrar_catalogo_para_analise_foto(
             titulo=t("user_selected_match_title"),
         )
         st.button(
-            '✦ ' + CHAT_NAV.get(idioma_interface_atual(), CHAT_NAV['English'])[0],
+            '🃏 ' + CHAT_NAV.get(idioma_interface_atual(), CHAT_NAV['English'])[0],
             key='chat_about_selected_photo', on_click=abrir_pagina, args=('chatbot',),
         )
     else:
@@ -8732,7 +8732,7 @@ st.sidebar.radio(
     format_func=lambda pagina_id: (
         "⌂ " + home_text(idioma)[0]
         if pagina_id == "home"
-        else "✦ " + CHAT_NAV.get(idioma, CHAT_NAV['English'])[0]
+        else "🃏 " + CHAT_NAV.get(idioma, CHAT_NAV['English'])[0]
         if pagina_id == "chatbot"
         else "🔎 " + ANALYSIS_UI[idioma][0]
         if pagina_id == "analysis"
@@ -8879,7 +8879,7 @@ if pagina == "home":
     )
     shortcuts = [
         ("analysis", "🔎", ANALYSIS_UI[idioma][0], ANALYSIS_UI[idioma][1]),
-        ("chatbot", "✦", *CHAT_NAV.get(idioma, CHAT_NAV['English'])),
+        ("chatbot", "🃏", *CHAT_NAV.get(idioma, CHAT_NAV['English'])),
     ]
     if COLLECTIONS_ENABLED:
         shortcuts.append(("collection", "🃏", collection_label, collection_description))
@@ -8933,7 +8933,7 @@ elif pagina == "analysis":
         ANALYSIS_UI[idioma][0], mode_names,
         horizontal=True, key="analysis_mode_label",
     )
-    if st.button("✦ " + ANALYSIS_UI[idioma][3], key="analysis_open_atlas", on_click=abrir_pagina, args=("chatbot",)):
+    if st.button("🃏 " + ANALYSIS_UI[idioma][3], key="analysis_open_atlas", on_click=abrir_pagina, args=("chatbot",)):
         pass
     st.divider()
     pagina = "search" if mode_label == mode_names[0] else "photo"
@@ -9210,7 +9210,7 @@ elif pagina == "search":
 
         st.info(t("selection_registered"))
         st.button(
-            '✦ ' + CHAT_NAV.get(idioma, CHAT_NAV['English'])[0],
+            '🃏 ' + CHAT_NAV.get(idioma, CHAT_NAV['English'])[0],
             key='chat_about_selected_name', on_click=abrir_pagina, args=('chatbot',),
         )
 
