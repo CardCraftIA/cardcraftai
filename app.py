@@ -6053,8 +6053,10 @@ def renderizar_google_auth(idioma, key):
     try:
         url = google_auth_url(idioma)
         st.link_button(GOOGLE_TEXT[idioma][0], url, use_container_width=True)
-    except Exception:
-        st.caption(GOOGLE_TEXT[idioma][1])
+    except ValueError as error:
+        st.caption(str(error))
+    except Exception as error:
+        st.caption(f"{GOOGLE_TEXT[idioma][1]} ({type(error).__name__})")
 
 
 def limpar_selecao_catalogo_nome():
