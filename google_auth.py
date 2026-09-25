@@ -26,7 +26,7 @@ def canonical_app_url(value):
 
 def browser_binding(cookie):
     if not cookie:
-        raise ValueError("O navegador precisa aceitar cookies para entrar com Google.")
+        return None
     return hashlib.sha256(str(cookie).encode()).digest()
 
 
@@ -61,7 +61,7 @@ class PendingGoogleAuth:
         with self._lock:
             self._prune()
             item = self._pending.get(state)
-            if not item or not hmac.compare_digest(item[1], binding):
+            if not item or (item[1] is not None and (binding is None or not hmac.compare_digest(item[1], binding))):
                 raise ValueError("O acesso expirou. Tente entrar com Google novamente.")
             # Consume before exchanging: callback replay cannot use this request again.
             del self._pending[state]

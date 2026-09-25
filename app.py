@@ -5919,6 +5919,7 @@ if "mostrar_recuperacao_senha" not in st.session_state:
 
 if "modo_recuperacao_senha" not in st.session_state:
     st.session_state.modo_recuperacao_senha = False
+    st.session_state.google_pending_response = None
 
 if "recovery_link_processed" not in st.session_state:
     st.session_state.recovery_link_processed = None
@@ -6034,11 +6035,11 @@ def processar_retorno_google():
         if error:
             raise ValueError("O acesso com Google foi cancelado.")
         resposta, idioma = pending_google_auth().finish(state, code, google_browser_cookie())
-        if not salvar_sessao(resposta):
+        if not confirmed_email(getattr(resposta, "user", None)) or not getattr(resposta, "session", None):
             raise ValueError("A conta Google não possui e-mail confirmado.")
-        st.session_state.idioma_interface = idioma
-        st.session_state.idioma_sidebar_widget = idioma
-        st.session_state.pagina_interface = "home"
+        # A server-side confirmation makes an unbound browser callback explicit
+        # when Streamlit Cloud does not expose a stable browser cookie.
+        st.session_state.google_pending_response = (resposta, idioma)
     except Exception:
         st.session_state.google_auth_error = GOOGLE_TEXT[idioma][1]
     finally:
@@ -8517,6 +8518,29 @@ def tela_login():
 
     if st.session_state.get("google_auth_error"):
         st.error(st.session_state.pop("google_auth_error"))
+
+    pending_google = st.session_state.get("google_pending_response")
+    if pending_google:
+        resposta_google, idioma_google = pending_google
+        email_google = getattr(resposta_google.user, "email", "")
+        st.info({
+            "English": f"Google account: {email_google}. Confirm to sign in.",
+            "Português (BR)": f"Conta Google: {email_google}. Confirme para entrar.",
+            "Español": f"Cuenta de Google: {email_google}. Confirma para entrar.",
+            "日本語": f"Googleアカウント: {email_google}。確認してログインしてください。",
+        }[idioma_google])
+        if st.button({"English": "Confirm Google sign-in", "Português (BR)": "Confirmar entrada com Google", "Español": "Confirmar acceso con Google", "日本語": "Googleログインを確認"}[idioma_google], key="confirm_google_signin", use_container_width=True):
+            st.session_state.google_pending_response = None
+            if salvar_sessao(resposta_google):
+                st.session_state.idioma_interface = idioma_google
+                st.session_state.idioma_sidebar_widget = idioma_google
+                st.session_state.pagina_interface = "home"
+                st.rerun()
+            st.error(t("auth_error", idioma_google))
+        if st.button({"English": "Cancel", "Português (BR)": "Cancelar", "Español": "Cancelar", "日本語": "キャンセル"}[idioma_google], key="cancel_google_signin"):
+            st.session_state.google_pending_response = None
+            st.rerun()
+        st.stop()
 
     renderizar_google_auth(idioma, "google_login")
 

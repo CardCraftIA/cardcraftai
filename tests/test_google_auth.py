@@ -40,6 +40,15 @@ class GoogleAuthTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 canonical_app_url(invalid)
 
+    def test_streamlit_cloud_without_cookie(self):
+        auth = FakeAuth()
+        pending = PendingGoogleAuth()
+        pending.begin(SimpleNamespace(auth=auth), "https://cardcraftai-test.streamlit.app/", None, "English")
+        state = auth.oauth_args["options"]["redirect_to"].split("google_state=", 1)[1]
+        self.assertEqual(pending.finish(state, "code", None), ("session", "English"))
+        with self.assertRaises(ValueError):
+            pending.finish(state, "code", None)
+
 
 if __name__ == "__main__":
     unittest.main()
