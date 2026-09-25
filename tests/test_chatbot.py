@@ -7,6 +7,48 @@ import chatbot
 
 
 class ChatbotTests(TestCase):
+    def test_photo_match_shows_catalog_comparison_without_authenticity_claim(self):
+        evidence = dict(name='Pikachu', set='Base Set', number='58', rarity='Rare', hp='40',
+                        language='en', visible_features='yellow border')
+        row = {'card_id': 'a', 'card_name': 'Pikachu', 'set_name': 'Base Set',
+               'collector_number': '58', 'rarity': 'Common', 'illustrator': ''}
+        client = Mock()
+        client.rpc.return_value.execute.return_value.data = [row]
+        client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = []
+        result = chatbot.verify_photo_evidence(evidence, client, 'English')
+        self.assertIn('rarity: Differs', result['text'])
+        self.assertIn('do not prove physical authenticity', result['text'])
+        self.assertEqual(result['source'], 'CardCraft catalog')
+
+    def test_photo_without_edition_does_not_pick_one(self):
+        evidence = dict(name='Pikachu', set='', number='', rarity='', hp='', language='', visible_features='')
+        client = Mock()
+        client.rpc.return_value.execute.return_value.data = [
+            {'card_id': 'a', 'card_name': 'Pikachu', 'set_name': 'Base Set', 'collector_number': '58'},
+            {'card_id': 'b', 'card_name': 'Pikachu', 'set_name': 'Jungle', 'collector_number': '60'},
+        ]
+        result = chatbot.verify_photo_evidence(evidence, client, 'English')
+        self.assertIn('Several editions', result['text'])
+        client.table.assert_not_called()
+
+    def test_photo_uses_external_catalog_only_after_local_miss(self):
+        evidence = dict(name='Pikachu', set='Base Set', number='58/102', rarity='', hp='',
+                        language='', visible_features='')
+        client = Mock()
+        client.rpc.return_value.execute.return_value.data = []
+        external = Mock(return_value=[{'name': 'Pikachu', 'set': {'name': 'Base Set'},
+                                       'number': '58', 'rarity': 'Common'}])
+        result = chatbot.verify_photo_evidence(evidence, client, 'English', external)
+        self.assertIn('number: Matches', result['text'])
+        self.assertEqual(result['source'], 'TCGdex catalog')
+        external.assert_called_once()
+
+    def test_photo_without_catalog_identity_never_claims_genuine(self):
+        evidence = dict(name='', set='', number='', rarity='', hp='', language='', visible_features='red border')
+        result = chatbot.verify_photo_evidence(evidence, Mock(), 'English')
+        self.assertIn('No exact edition', result['text'])
+        self.assertIn('do not prove physical authenticity', result['text'])
+
     def test_conversation_replaces_card_fields(self):
         self.assertEqual(chatbot.conversation_card_reference('Fale sobre a carta Pikachu do set Base Set #58'),
                          ('Pikachu', 'Base Set', '58'))

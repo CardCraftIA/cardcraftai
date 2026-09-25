@@ -11,7 +11,7 @@ import re
 from urllib.parse import quote_plus
 
 from collection import collection_metrics, load_collection_items
-from chatbot_attachments import prepare_attachment, is_text_request, extract_text_answer, ask_attachment_ai
+from chatbot_attachments import prepare_attachment, is_text_request, extract_text_answer, extract_card_evidence, ask_attachment_ai
 
 LABELS = {
     'Português (BR)': {
@@ -33,7 +33,7 @@ LABELS = {
         'not_owned': 'Não encontrei essa carta na sua coleção.', 'owned': 'Na sua coleção:',
         'rarity': 'Raridade', 'artist': 'Artista', 'category': 'Categoria', 'types': 'Tipos',
         'stage': 'Estágio', 'attacks': 'Ataques', 'variants': 'Variantes',
-        'attachment_hint': 'Anexe foto ou PDF; também é possível colar uma imagem no campo de mensagem. Arquivos que exigem interpretação visual são enviados ao Gemini.',
+        'attachment_hint': 'Anexe ou cole uma foto para comparar pistas visíveis com o catálogo. PDFs também são aceitos. A imagem é interpretada pelo Gemini; a comparação não atesta autenticidade.',
         'attachment_error': 'Não consegui abrir o anexo. Use JPG, PNG ou WEBP até 15 MB, ou PDF de até 8 MB e 5 páginas.',
         'pdf_text': 'Texto extraído do PDF', 'attachment_question': 'Identifique a carta e descreva o que está visível.',
     },
@@ -56,7 +56,7 @@ LABELS = {
         'not_owned': 'I could not find this card in your collection.', 'owned': 'In your collection:',
         'rarity': 'Rarity', 'artist': 'Artist', 'category': 'Category', 'types': 'Types',
         'stage': 'Stage', 'attacks': 'Attacks', 'variants': 'Variants',
-        'attachment_hint': 'Attach a photo or PDF, or paste an image into the message field. Files needing visual interpretation are sent to Gemini.',
+        'attachment_hint': 'Attach or paste a photo to compare visible details with the catalog. PDFs are also accepted. Gemini reads images; a match does not certify authenticity.',
         'attachment_error': 'Could not open the attachment. Use JPG, PNG or WEBP up to 15 MB, or a PDF up to 8 MB and 5 pages.',
         'pdf_text': 'Text extracted from PDF', 'attachment_question': 'Identify the card and describe what is visible.',
     },
@@ -79,7 +79,7 @@ LABELS = {
         'not_owned': 'No encontré esa carta en tu colección.', 'owned': 'En tu colección:',
         'rarity': 'Rareza', 'artist': 'Artista', 'category': 'Categoría', 'types': 'Tipos',
         'stage': 'Etapa', 'attacks': 'Ataques', 'variants': 'Variantes',
-        'attachment_hint': 'Adjunta una foto o PDF, o pega una imagen en el mensaje. Los archivos que requieren interpretación visual se envían a Gemini.',
+        'attachment_hint': 'Adjunta o pega una foto para comparar detalles visibles con el catálogo. También se aceptan PDF. Gemini lee la imagen; la coincidencia no certifica autenticidad.',
         'attachment_error': 'No pude abrir el archivo. Usa JPG, PNG o WEBP hasta 15 MB, o PDF hasta 8 MB y 5 páginas.',
         'pdf_text': 'Texto extraído del PDF', 'attachment_question': 'Identifica la carta y describe lo visible.',
     },
@@ -102,7 +102,7 @@ LABELS = {
         'not_owned': 'コレクション内にこのカードは見つかりません。', 'owned': 'コレクション内：',
         'rarity': 'レアリティ', 'artist': 'イラストレーター', 'category': '分類', 'types': 'タイプ',
         'stage': '進化段階', 'attacks': 'ワザ', 'variants': 'バリエーション',
-        'attachment_hint': '写真やPDFを添付するか、メッセージ欄に画像を貼り付けてください。画像の解析が必要な場合はGeminiへ送信します。',
+        'attachment_hint': '写真を添付・貼り付けて、読み取れる特徴をカタログと照合できます。PDFにも対応します。Geminiが画像を読み取りますが、一致は真贋の証明ではありません。',
         'attachment_error': '添付ファイルを開けませんでした。画像は15 MB以下のJPG・PNG・WEBP、PDFは8 MB以下・5ページまでです。',
         'pdf_text': 'PDFから抽出したテキスト', 'attachment_question': 'カードを識別し、見える特徴を説明してください。',
     },
@@ -369,6 +369,93 @@ def answer(question, name, selected, client, user_id, language, external_search=
     return {'text': labels['missing'] if name else '', 'source': '', 'links': [], 'needs_ai': True}
 
 
+PHOTO_TEXT = {
+    'Português (BR)': ('Leitura visual', 'Comparação com catálogo', 'Coincide', 'Diverge',
+                       'Não legível ou não registrado', 'Há várias edições possíveis; envie set e número legíveis.',
+                       'Nenhuma edição exata foi confirmada no catálogo consultado.',
+                       'A foto e o catálogo não comprovam autenticidade física. Confira impressão, textura e material com um especialista.',
+                       'Consultado em'),
+    'English': ('Visual reading', 'Catalog comparison', 'Matches', 'Differs',
+                'Unreadable or not recorded', 'Several editions are possible; provide a legible set and number.',
+                'No exact edition was confirmed in the catalog consulted.',
+                'A photo and catalog match do not prove physical authenticity. Have print, texture and materials checked by an expert.',
+                'Checked at'),
+    'Español': ('Lectura visual', 'Comparación con catálogo', 'Coincide', 'Difiere',
+                'No legible o no registrado', 'Hay varias ediciones posibles; envía set y número legibles.',
+                'No se confirmó una edición exacta en el catálogo consultado.',
+                'La foto y el catálogo no prueban autenticidad física. Consulta a un experto sobre impresión, textura y materiales.',
+                'Consultado el'),
+    '日本語': ('画像からの読み取り', 'カタログとの比較', '一致', '不一致',
+            '読み取り不可または未登録', '複数の版が考えられます。セットと番号が読める写真を送ってください。',
+            '参照したカタログで該当する版を特定できませんでした。',
+            '写真とカタログの一致だけでは現物の真贋は証明できません。印刷、質感、材質を専門家に確認してください。',
+            '照会日時'),
+}
+
+
+def verify_photo_evidence(evidence, client, language, external_search=None):
+    """Compare observations with current catalog reads; never certify authenticity."""
+    title, comparison, match, mismatch, unknown, ambiguous, missing, caution, checked = PHOTO_TEXT[language]
+    name = evidence['name']
+    observed_set, observed_number = evidence['set'], evidence['number']
+    observations = [f"{key}: {evidence[key]}" for key in ('name', 'set', 'number', 'rarity', 'hp', 'language', 'visible_features') if evidence[key]]
+    lines = [f'**{title}**', '\n'.join('• ' + item for item in observations) if observations else unknown,
+             f'**{comparison}**']
+    source = ''
+    candidates = []
+    if name:
+        try:
+            candidates = lookup_local(client, name, language)
+        except Exception:
+            candidates = []
+        if candidates:
+            source = LABELS[language]['catalog']
+        elif external_search is not None:
+            try:
+                external = external_search(name, colecao=observed_set, numero=observed_number, limite=12)
+                candidates = [selected_identity(row) for row in external if folded(row.get('name')) == folded(name)]
+                candidates = [row for row in candidates if row]
+                source = LABELS[language]['external'] if candidates else ''
+            except Exception:
+                candidates = []
+    # Only use a specific edition when both identity fields were read in the photo.
+    def same_number(left, right):
+        def collector_part(value):
+            value = folded(value).lstrip('0') or '0'
+            return value.split('/', 1)[0] if re.fullmatch(r'[\w-]+/\d+', value) else value
+        return collector_part(left) == collector_part(right)
+
+    if observed_set and observed_number:
+        candidates = [row for row in candidates
+                      if folded(row.get('set_name')) == folded(observed_set)
+                      and same_number(row.get('collector_number', row.get('number')), observed_number)]
+    if len(candidates) == 1 and observed_set and observed_number:
+        row = candidates[0]
+        if row.get('card_id'):
+            try:
+                card = card_from_local(row, client)
+            except Exception:
+                card = {'name': row['card_name'], 'set_name': row['set_name'], 'number': row['collector_number'],
+                        'rarity': row.get('rarity') or '', 'source': 'local'}
+        else:
+            card = row
+        lines.append(card_answer(card, LABELS[language]))
+        for observed_key, catalog_key in (('name', 'name'), ('set', 'set_name'), ('number', 'number'), ('rarity', 'rarity'), ('hp', 'hp')):
+            seen, expected = evidence[observed_key], str(card.get(catalog_key) or '')
+            if seen and expected:
+                agrees = same_number(seen, expected) if observed_key == 'number' else folded(seen) == folded(expected)
+                lines.append(f"• {observed_key}: {match if agrees else mismatch} ({seen} / {expected})")
+            elif seen:
+                lines.append(f'• {observed_key}: {unknown}')
+    else:
+        lines.append(ambiguous if candidates else missing)
+        if candidates:
+            lines.extend(f"• {row.get('card_name', row.get('name'))} · {row.get('set_name')} #{row.get('collector_number', row.get('number'))}"
+                         for row in candidates[:5])
+    lines.extend((caution, f'{checked}: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}'))
+    return {'text': '\n\n'.join(lines), 'source': source or LABELS[language]['ai'], 'links': []}
+
+
 def ask_ai(client, model, question, language):
     """General knowledge only: no collection payload, live-price or catalog verification."""
     prompt = (f"Answer in {language} in at most 140 words. You are a TCG education assistant. "
@@ -432,9 +519,13 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
                 result = {'text': labels['ai_limit'], 'source': '', 'links': []}
             else:
                 st.session_state[usage_key] = calls + 1
-                result = {'text': ask_attachment_ai(ai_client, model, question or labels['attachment_question'],
-                                                     response_language, attachment),
-                          'source': labels['ai'], 'links': []}
+                if attachment['kind'] == 'image':
+                    evidence = extract_card_evidence(ai_client, model, question, attachment)
+                    result = verify_photo_evidence(evidence, client, response_language, external_search)
+                else:
+                    result = {'text': ask_attachment_ai(ai_client, model, question or labels['attachment_question'],
+                                                         response_language, attachment),
+                              'source': labels['ai'], 'links': []}
         else:
             name, set_name, card_number = conversation_card_reference(question, selected)
             result = answer(question, name, selected, client, user_id, response_language, external_search, set_name, card_number)

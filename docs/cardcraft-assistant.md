@@ -19,6 +19,16 @@ include a name, set and number in the message (for example, "carta Pikachu do
 set Base Set #58"). A previously selected catalog card remains available as
 context. Ambiguous editions are listed for clarification.
 
+For a photo in chat, one Gemini vision call extracts only visible name, set,
+collector number, rarity, HP, language and physical features as structured
+observations. Atlas then reads Catalog Core and, if absent, the external
+catalog during that request. It compares an edition only when both set and
+number are visible and exactly match one catalog record. Multiple editions,
+unreadable fields and disagreements remain explicit. The result displays the
+source and UTC query time. Catalog data can lag its upstream source; this is
+not a live market feed. Matching a catalog entry does not prove the physical
+card is genuine. The image bytes are not stored in chat history or the DB.
+
 The assistant detects the language of each question independently of the
 interface language. Deterministic replies and Gemini prompts use that language.
 When a short query contains no language signal (for example a card name alone),

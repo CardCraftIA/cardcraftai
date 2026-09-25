@@ -7,7 +7,7 @@ from PIL import Image
 from pypdf import PdfWriter
 from reportlab.pdfgen import canvas
 
-from chatbot_attachments import prepare_attachment, ask_attachment_ai, is_text_request, extract_text_answer
+from chatbot_attachments import prepare_attachment, ask_attachment_ai, is_text_request, extract_text_answer, extract_card_evidence
 
 
 class Upload(BytesIO):
@@ -17,6 +17,17 @@ class Upload(BytesIO):
 
 
 class AttachmentTests(TestCase):
+    def test_photo_evidence_is_structured_and_unreadable_fields_remain_empty(self):
+        ai = Mock()
+        ai.interactions.create.return_value = SimpleNamespace(output_text='```json\n{"name":"Pikachu","set":"Base Set","number":"58","rarity":"","hp":"40","language":"en","visible_features":"yellow border"}\n```')
+        evidence = extract_card_evidence(ai, 'gemini', 'Which card?',
+                                         {'kind': 'image', 'data': 'base64', 'mime_type': 'image/jpeg'})
+        self.assertEqual(evidence['name'], 'Pikachu')
+        self.assertEqual(evidence['rarity'], '')
+        self.assertIn('do not infer missing set', ai.interactions.create.call_args.kwargs['input'][1]['text'])
+        ai.interactions.create.return_value = SimpleNamespace(output_text='A fake card, trust me')
+        with self.assertRaises(ValueError):
+            extract_card_evidence(ai, 'gemini', '', {'kind': 'image', 'data': 'base64', 'mime_type': 'image/jpeg'})
     def test_photo_is_validated_downscaled_and_sent_as_image_only_when_requested(self):
         raw = BytesIO()
         Image.new('RGB', (2000, 1000), 'red').save(raw, format='PNG')
