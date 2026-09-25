@@ -144,19 +144,33 @@ st.markdown(
     .cc-brand-row {
         display: flex;
         align-items: center;
-        gap: 0.9rem;
+        gap: clamp(1rem, 2.5vw, 2rem);
     }
 
     .cc-brand-icon {
         display: grid;
         place-items: center;
-        width: 48px;
-        height: 48px;
-        flex: 0 0 48px;
-        border-radius: 15px;
+        width: clamp(100px, 11vw, 146px);
+        height: clamp(100px, 11vw, 146px);
+        flex: 0 0 clamp(100px, 11vw, 146px);
+        border-radius: 28px;
         background: linear-gradient(145deg, #8b6cff, #4f46e5 58%, #2563eb);
-        box-shadow: 0 10px 26px rgba(79, 70, 229, 0.36);
-        font-size: 1.45rem;
+        border: 1px solid rgba(200, 190, 255, 0.34);
+        box-shadow: 0 18px 48px rgba(79, 70, 229, 0.38);
+        font-size: clamp(3.4rem, 7vw, 5.5rem);
+        line-height: 1;
+        transform: rotate(-4deg);
+    }
+
+    .cc-brand-copy { min-width: 0; position: relative; z-index: 1; }
+
+    .cc-slogan {
+        margin: 0.7rem 0 0;
+        color: #f8fafc;
+        font-size: clamp(1.05rem, 1.7vw, 1.45rem);
+        font-weight: 700;
+        line-height: 1.35;
+        letter-spacing: -0.02em;
     }
 
     .cc-kicker {
@@ -181,7 +195,7 @@ st.markdown(
         font-weight: 650;
     }
 
-    .cc-hero p {
+    .cc-hero .cc-description {
         margin: 0.65rem 0 0;
         max-width: 760px;
         color: #a9b8cb;
@@ -244,7 +258,7 @@ st.markdown(
         letter-spacing: -0.04em;
     }
 
-    .cc-login-hero p {
+    .cc-login-hero .cc-description {
         margin: 0.65rem 0 0;
         color: #a9b8cb;
         line-height: 1.55;
@@ -362,6 +376,16 @@ st.markdown(
         .cc-hero-stats {
             justify-content: flex-start;
         }
+
+        .cc-brand-row { align-items: flex-start; }
+        .cc-brand-icon {
+            width: 88px;
+            height: 88px;
+            flex-basis: 88px;
+            border-radius: 22px;
+            font-size: 3.2rem;
+        }
+        .cc-hero h1, .cc-login-hero h1 { font-size: clamp(1.55rem, 6vw, 2rem); }
     }
     </style>
     """,
@@ -1590,6 +1614,13 @@ ANALYSIS_UI = {
     "Português (BR)": ("Analisar carta", "Busque pelo nome ou características, ou analise uma foto.", "Digite o nome ou descreva a carta", "Abrir conversa com Atlas"),
     "Español": ("Analizar carta", "Busca por nombre o características, o analiza una foto.", "Escribe el nombre o describe la carta", "Abrir conversación con Atlas"),
     "日本語": ("カードを分析", "名前や特徴で検索、または写真を分析します。", "カード名または特徴を入力", "Atlasと会話する"),
+}
+
+BRAND_SLOGAN = {
+    "Português (BR)": "Cada carta tem uma história. Descubra a sua.",
+    "English": "Every card has a story. Discover yours.",
+    "Español": "Cada carta tiene una historia. Descubre la tuya.",
+    "日本語": "すべてのカードに物語がある。その一枚を見つけよう。",
 }
 
 HOME_TEXT = {
@@ -8355,13 +8386,14 @@ def tela_login():
         f"""
         <div class="cc-login-hero">
             <div class="cc-brand-row">
-                <div class="cc-brand-icon">🃏</div>
-                <div>
+                <div class="cc-brand-icon" aria-hidden="true">🃏</div>
+                <div class="cc-brand-copy">
                     <div class="cc-kicker">TCG Intelligence</div>
                     <h1>CardCraftAI</h1>
+                    <div class="cc-slogan">{escape(BRAND_SLOGAN[idioma])}</div>
                 </div>
             </div>
-            <p>{escape(t("tagline_login", idioma))}</p>
+            <p class="cc-description">{escape(t("tagline_login", idioma))}</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -8759,13 +8791,14 @@ st.markdown(
     <div class="cc-hero">
         <div>
             <div class="cc-brand-row">
-                <div class="cc-brand-icon">🃏</div>
-                <div>
+                <div class="cc-brand-icon" aria-hidden="true">🃏</div>
+                <div class="cc-brand-copy">
                     <div class="cc-kicker">TCG Intelligence</div>
                     <h1>CardCraftAI <span>Workspace</span></h1>
+                    <div class="cc-slogan">{escape(BRAND_SLOGAN[idioma])}</div>
                 </div>
             </div>
-            <p>{escape(t("tagline_app", idioma))}</p>
+            <p class="cc-description">{escape(t("tagline_app", idioma))}</p>
         </div>
         <div class="cc-hero-stats">
             <span class="cc-pill">💎 {creditos} {escape(t("credits_word", idioma))}</span>

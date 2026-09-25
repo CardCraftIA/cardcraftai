@@ -97,6 +97,12 @@ class NavigationTests(TestCase):
         self.assertEqual(next(item for item in app.radio if item.key == 'analysis_mode_label').options,
                          ['🔍 Buscar Carta por Nome', '📸 Análise por Foto'])
 
+    def test_brand_slogan_and_prominent_emblem(self):
+        app = self.render_app('home', language='Português (BR)')
+        markup = '\n'.join(item.value for item in app.markdown)
+        self.assertIn('Cada carta tem uma história. Descubra a sua.', markup)
+        self.assertIn('cc-brand-icon', markup)
+
     def test_purchase_outage_is_not_presented_as_empty_history(self):
         app = self.render_app('account', fail_purchases=True)
         self.assertIn('Purchase history is temporarily unavailable.', app.warning[0].value)
