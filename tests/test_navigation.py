@@ -68,7 +68,7 @@ class NavigationTests(TestCase):
 
     def test_every_authenticated_route_in_all_four_languages(self):
         for language in LANGUAGES:
-            for page in ('home', 'chatbot', 'community', 'photo', 'search', 'collection', 'account', 'plans', 'terms', 'privacy'):
+            for page in ('home', 'chatbot', 'community', 'analysis', 'collection', 'account', 'plans', 'terms', 'privacy'):
                 with self.subTest(language=language, page=page):
                     app = self.render_app(page, language)
                     self.assertFalse(app.error)
@@ -76,16 +76,26 @@ class NavigationTests(TestCase):
                         self.assertFalse(any(item.key and item.key.startswith('cardcraft_chat_card_') for item in app.text_input))
                         self.assertFalse(any(item.key and item.key.startswith('cardcraft_chat_set_') for item in app.text_input))
                         self.assertFalse(any(item.key and item.key.startswith('cardcraft_chat_number_') for item in app.text_input))
+                    if page == 'analysis':
+                        self.assertIn('analysis_open_atlas', [item.key for item in app.button])
+                        self.assertIn('analysis_mode_label', [item.key for item in app.radio])
                     self.assertEqual(app.sidebar.metric[0].value, '5')
                     if page == 'collection' and language in ('Español', '日本語'):
                         expected = '🃏 Mi colección' if language == 'Español' else '🃏 マイコレクション'
                         self.assertIn(expected, app.sidebar.radio[0].options)
 
     def test_sidebar_navigation_callbacks_preserve_credit_balance(self):
-        self.render_app('home', subsequent=('chatbot', 'community', 'search', 'collection', 'account', 'plans', 'terms', 'privacy', 'photo', 'home'))
+        self.render_app('home', subsequent=('chatbot', 'community', 'analysis', 'collection', 'account', 'plans', 'terms', 'privacy', 'home'))
 
     def test_home_shortcut_opens_community_without_consuming_credits(self):
         self.render_app('home', language='Português (BR)', shortcut='community')
+
+    def test_analysis_shortcut_and_atlas_button(self):
+        app = self.render_app('home', language='Português (BR)', shortcut='analysis')
+        self.assertEqual(app.session_state['analysis_mode_label'], '🔍 Buscar Carta por Nome')
+        self.assertTrue(any(item.key == 'analysis_open_atlas' for item in app.button))
+        self.assertEqual(next(item for item in app.radio if item.key == 'analysis_mode_label').options,
+                         ['🔍 Buscar Carta por Nome', '📸 Análise por Foto'])
 
     def test_purchase_outage_is_not_presented_as_empty_history(self):
         app = self.render_app('account', fail_purchases=True)

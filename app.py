@@ -1585,6 +1585,13 @@ for _language, _hint in {
 
 install_messages(UI_TEXT)
 
+ANALYSIS_UI = {
+    "English": ("Analyze card", "Search by name or description, or analyze a photo.", "Name or describe the card", "Open Atlas conversation"),
+    "Português (BR)": ("Analisar carta", "Busque pelo nome ou características, ou analise uma foto.", "Digite o nome ou descreva a carta", "Abrir conversa com Atlas"),
+    "Español": ("Analizar carta", "Busca por nombre o características, o analiza una foto.", "Escribe el nombre o describe la carta", "Abrir conversación con Atlas"),
+    "日本語": ("カードを分析", "名前や特徴で検索、または写真を分析します。", "カード名または特徴を入力", "Atlasと会話する"),
+}
+
 HOME_TEXT = {
     "English": ("Home", "Your collection starts here", "Identify, verify and explore your cards. Choose where to go next.",
                 "Photo analysis", "Identify a card from a photo and review the evidence.",
@@ -1660,12 +1667,10 @@ COMMUNITY_ENABLED = str(st.secrets.get("COMMUNITY_ENABLED", "true")).lower() == 
 
 NAVIGATION_OPTIONS = (
     ["home"]
-    + ["chatbot"]
+    + ["chatbot", "analysis"]
     + (["community"] if COMMUNITY_ENABLED else [])
     + (["collection"] if COLLECTIONS_ENABLED else [])
     + [
-        "photo",
-        "search",
         "plans",
         "account",
         "terms",
@@ -1707,6 +1712,10 @@ def renderizar_seletor_idioma(container, widget_key):
 
 def pagina_interface_atual():
     pagina = st.session_state.get("pagina_interface", "home")
+    if pagina in ("photo", "search"):
+        st.session_state.analysis_mode_label = t("nav_photo" if pagina == "photo" else "nav_search")
+        pagina = "analysis"
+        st.session_state.pagina_interface = pagina
     if pagina not in NAVIGATION_OPTIONS:
         pagina = "home"
         st.session_state.pagina_interface = pagina
@@ -8693,6 +8702,8 @@ st.sidebar.radio(
         if pagina_id == "home"
         else "✦ " + CHAT_NAV.get(idioma, CHAT_NAV['English'])[0]
         if pagina_id == "chatbot"
+        else "🔎 " + ANALYSIS_UI[idioma][0]
+        if pagina_id == "analysis"
         else community_nav_label(idioma)
         if pagina_id == "community"
         else (
@@ -8834,8 +8845,7 @@ if pagina == "home":
         unsafe_allow_html=True,
     )
     shortcuts = [
-        ("photo", "📸", photo_label, photo_description),
-        ("search", "🔎", search_label, search_description),
+        ("analysis", "🔎", ANALYSIS_UI[idioma][0], ANALYSIS_UI[idioma][1]),
         ("chatbot", "✦", *CHAT_NAV.get(idioma, CHAT_NAV['English'])),
     ]
     if COLLECTIONS_ENABLED:
@@ -8859,7 +8869,7 @@ if pagina == "home":
                     f"{open_label} · {title}",
                     key=f"home_open_{destination}",
                     use_container_width=True,
-                    type="primary" if destination in ("photo", "community") else "secondary",
+                    type="primary" if destination in ("analysis", "community") else "secondary",
                     on_click=abrir_pagina,
                     args=(destination,),
                 )
@@ -8882,7 +8892,20 @@ elif pagina == "community" and COMMUNITY_ENABLED:
 elif pagina == "collection" and COLLECTIONS_ENABLED:
     render_collection(st, supabase, st.session_state.user_id, idioma == "Português (BR)", translate=lambda key: t(key, idioma))
 
-elif pagina == "photo":
+elif pagina == "analysis":
+    mode_names = (t("nav_search", idioma), t("nav_photo", idioma))
+    if st.session_state.get("analysis_mode_label") not in mode_names:
+        st.session_state.analysis_mode_label = mode_names[0]
+    mode_label = st.radio(
+        ANALYSIS_UI[idioma][0], mode_names,
+        horizontal=True, key="analysis_mode_label",
+    )
+    if st.button("✦ " + ANALYSIS_UI[idioma][3], key="analysis_open_atlas", on_click=abrir_pagina, args=("chatbot",)):
+        pass
+    st.divider()
+    pagina = "search" if mode_label == mode_names[0] else "photo"
+
+if pagina == "photo":
 
     st.header(t("photo_title", idioma))
 
@@ -9050,7 +9073,7 @@ elif pagina == "search":
 
     with col1:
         termo_busca = st.text_input(
-            t("card_name", idioma),
+            ANALYSIS_UI[idioma][2],
             placeholder="Ex.: Charizard GX",
             key="termo_busca",
             on_change=limpar_selecao_catalogo_nome,
@@ -9243,12 +9266,12 @@ elif pagina == "search":
 
             if colecao:
                 info_texto = (
-                    f"Nome: {termo}\n"
+                    f"Nome ou descrição: {termo}\n"
                     f"Coleção/Set: {colecao}"
                 )
             else:
                 info_texto = (
-                    f"Nome: {termo}\n"
+                    f"Nome ou descrição: {termo}\n"
                     "Coleção/Set: não informada"
                 )
 
