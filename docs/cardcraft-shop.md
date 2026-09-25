@@ -33,6 +33,34 @@ The storefront uses trusted, repository-owned HTML and JavaScript with
 `st.html(..., unsafe_allow_javascript=True)` for local browser persistence.
 Never inject user text, LLM output or untrusted remote HTML into that template.
 Product descriptions and partner URLs are rendered as escaped text/attributes.
-It is isolated from authentication, Gemini, credits and Supabase writes.
+It is isolated from authentication, Gemini and credits. Only the redirect
+handler writes anonymous outbound events to Supabase TEST.
 
-Validation: `PYTHONPATH=tests python -m unittest tests.test_shop tests.test_navigation`.
+## Commercial intelligence (TEST)
+
+When the server has a service key, all shop destinations are signed CardCraft
+links. The public redirect validates item, marketplace, campaign and optional
+search term before building a destination from the approved partner list. It
+records **one outbound click event** and forwards the visitor. A failed
+analytics write does not block navigation. The event contains only time,
+category ID, partner, campaign and affiliate flag; no visitor ID, IP address,
+account, cookie or collection details are saved in the analytics table.
+Automated traffic and repeated clicks can inflate this directional metric.
+
+`shop_outbound_events` is private with RLS enabled and no public grants. A
+verified signed-in user sees **Shop Intelligence** only when their Auth user ID
+is listed in the server secret `SHOP_ADMIN_USER_IDS` (comma-separated string or
+array). The panel aggregates 30 days of outbound clicks into daily,
+marketplace, item and campaign views. It also signs shareable category or
+card-search links for TCGplayer/Amazon. If you want a dedicated signing key,
+set `SHOP_LINK_SIGNING_KEY` in server secrets; otherwise the existing server
+service key signs links. Rotating the signing key invalidates old links.
+
+Clicks and outbound intents are **not** qualified unique visitors, sales,
+commissions, conversion rates or revenue. Those measures require partner
+conversion reports or an approved API integration with matching campaign IDs.
+Do not infer revenue from click counts or estimated marketplace prices. The
+dashboard intentionally displays revenue as unavailable. Only staging and
+Supabase TEST are in scope until separately promoted.
+
+Validation: `PYTHONPATH=tests python -m unittest tests.test_shop tests.test_shop_intelligence tests.test_navigation`.

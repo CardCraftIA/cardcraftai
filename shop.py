@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import json
-from urllib.parse import quote_plus, urlparse
+import hashlib
+import hmac
+import re
+from urllib.parse import quote_plus, urlencode, urlparse
 
 
 PARTNERS = {
@@ -31,7 +34,7 @@ ITEMS = [
 
 COPY = {
     'pt': {'subtitle': 'Encontre. Organize. Escolha onde comprar.', 'intro': 'Um ponto de partida para explorar cards, produtos lacrados e acessórios de TCG.',
-           'disclosure': 'Links externos: o CardCraft Shop não vende nem processa pagamentos. Alguns links podem gerar comissão de afiliado, sem custo adicional para você.',
+           'disclosure': 'Links externos: o CardCraft Shop não vende nem processa pagamentos. Alguns links podem gerar comissão de afiliado, sem custo adicional para você. Contamos cliques de saída sem identificar visitantes.',
            'search': 'Buscar por jogo, carta ou acessório', 'all': 'Tudo', 'cards': 'Cartas', 'sealed': 'Lacrados', 'accessories': 'Acessórios', 'singles': 'Cartas avulsas', 'boosters': 'Boosters e boxes', 'sleeves': 'Sleeves', 'binders': 'Fichários', 'deckboxes': 'Deck boxes', 'toploaders': 'Toploaders',
            'discover': 'Explorar', 'wishlist': 'Lista de desejos', 'cart': 'Carrinho de links', 'add': 'Adicionar ao carrinho',
            'remove': 'Remover', 'open': 'Ver no parceiro', 'empty': 'Sua lista está vazia.', 'no_results': 'Nenhuma opção encontrada.',
@@ -40,7 +43,7 @@ COPY = {
            'cart_note': 'Este carrinho organiza links. A compra é feita separadamente em cada loja.', 'featured': 'Explore seu próximo achado',
            'saved': 'Salvo no seu navegador', 'qty': 'Quantidade', 'product_note': 'Explore opções nos parceiros, sem preço ou estoque prometido.'},
     'en': {'subtitle': 'Discover. Save. Choose where to shop.', 'intro': 'One place to explore TCG cards, sealed products and accessories.',
-           'disclosure': 'External links: CardCraft Shop does not sell items or process payments. Some links may earn an affiliate commission at no extra cost to you.',
+           'disclosure': 'External links: CardCraft Shop does not sell items or process payments. Some links may earn an affiliate commission at no extra cost to you. We count outbound clicks without identifying visitors.',
            'search': 'Search games, cards or accessories', 'all': 'All', 'cards': 'Cards', 'sealed': 'Sealed', 'accessories': 'Accessories', 'singles': 'Single cards', 'boosters': 'Boosters & boxes', 'sleeves': 'Sleeves', 'binders': 'Binders', 'deckboxes': 'Deck boxes', 'toploaders': 'Toploaders',
            'discover': 'Explore', 'wishlist': 'Wishlist', 'cart': 'Link cart', 'add': 'Add to cart',
            'remove': 'Remove', 'open': 'Visit partner', 'empty': 'Your list is empty.', 'no_results': 'No matches found.',
@@ -49,7 +52,7 @@ COPY = {
            'cart_note': 'This cart organizes links. Purchases happen separately at each store.', 'featured': 'Explore your next find',
            'saved': 'Saved in your browser', 'qty': 'Quantity', 'product_note': 'Explore partner options without promised prices or stock.'},
     'es': {'subtitle': 'Descubre. Guarda. Elige dónde comprar.', 'intro': 'Explora cartas TCG, productos sellados y accesorios.',
-           'disclosure': 'Enlaces externos: CardCraft Shop no vende ni procesa pagos. Algunos enlaces pueden generar comisión de afiliado sin coste adicional.',
+           'disclosure': 'Enlaces externos: CardCraft Shop no vende ni procesa pagos. Algunos enlaces pueden generar comisión de afiliado sin coste adicional. Contamos clics de salida sin identificar visitantes.',
            'search': 'Buscar juegos, cartas o accesorios', 'all': 'Todo', 'cards': 'Cartas', 'sealed': 'Sellados', 'accessories': 'Accesorios', 'singles': 'Cartas sueltas', 'boosters': 'Sobres y cajas', 'sleeves': 'Fundas', 'binders': 'Archivadores', 'deckboxes': 'Cajas de mazo', 'toploaders': 'Protectores rígidos',
            'discover': 'Explorar', 'wishlist': 'Favoritos', 'cart': 'Carrito de enlaces', 'add': 'Añadir al carrito',
            'remove': 'Eliminar', 'open': 'Ver en la tienda', 'empty': 'Tu lista está vacía.', 'no_results': 'Sin resultados.',
@@ -58,7 +61,7 @@ COPY = {
            'cart_note': 'Este carrito organiza enlaces. Cada compra se hace en la tienda externa.', 'featured': 'Explora tu próximo hallazgo',
            'saved': 'Guardado en tu navegador', 'qty': 'Cantidad', 'product_note': 'Explora opciones sin promesas de precio o disponibilidad.'},
     'ja': {'subtitle': '見つけて、保存して、購入先を選ぶ。', 'intro': 'TCGカード、未開封商品、アクセサリーを探せます。',
-           'disclosure': '外部リンク：CardCraft Shopは販売や決済を行いません。一部のリンクから購入されると紹介料を受け取る場合があります。',
+           'disclosure': '外部リンク：CardCraft Shopは販売や決済を行いません。一部のリンクから購入されると紹介料を受け取る場合があります。個人を特定せずに外部リンクのクリック数を集計します。',
            'search': 'ゲーム・カード・用品を検索', 'all': 'すべて', 'cards': 'カード', 'sealed': '未開封', 'accessories': '用品', 'singles': 'シングルカード', 'boosters': 'パック・ボックス', 'sleeves': 'スリーブ', 'binders': 'バインダー', 'deckboxes': 'デッキケース', 'toploaders': '硬質ケース',
            'discover': '探す', 'wishlist': 'お気に入り', 'cart': 'リンクのカート', 'add': 'カートに追加',
            'remove': '削除', 'open': '販売先を見る', 'empty': 'リストは空です。', 'no_results': '見つかりませんでした。',
@@ -80,21 +83,52 @@ def partner_link(item_id: str, partner: str, query: str, configured=None):
     return PARTNERS[partner][1] + quote_plus(query), False
 
 
-def shop_payload(configured=None):
+def tracked_path(item_id, partner, campaign='shop', query='', secret=''):
+    """Create a tamper-evident, same-app redirect for a fixed partner."""
+    if not secret or item_id not in {item[0] for item in ITEMS} or partner not in PARTNERS:
+        raise ValueError('Unsupported shop target')
+    if not re.fullmatch(r'[a-z0-9_-]{1,32}', campaign):
+        raise ValueError('Invalid campaign')
+    if len(query) > 100 or any(ord(char) < 32 for char in query):
+        raise ValueError('Invalid search term')
+    message = '\x1f'.join((item_id, partner, campaign, query)).encode('utf-8')
+    signature = hmac.new(secret.encode('utf-8'), message, hashlib.sha256).hexdigest()
+    return '?' + urlencode({'out': item_id + '.' + partner, 'c': campaign, 'q': query, 'sig': signature})
+
+
+def resolve_tracked(params, secret, configured=None):
+    """Return a fixed-host URL and event after validating the signed intent."""
+    try:
+        item_id, partner = str(params.get('out', '')).rsplit('.', 1)
+        campaign, query = str(params.get('c', '')), str(params.get('q', ''))
+        expected = tracked_path(item_id, partner, campaign, query, secret).split('sig=', 1)[1]
+        if not hmac.compare_digest(str(params.get('sig', '')), expected):
+            return None
+        item = next(row for row in ITEMS if row[0] == item_id)
+        destination, affiliate = partner_link(item_id, partner, query or item[3], configured)
+        return destination, {'item_id': item_id, 'partner': partner,
+                             'campaign': campaign, 'is_affiliate': affiliate}
+    except (ValueError, StopIteration):
+        return None
+
+
+def shop_payload(configured=None, tracking_secret=''):
     products = []
     for item_id, game, category, query, icon, group in ITEMS:
         links = []
         for partner, (label, _) in PARTNERS.items():
             url, affiliate = partner_link(item_id, partner, query, configured)
+            if tracking_secret:
+                url = tracked_path(item_id, partner, secret=tracking_secret)
             links.append({'label': label, 'url': url, 'affiliate': affiliate})
         products.append({'id': item_id, 'game': game, 'category': category, 'query': query,
                          'icon': icon, 'group': group, 'links': links})
     return products
 
 
-def render_shop(st, language='pt', affiliate_links=None):
+def render_shop(st, language='pt', affiliate_links=None, tracking_secret=''):
     language = language if language in COPY else 'pt'
-    payload = {'items': shop_payload(affiliate_links), 'copy': COPY[language]}
+    payload = {'items': shop_payload(affiliate_links, tracking_secret), 'copy': COPY[language]}
     safe_json = json.dumps(payload, ensure_ascii=False).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
     st.html(SHOP_HTML.replace('__SHOP_DATA__', safe_json), unsafe_allow_javascript=True)
 

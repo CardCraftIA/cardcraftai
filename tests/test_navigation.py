@@ -29,17 +29,19 @@ class Query:
 
 
 class NavigationTests(TestCase):
-    def render_app(self, page, language='English', fail_purchases=False, subsequent=(), shortcut=None):
+    def render_app(self, page, language='English', fail_purchases=False, subsequent=(), shortcut=None, shop_admin=False):
         fake = Mock()
         fake.auth.set_session.return_value = Obj(
             user=Obj(id='fixture-owner', email='fixture@example.invalid', email_confirmed_at='confirmed-by-fake'),
             session=Obj(access_token='FAKE_ACCESS', refresh_token='FAKE_REFRESH'))
+        fake.auth.get_user.return_value = Obj(user=Obj(id='fixture-owner'))
         fake.table.side_effect = lambda table: Query(table, fail_purchases)
         fake.rpc.side_effect = AssertionError('Rendering must not charge, refund or mutate')
         ai = Mock()
         secrets = dict(SUPABASE_URL='https://fixture.invalid', SUPABASE_KEY='fake',
                        SUPABASE_SERVICE_ROLE_KEY='fake', GEMINI_API_KEY='fake', COLLECTIONS_ENABLED=True,
-                       COMMUNITY_ENABLED=True)
+                       COMMUNITY_ENABLED=True,
+                       SHOP_ADMIN_USER_IDS=['fixture-owner'] if shop_admin else [])
         app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / 'app.py'), default_timeout=15)
         for key, value in dict(user_id='fixture-owner', access_token='FAKE_ACCESS', refresh_token='FAKE_REFRESH',
                                idioma_interface=language, pagina_interface=page, pagina_navegacao_widget=page).items():
@@ -102,6 +104,13 @@ class NavigationTests(TestCase):
         markup = '\n'.join(item.value for item in app.markdown)
         self.assertIn('Cada carta tem uma história. Descubra a sua.', markup)
         self.assertIn('cc-brand-icon', markup)
+
+    def test_commercial_dashboard_is_only_in_admin_navigation(self):
+        visitor = self.render_app('home')
+        self.assertNotIn('📊 Shop Intelligence', visitor.sidebar.radio[0].options)
+        admin = self.render_app('commercial', shop_admin=True)
+        self.assertIn('📊 Shop Intelligence', admin.sidebar.radio[0].options)
+        self.assertTrue(any('Inteligência comercial' in heading.value for heading in admin.header))
 
     def test_purchase_outage_is_not_presented_as_empty_history(self):
         app = self.render_app('account', fail_purchases=True)

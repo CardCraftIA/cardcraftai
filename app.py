@@ -27,6 +27,8 @@ from payment_utils import package_code as validate_package_code, safe_checkout_u
 from community import render_community, community_nav_label
 from chatbot import render_chatbot
 from shop import render_shop
+from shop_tracking import process_outbound
+from commercial import admin_ids, render_commercial
 
 
 # ============================================================
@@ -398,14 +400,24 @@ st.markdown(
 )
 
 
-# The shop is a public discovery tab. It never loads a user's auth session,
-# collection, payments or service-role data.
-if st.query_params.get("shop") == "1":
+# Public shop pages never load a user's auth session or collection.
+if st.query_params.get("shop") == "1" or st.query_params.get("out"):
     try:
         shop_affiliates = st.secrets.get("SHOP_AFFILIATE_LINKS", {})
+        shop_service_key = st.secrets.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        shop_signing_key = st.secrets.get("SHOP_LINK_SIGNING_KEY", shop_service_key)
     except Exception:
         shop_affiliates = {}
-    render_shop(st, st.query_params.get("lang", "pt"), shop_affiliates)
+        shop_service_key = shop_signing_key = ""
+    if st.query_params.get("out"):
+        try:
+            shop_db_url = st.secrets.get("SUPABASE_URL", "")
+        except Exception:
+            shop_db_url = ""
+        process_outbound(st, st.query_params, shop_signing_key, shop_db_url,
+                         shop_service_key, create_client, shop_affiliates)
+    else:
+        render_shop(st, st.query_params.get("lang", "pt"), shop_affiliates, shop_signing_key)
     st.stop()
 
 
@@ -1721,12 +1733,15 @@ LANGUAGE_WIDGET_KEYS = (
 
 COLLECTIONS_ENABLED = str(st.secrets.get("COLLECTIONS_ENABLED", "false")).lower() == "true"
 COMMUNITY_ENABLED = str(st.secrets.get("COMMUNITY_ENABLED", "true")).lower() == "true"
+SHOP_ADMIN_IDS = admin_ids(st.secrets.get("SHOP_ADMIN_USER_IDS", []))
+SHOP_ADMIN_VISIBLE = st.session_state.get('user_id') in SHOP_ADMIN_IDS
 
 NAVIGATION_OPTIONS = (
     ["home"]
     + ["chatbot", "analysis"]
     + (["community"] if COMMUNITY_ENABLED else [])
     + (["collection"] if COLLECTIONS_ENABLED else [])
+    + (["commercial"] if SHOP_ADMIN_VISIBLE else [])
     + [
         "plans",
         "account",
@@ -8762,6 +8777,8 @@ st.sidebar.radio(
         if pagina_id == "chatbot"
         else "🔎 " + ANALYSIS_UI[idioma][0]
         if pagina_id == "analysis"
+        else "📊 Shop Intelligence"
+        if pagina_id == "commercial"
         else community_nav_label(idioma)
         if pagina_id == "community"
         else (
@@ -8961,6 +8978,19 @@ elif pagina == "community" and COMMUNITY_ENABLED:
 
 elif pagina == "collection" and COLLECTIONS_ENABLED:
     render_collection(st, supabase, st.session_state.user_id, idioma == "Português (BR)", translate=lambda key: t(key, idioma))
+
+elif pagina == "commercial" and SHOP_ADMIN_VISIBLE:
+    try:
+        authenticated = supabase.auth.get_user(st.session_state.access_token).user
+        admin_ok = authenticated and str(authenticated.id) in SHOP_ADMIN_IDS
+    except Exception:
+        admin_ok = False
+    if not admin_ok:
+        st.error('Acesso restrito à equipe do CardCraftAI.')
+        st.stop()
+    render_commercial(st, supabase_service,
+                      st.secrets.get('SHOP_LINK_SIGNING_KEY', SUPABASE_SERVICE_ROLE_KEY),
+                      st.secrets.get('SHOP_AFFILIATE_LINKS', {}))
 
 elif pagina == "analysis":
     mode_names = (t("nav_search", idioma), t("nav_photo", idioma))
