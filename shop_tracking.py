@@ -9,7 +9,7 @@ from shop import resolve_tracked
 def process_outbound(st, params, secret, supabase_url, service_key, create_client, affiliates=None):
     resolved = resolve_tracked(params, secret, affiliates)
     if not resolved:
-        st.error('Link do Shop inválido ou expirado.')
+        st.error('Link do Shop inválido.')
         return False
     destination, event = resolved
     if supabase_url and service_key:
