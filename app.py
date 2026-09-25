@@ -17,6 +17,7 @@ import streamlit as st
 from google import genai
 from google.genai import errors, types
 from supabase import create_client
+from supabase.client import ClientOptions
 from collection import catalog_record, render_collection
 from catalog_search import render_suggestions
 from auth_state import accept_session, confirmed_email, restore_session, clear_identity, auth_error_status
@@ -29,6 +30,7 @@ from chatbot import render_chatbot
 from shop import render_shop
 from shop_tracking import process_outbound
 from commercial import admin_ids, render_commercial
+from google_auth import PendingGoogleAuth, canonical_app_url
 
 
 # ============================================================
@@ -5996,6 +5998,65 @@ def salvar_sessao(resposta):
     return accept_session(st.session_state, resposta)
 
 
+GOOGLE_AUTH_ENABLED = str(st.secrets.get("GOOGLE_AUTH_ENABLED", "false")).lower() == "true"
+GOOGLE_APP_URL = st.secrets.get("GOOGLE_APP_URL", "https://cardcraftai-test.streamlit.app")
+GOOGLE_TEXT = {
+    "English": ("Continue with Google", "Google access could not be completed. Please try again."),
+    "Português (BR)": ("Continuar com Google", "Não foi possível concluir o acesso com Google. Tente novamente."),
+    "Español": ("Continuar con Google", "No se pudo completar el acceso con Google. Inténtalo de nuevo."),
+    "日本語": ("Googleで続行", "Googleでのログインを完了できませんでした。もう一度お試しください。"),
+}
+
+
+@st.cache_resource
+def pending_google_auth():
+    return PendingGoogleAuth()
+
+
+def google_browser_cookie():
+    return st.context.cookies.get("_streamlit_xsrf")
+
+
+def google_auth_url(idioma):
+    redirect = canonical_app_url(GOOGLE_APP_URL)
+    client = create_client(SUPABASE_URL, SUPABASE_KEY, options=ClientOptions(flow_type="pkce"))
+    return pending_google_auth().begin(client, redirect.rstrip("/"), google_browser_cookie(), idioma)
+
+
+def processar_retorno_google():
+    state = str(st.query_params.get("google_state", "") or "")
+    code = str(st.query_params.get("code", "") or "")
+    error = str(st.query_params.get("error", "") or "")
+    if not state:
+        return
+    idioma = idioma_interface_atual()
+    try:
+        if error:
+            raise ValueError("O acesso com Google foi cancelado.")
+        resposta, idioma = pending_google_auth().finish(state, code, google_browser_cookie())
+        if not salvar_sessao(resposta):
+            raise ValueError("A conta Google não possui e-mail confirmado.")
+        st.session_state.idioma_interface = idioma
+        st.session_state.idioma_sidebar_widget = idioma
+        st.session_state.pagina_interface = "home"
+    except Exception:
+        st.session_state.google_auth_error = GOOGLE_TEXT[idioma][1]
+    finally:
+        for key in ("google_state", "code", "error", "error_description"):
+            if key in st.query_params:
+                del st.query_params[key]
+
+
+def renderizar_google_auth(idioma, key):
+    if not GOOGLE_AUTH_ENABLED:
+        return
+    try:
+        url = google_auth_url(idioma)
+        st.link_button(GOOGLE_TEXT[idioma][0], url, use_container_width=True)
+    except Exception:
+        st.caption(GOOGLE_TEXT[idioma][1])
+
+
 def limpar_selecao_catalogo_nome():
     """Invalida a seleção e os resultados vinculados aos campos anteriores."""
     st.session_state.catalogo_selecionada_nome = None
@@ -8452,6 +8513,11 @@ def tela_login():
         st.error(st.session_state.erro_recuperacao_senha)
         st.session_state.erro_recuperacao_senha = None
 
+    if st.session_state.get("google_auth_error"):
+        st.error(st.session_state.pop("google_auth_error"))
+
+    renderizar_google_auth(idioma, "google_login")
+
     aba_login, aba_cadastro = st.tabs([
         t("tab_login", idioma),
         t("tab_signup", idioma),
@@ -8588,6 +8654,7 @@ def tela_login():
 # ============================================================
 
 idioma_interface_atual()
+processar_retorno_google()
 processar_link_recuperacao_senha()
 
 if st.session_state.modo_recuperacao_senha:
