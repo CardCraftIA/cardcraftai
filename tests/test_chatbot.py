@@ -7,6 +7,13 @@ import chatbot
 
 
 class ChatbotTests(TestCase):
+    def test_conversation_replaces_card_fields(self):
+        self.assertEqual(chatbot.conversation_card_reference('Fale sobre a carta Pikachu do set Base Set #58'),
+                         ('Pikachu', 'Base Set', '58'))
+        self.assertEqual(chatbot.conversation_card_reference('Pikachu'), ('Pikachu', '', ''))
+        selected = {'name': 'Charizard', 'set': {'name': 'Base Set'}, 'number': '4'}
+        self.assertEqual(chatbot.conversation_card_reference('Qual a raridade desta carta?', selected), ('', '', ''))
+
     def test_question_language_overrides_ui_for_four_languages(self):
         cases = [
             ('Quanto vale minha coleção?', 'English', 'Português (BR)'),

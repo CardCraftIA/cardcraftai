@@ -72,6 +72,10 @@ class NavigationTests(TestCase):
                 with self.subTest(language=language, page=page):
                     app = self.render_app(page, language)
                     self.assertFalse(app.error)
+                    if page == 'chatbot':
+                        self.assertFalse(any(item.key and item.key.startswith('cardcraft_chat_card_') for item in app.text_input))
+                        self.assertFalse(any(item.key and item.key.startswith('cardcraft_chat_set_') for item in app.text_input))
+                        self.assertFalse(any(item.key and item.key.startswith('cardcraft_chat_number_') for item in app.text_input))
                     self.assertEqual(app.sidebar.metric[0].value, '5')
                     if page == 'collection' and language in ('Español', '日本語'):
                         expected = '🃏 Mi colección' if language == 'Español' else '🃏 マイコレクション'

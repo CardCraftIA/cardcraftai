@@ -14,6 +14,11 @@ session's three Gemini attempts and is labeled as unverified. Attachment bytes
 are neither written to Supabase nor kept in chat history; only the filename is
 shown after the request.
 
+The conversation is the only card entry field: users may type a card name or
+include a name, set and number in the message (for example, "carta Pikachu do
+set Base Set #58"). A previously selected catalog card remains available as
+context. Ambiguous editions are listed for clarification.
+
 The assistant detects the language of each question independently of the
 interface language. Deterministic replies and Gemini prompts use that language.
 When a short query contains no language signal (for example a card name alone),

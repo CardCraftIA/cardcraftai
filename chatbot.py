@@ -168,6 +168,29 @@ def intent(question):
     return 'card'
 
 
+def conversation_card_reference(question, selected=None):
+    """Read an explicit card reference from the message without guessing identity."""
+    question = str(question or '').strip()
+    selected_card = selected_identity(selected)
+    selected_name = selected_card['name'] if selected_card else ''
+    if selected_name and re.search(r'(?<!\w)' + re.escape(selected_name) + r'(?!\w)', question, re.I):
+        name = selected_name
+    else:
+        quoted = re.search(r'["“「]([^"”」]{2,120})["”」]', question)
+        named = re.search(r'\b(?:carta|card|about|sobre)\s+(?:(?:do|da|the|a|o|el|la)\s+)?([\wÀ-ÿ][\wÀ-ÿ .-]{1,100})', question, re.I)
+        if not named:
+            named = re.search(r'\b(?:preço|preco|price|valor|raridade|rarity)\s+(?:(?:do|da|de|of|the)\s+)([\wÀ-ÿ][\wÀ-ÿ .-]{1,100})', question, re.I)
+        name = (quoted or named).group(1).strip(' .?!') if (quoted or named) else ''
+        name = re.sub(r'^(?:a |o |el |la |the )?(?:carta|card)\s+', '', name, flags=re.I)
+        name = re.split(r'\s+(?:do|da|from|in|en|no)\s+(?:set|coleção|collection|expansão)\b', name, 1, flags=re.I)[0]
+        name = re.sub(r'\s*#\s*[\w/-]+$', '', name).strip()
+        if not name and re.fullmatch(r'[\wÀ-ÿ][\wÀ-ÿ .-]{1,70}', question) and len(question.split()) <= 3:
+            name = question
+    set_match = re.search(r'\b(?:set|coleção|collection|expansão)\s*[:：]?\s*([^#,;?!]{2,80})', question, re.I)
+    number_match = re.search(r'(?:#|\b(?:número|numero|number|nº|n°)\s*[:：]?\s*)([\w/-]{1,40})', question, re.I)
+    return name, (set_match.group(1).strip(' .') if set_match else ''), (number_match.group(1) if number_match else '')
+
+
 def marketplace_links(name, set_name='', number=''):
     term = quote_plus(' '.join(part for part in (name, set_name, number) if part))
     return [
@@ -368,10 +391,6 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
     st.caption(interface_labels['attachment_hint'])
     state_key = f'cardcraft_chat_{user_id}'
     history = st.session_state.setdefault(state_key, [])
-    name = st.text_input(interface_labels['card'], help=interface_labels['card_hint'], key=f'cardcraft_chat_card_{user_id}')
-    set_col, number_col = st.columns([2, 1])
-    set_name = set_col.text_input(interface_labels['set'], key=f'cardcraft_chat_set_{user_id}')
-    card_number = number_col.text_input(interface_labels['number'], key=f'cardcraft_chat_number_{user_id}')
     if st.button(interface_labels['clear'], key=f'cardcraft_chat_clear_{user_id}'):
         st.session_state[state_key] = []
         history = st.session_state[state_key]
@@ -417,6 +436,7 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
                                                      response_language, attachment),
                           'source': labels['ai'], 'links': []}
         else:
+            name, set_name, card_number = conversation_card_reference(question, selected)
             result = answer(question, name, selected, client, user_id, response_language, external_search, set_name, card_number)
             if result.get('needs_ai'):
                 usage_key = f'cardcraft_chat_ai_calls_{user_id}'
