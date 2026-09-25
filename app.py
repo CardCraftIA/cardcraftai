@@ -6020,7 +6020,7 @@ def google_browser_cookie():
 def google_auth_url(idioma):
     redirect = canonical_app_url(GOOGLE_APP_URL)
     client = create_client(SUPABASE_URL, SUPABASE_KEY, options=ClientOptions(flow_type="pkce"))
-    return pending_google_auth().begin(client, redirect.rstrip("/"), google_browser_cookie(), idioma)
+    return pending_google_auth().begin(client, redirect, google_browser_cookie(), idioma)
 
 
 def processar_retorno_google():

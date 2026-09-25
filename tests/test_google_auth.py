@@ -22,9 +22,10 @@ class GoogleAuthTests(unittest.TestCase):
     def test_one_use_browser_bound_exchange(self):
         auth = FakeAuth()
         pending = PendingGoogleAuth()
-        url = pending.begin(SimpleNamespace(auth=auth), "https://cardcraftai-test.streamlit.app", "cookie-one", "Português (BR)")
+        url = pending.begin(SimpleNamespace(auth=auth), "https://cardcraftai-test.streamlit.app/", "cookie-one", "Português (BR)")
         self.assertIn("provider=google", url)
         redirect = auth.oauth_args["options"]["redirect_to"]
+        self.assertTrue(redirect.startswith("https://cardcraftai-test.streamlit.app/?google_state="))
         state = redirect.split("google_state=", 1)[1]
         with self.assertRaises(ValueError):
             pending.finish(state, "code", "cookie-two")
