@@ -26,6 +26,7 @@ from ui_messages import install_messages
 from payment_utils import package_code as validate_package_code, safe_checkout_url
 from community import render_community, community_nav_label
 from chatbot import render_chatbot
+from shop import render_shop
 
 
 # ============================================================
@@ -33,7 +34,7 @@ from chatbot import render_chatbot
 # ============================================================
 
 st.set_page_config(
-    page_title="CardCraftAI - TCG Intelligence",
+    page_title="CardCraft Shop" if st.query_params.get("shop") == "1" else "CardCraftAI - TCG Intelligence",
     page_icon="🃏",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -241,6 +242,10 @@ st.markdown(
     }
     .cc-home-card strong { display: block; color: #f8fafc; font-size: 1.05rem; margin-bottom: 0.4rem; }
     .cc-home-card span { color: #a9b8cb; font-size: 0.9rem; line-height: 1.5; }
+    .cc-shop-link { display:block; margin:.75rem 0; padding:.7rem 1rem; color:#f5f7fb !important;
+        font-weight:750; text-decoration:none !important; border:1px solid #806bef; border-radius:12px;
+        background:linear-gradient(105deg,#51439a,#315d99); text-align:center; }
+    .cc-shop-link:hover { filter:brightness(1.18); }
 
     .cc-login-hero {
         margin: 0 auto 1.6rem;
@@ -391,6 +396,17 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+# The shop is a public discovery tab. It never loads a user's auth session,
+# collection, payments or service-role data.
+if st.query_params.get("shop") == "1":
+    try:
+        shop_affiliates = st.secrets.get("SHOP_AFFILIATE_LINKS", {})
+    except Exception:
+        shop_affiliates = {}
+    render_shop(st, st.query_params.get("lang", "pt"), shop_affiliates)
+    st.stop()
 
 
 # ============================================================
@@ -1660,6 +1676,16 @@ CHAT_NAV = {
     'Español': ('Atlas', 'Pregunta por cartas, tu colección y dónde buscar ofertas.'),
     '日本語': ('Atlas', 'カード、コレクション、購入先について質問できます。'),
 }
+
+SHOP_ENTRY = {
+    'English': ('CardCraft Shop', 'Explore TCG cards and accessories. Opens in a new tab.', 'en'),
+    'Português (BR)': ('CardCraft Shop', 'Explore cartas e acessórios TCG. Abre em outra aba.', 'pt'),
+    'Español': ('CardCraft Shop', 'Explora cartas y accesorios TCG. Se abre en otra pestaña.', 'es'),
+    '日本語': ('CardCraft Shop', 'TCGカードや用品を探す。別のタブで開きます。', 'ja'),
+}
+
+def shop_url(idioma):
+    return '?shop=1&lang=' + SHOP_ENTRY.get(idioma, SHOP_ENTRY['English'])[2]
 
 def home_text(idioma):
     return HOME_TEXT.get(idioma, HOME_TEXT["English"])
@@ -8758,6 +8784,10 @@ st.sidebar.radio(
     key="pagina_navegacao_widget",
     on_change=_sincronizar_pagina_widget,
 )
+st.sidebar.markdown(
+    f'<a class="cc-shop-link" href="{escape(shop_url(idioma), quote=True)}" target="_blank" rel="noopener noreferrer">'
+    f'🛍️ {escape(SHOP_ENTRY[idioma][0])} ↗</a>', unsafe_allow_html=True,
+)
 pagina = pagina_interface_atual()
 
 
@@ -8889,6 +8919,13 @@ if pagina == "home":
         ("plans", "💎", plans_label, plans_description),
         ("account", "👤", account_label, account_description),
     ])
+    shop_title, shop_description, _ = SHOP_ENTRY[idioma]
+    st.markdown(
+        f'<div class="cc-home-card"><strong>🛍️ {escape(shop_title)}</strong>'
+        f'<span>{escape(shop_description)}</span>'
+        f'<a class="cc-shop-link" href="{escape(shop_url(idioma), quote=True)}" target="_blank" rel="noopener noreferrer">'
+        f'{escape(open_label)} · {escape(shop_title)} ↗</a></div>', unsafe_allow_html=True,
+    )
     for offset in range(0, len(shortcuts), 2):
         columns = st.columns(2, gap="medium")
         for column, (destination, icon, title, description) in zip(columns, shortcuts[offset:offset + 2]):
