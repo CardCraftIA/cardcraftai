@@ -97,25 +97,37 @@ def _board(st, state, side, labels, prefix, submit):
         st.rerun()
 
 
-def render_game(st, auth_client, service, access_token, language='Português (BR)'):
+def render_solo(st, language='Português (BR)', guest=False):
     labels = WORDS.get(language, WORDS['English'])
     intro, help_title, instructions = RULES.get(language, RULES['English'])
     st.header(labels[0])
     st.caption(intro)
     with st.expander(help_title, expanded=False):
         st.write(instructions)
+    if guest:
+        st.info('Esta é uma demonstração gratuita. Entre na sua conta para desafiar outra pessoa online.'
+                if language == 'Português (BR)' else 'This is a free demo. Sign in to challenge another player online.')
+        st.markdown('[Entrar no CardCraftAI / Sign in](./)')
+    key = 'cardcraft_solo_game'
+    if key not in st.session_state or st.button(labels[3], key='new_cardcraft_solo'):
+        st.session_state[key] = new_game()
+    state = st.session_state[key]
+    def solo_submit(card, lane):
+        next_state = move(st.session_state[key], 'a', card, lane)
+        while next_state['status'] == 'active' and next_state['turn'] == 'b':
+            next_state = bot_move(next_state)
+        st.session_state[key] = next_state
+    _board(st, state, 'a', labels, 'solo', solo_submit)
+
+
+def render_game(st, auth_client, service, access_token, language='Português (BR)'):
+    labels = WORDS.get(language, WORDS['English'])
+    st.header(labels[0])
+    st.caption(RULES.get(language, RULES['English'])[0])
+    st.markdown('[Compartilhar demonstração solo / Share solo demo](?arena=1)')
     solo_tab, online_tab = st.tabs((labels[1], labels[2]))
     with solo_tab:
-        key = 'cardcraft_solo_game'
-        if key not in st.session_state or st.button(labels[3], key='new_cardcraft_solo'):
-            st.session_state[key] = new_game()
-        state = st.session_state[key]
-        def solo_submit(card, lane):
-            next_state = move(st.session_state[key], 'a', card, lane)
-            while next_state['status'] == 'active' and next_state['turn'] == 'b':
-                next_state = bot_move(next_state)
-            st.session_state[key] = next_state
-        _board(st, state, 'a', labels, 'solo', solo_submit)
+        render_solo(st, language)
     with online_tab:
         try:
             user_id = authenticated_id(auth_client, access_token)

@@ -28,7 +28,7 @@ from payment_utils import package_code as validate_package_code, safe_checkout_u
 from community import render_community, community_nav_label
 from chatbot import render_chatbot
 from payment_assistant import render_payment_assistant
-from game_ui import render_game
+from game_ui import render_game, render_solo
 from shop import render_shop
 from shop_tracking import process_outbound
 from commercial import admin_ids, render_commercial
@@ -422,6 +422,13 @@ if st.query_params.get("shop") == "1" or st.query_params.get("out"):
                          shop_service_key, create_client, shop_affiliates)
     else:
         render_shop(st, st.query_params.get("lang", "pt"), shop_affiliates, shop_signing_key)
+    st.stop()
+
+# Public, no-account demo keeps all match state in this browser session.
+if st.query_params.get("arena") == "1":
+    demo_language = {'pt': 'Português (BR)', 'en': 'English', 'es': 'Español', 'ja': '日本語'}.get(
+        st.query_params.get('lang', 'pt'), 'Português (BR)')
+    render_solo(st, demo_language, guest=True)
     st.stop()
 
 
