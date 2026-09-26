@@ -8,6 +8,7 @@ from game_characters import portrait
 from game_characters import CAST
 from game_cards import ABILITY, NUMBER, RARITY
 from game_localization import arena_text, card_text, error_text, ui
+from game_lore import BIO
 from game_story import render_story
 from game_online import Conflict, authenticated_id, create_match, join_match, play_match, recent_matches, view_match
 
@@ -77,6 +78,7 @@ def render_catalog(st, language='Português (BR)'):
                 with st.container(border=True):
                     st.image(portrait(card), width=220)
                     st.markdown(_card_details(card, language), unsafe_allow_html=True)
+                    st.caption(BIO.get(language, BIO['English'])[card])
     st.caption(copy[10])
 
 RULES = {

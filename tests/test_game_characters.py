@@ -4,7 +4,8 @@ import unittest
 from game_characters import CAST, portrait
 from game_engine import CARDS
 from game_localization import CARD_IDS, card_text
-from game_story import STORY
+from game_story import STORY, MORE_CHAPTERS
+from game_lore import WORLD, BIO
 
 
 class CharacterTests(unittest.TestCase):
@@ -21,3 +22,12 @@ class CharacterTests(unittest.TestCase):
 
     def test_pilot_has_six_panels_in_each_language(self):
         self.assertTrue(all(len(chapter['panels']) == 6 for chapter in STORY.values()))
+
+    def test_chapters_origins_and_destinies_cover_full_cast(self):
+        for language in STORY:
+            self.assertEqual(set(BIO[language]), set(CARDS))
+            self.assertEqual(len(WORLD[language]), 3)
+            self.assertEqual(len(MORE_CHAPTERS[language]), 2)
+            self.assertTrue(all(len(episode[2]) == 6 for episode in MORE_CHAPTERS[language]))
+            cast_in_story = {card for episode in MORE_CHAPTERS[language] for card, _, _ in episode[2]}
+            self.assertEqual(cast_in_story, set(CARDS))
