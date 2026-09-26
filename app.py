@@ -28,6 +28,7 @@ from payment_utils import package_code as validate_package_code, safe_checkout_u
 from community import render_community, community_nav_label
 from chatbot import render_chatbot
 from payment_assistant import render_payment_assistant
+from game_ui import render_game
 from shop import render_shop
 from shop_tracking import process_outbound
 from commercial import admin_ids, render_commercial
@@ -1692,6 +1693,13 @@ CHAT_NAV = {
     '日本語': ('Atlas', 'カード、コレクション、購入先について質問できます。'),
 }
 
+GAME_NAV = {
+    'English': ('CardCraft Arena', 'Play a quick card duel solo or invite another player.'),
+    'Português (BR)': ('Arena CardCraft', 'Jogue um duelo rápido solo ou convide outra pessoa.'),
+    'Español': ('Arena CardCraft', 'Juega un duelo rápido solo o invita a otra persona.'),
+    '日本語': ('CardCraftアリーナ', '一人でも友達とでも短いカード対戦ができます。'),
+}
+
 SHOP_ENTRY = {
     'English': ('CardCraft Shop', 'Explore TCG cards and accessories. Opens in a new tab.', 'en'),
     'Português (BR)': ('CardCraft Shop', 'Explore cartas e acessórios TCG. Abre em outra aba.', 'pt'),
@@ -1741,7 +1749,7 @@ SHOP_ADMIN_VISIBLE = st.session_state.get('user_id') in SHOP_ADMIN_IDS
 
 NAVIGATION_OPTIONS = (
     ["home"]
-    + ["chatbot", "analysis"]
+    + ["chatbot", "analysis", "game"]
     + (["community"] if COMMUNITY_ENABLED else [])
     + (["collection"] if COLLECTIONS_ENABLED else [])
     + (["commercial"] if SHOP_ADMIN_VISIBLE else [])
@@ -8869,6 +8877,8 @@ st.sidebar.radio(
         if pagina_id == "home"
         else "🃏 " + CHAT_NAV.get(idioma, CHAT_NAV['English'])[0]
         if pagina_id == "chatbot"
+        else "🎮 " + GAME_NAV.get(idioma, GAME_NAV['English'])[0]
+        if pagina_id == "game"
         else "🔎 " + ANALYSIS_UI[idioma][0]
         if pagina_id == "analysis"
         else "📊 Shop Intelligence"
@@ -9021,6 +9031,7 @@ if pagina == "home":
     shortcuts = [
         ("analysis", "🔎", ANALYSIS_UI[idioma][0], ANALYSIS_UI[idioma][1]),
         ("chatbot", "🃏", *CHAT_NAV.get(idioma, CHAT_NAV['English'])),
+        ("game", "🎮", *GAME_NAV.get(idioma, GAME_NAV['English'])),
     ]
     if COLLECTIONS_ENABLED:
         shortcuts.append(("collection", "🃏", collection_label, collection_description))
@@ -9063,6 +9074,9 @@ elif pagina == "chatbot":
         on_upgrade=abrir_pagina,
         allowance_enabled=str(st.secrets.get('ATLAS_ALLOWANCE_ENABLED', 'true')).lower() == 'true',
     )
+
+elif pagina == "game":
+    render_game(st, supabase, supabase_service, st.session_state.get('access_token'), idioma)
 
 elif pagina == "community" and COMMUNITY_ENABLED:
     render_community(

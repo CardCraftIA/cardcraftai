@@ -1,0 +1,11 @@
+# CardCraft Arena · staging
+
+CardCraft Arena is an original, free card strategy game in the signed-in CardCraftAI app. It does not use a user's physical collection, analysis credits, third-party card art, collectible purchases or prizes. The first release uses twelve original cards, six rounds, three arenas and two modes: solo against a deterministic heuristic bot, and private online rooms shared by a ten-character invite code.
+
+Each player takes one action per round: play a card whose energy cost does not exceed the round number, or pass. A matching arena grants +2 power. The player leading more arenas wins; total power breaks an arena-count tie. A complete tie is a draw. The opening hand always contains a cost-one card. These rules are purposely smaller than existing TCG rules to teach hand, energy, board placement and affinity quickly.
+
+The server verifies the user's Supabase JWT before every online operation. Matches live in `cardcraft_game_matches`, with RLS enabled and no `anon`/`authenticated` table grants. Only the server's separate service client has access. The server checks participation, card ownership, turn, energy and match version. Online writes compare the expected version so simultaneous actions cannot overwrite each other. The UI receives only the player's hand; opposing hands and both decks are redacted. Streamlit fragments refresh rooms every four seconds. A returning player can resume an active room from the recent match list. These are private invite rooms, not ranked matchmaking or a spectator system.
+
+The match table is in Supabase TEST and the navigation change is for `staging` only. Before a public release, add automated retention/expiry of old rooms, abuse controls for room creation, accessibility review, localization of card names and live testing with two separate authenticated users on different browsers.
+
+Validation: `python -m unittest tests.test_game` and compile check. No credit or payment path is touched.
