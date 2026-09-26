@@ -4,8 +4,9 @@ from __future__ import annotations
 from html import escape
 
 from game_engine import ARENAS, CARDS, bot_move, legal_moves, move, new_game, score
-from game_art import card_svg
+from game_characters import portrait
 from game_localization import arena_text, card_text, error_text, ui
+from game_story import render_story
 from game_online import Conflict, authenticated_id, create_match, join_match, play_match, recent_matches, view_match
 
 WORDS = {
@@ -79,10 +80,10 @@ def _board(st, state, side, labels, prefix, submit, language):
                         f'<p>{escape(ui(language, "score", you=ours, opponent=theirs))}</p></div>', unsafe_allow_html=True)
             if played:
                 st.caption(ui(language, 'your_cards'))
-                st.image([card_svg(card, card_text(card, language)[0]) for card in played], width=88)
+                st.image([portrait(card) for card in played], width=88)
             if rival:
                 st.caption(ui(language, 'opponent_cards'))
-                st.image([card_svg(card, card_text(card, language)[0]) for card in rival], width=88)
+                st.image([portrait(card) for card in rival], width=88)
     if state['status'] == 'finished':
         winner = state['winner']
         st.success(labels[12] if winner == side else labels[14] if winner == 'draw' else labels[13])
@@ -99,7 +100,7 @@ def _board(st, state, side, labels, prefix, submit, language):
         name, description = card_text(card, language)
         _, cost, power, affinity, _ = CARDS[card]
         with cards[index % len(cards)]:
-            st.image(card_svg(card, name), width='stretch')
+            st.image(portrait(card), width=220)
             st.markdown(f'<div class="cc-card"><b>{escape(name)}</b><br>⚡ {cost} · ✦ {power}'
                         f'<br><small>{escape(description)}</small></div>', unsafe_allow_html=True)
     if choices:
@@ -136,14 +137,20 @@ def render_solo(st, language='Português (BR)', guest=False):
     _board(st, state, 'a', labels, 'solo', solo_submit, language)
 
 
+STORY_TAB = {'Português (BR)': '📖 Crônicas de Nacarim', 'English': '📖 Chronicles of Nacarim',
+             'Español': '📖 Crónicas de Nacarim', '日本語': '📖 ナカリム年代記'}
+
+
 def render_game(st, auth_client, service, access_token, language='Português (BR)'):
     labels = WORDS.get(language, WORDS['English'])
     st.header(labels[0])
     st.caption(RULES.get(language, RULES['English'])[0])
     st.markdown(f'[{ui(language, "share")}](?arena=1)')
-    solo_tab, online_tab = st.tabs((labels[1], labels[2]))
+    solo_tab, online_tab, story_tab = st.tabs((labels[1], labels[2], STORY_TAB.get(language, STORY_TAB['English'])))
     with solo_tab:
         render_solo(st, language)
+    with story_tab:
+        render_story(st, language)
     with online_tab:
         try:
             user_id = authenticated_id(auth_client, access_token)

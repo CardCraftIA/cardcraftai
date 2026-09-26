@@ -64,8 +64,10 @@ UI = {
 
 
 def card_text(card, language='Português (BR)'):
+    from game_characters import CAST
     index = CARD_IDS.index(card)
-    return CARD_NAMES.get(language, CARD_NAMES['English'])[index], CARD_DESCRIPTIONS.get(language, CARD_DESCRIPTIONS['English'])[index]
+    title = CARD_NAMES.get(language, CARD_NAMES['English'])[index]
+    return f'{CAST[card][0]} · {title}', CARD_DESCRIPTIONS.get(language, CARD_DESCRIPTIONS['English'])[index]
 
 
 def arena_text(lane, language='Português (BR)'):
