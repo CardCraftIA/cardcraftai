@@ -28,7 +28,7 @@ from payment_utils import package_code as validate_package_code, safe_checkout_u
 from community import render_community, community_nav_label
 from chatbot import render_chatbot
 from payment_assistant import render_payment_assistant
-from game_ui import render_game, render_solo
+from game_ui import render_catalog, render_game, render_solo
 from game_story import render_story
 from shop import render_shop
 from shop_tracking import process_outbound
@@ -426,19 +426,23 @@ if st.query_params.get("shop") == "1" or st.query_params.get("out"):
     st.stop()
 
 # Public, no-account demo keeps all match state in this browser session.
-if st.query_params.get("arena") == "1" or st.query_params.get("story") == "1":
+if st.query_params.get("arena") == "1" or st.query_params.get("story") == "1" or st.query_params.get("nacarim") == "1":
     demo_language = {'pt': 'Português (BR)', 'en': 'English', 'es': 'Español', 'ja': '日本語'}.get(
         st.query_params.get('lang', 'pt'), 'Português (BR)')
     demo_language = st.selectbox('🌐 Language / Idioma',
                                  ('Português (BR)', 'English', 'Español', '日本語'),
                                  index=('Português (BR)', 'English', 'Español', '日本語').index(demo_language),
                                  key='arena_demo_language')
-    if st.query_params.get('story') == '1':
+    if st.query_params.get('nacarim') == '1':
+        render_catalog(st, demo_language)
+        st.markdown('[🎮 Arena](?arena=1)')
+    elif st.query_params.get('story') == '1':
         render_story(st, demo_language)
         st.markdown(f'[🎮 {"Jogar" if demo_language == "Português (BR)" else "Play"}](?arena=1)')
     else:
         render_solo(st, demo_language, guest=True)
         st.markdown(f'[{"📖 Ler as Crônicas de Nacarim" if demo_language == "Português (BR)" else "📖 Read the Chronicles of Nacarim"}](?story=1)')
+        st.markdown('[🃏 Catálogo de Nacarim](?nacarim=1)')
     st.stop()
 
 

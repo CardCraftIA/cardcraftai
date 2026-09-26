@@ -5,6 +5,8 @@ from html import escape
 
 from game_engine import ARENAS, CARDS, bot_move, legal_moves, move, new_game, score
 from game_characters import portrait
+from game_characters import CAST
+from game_cards import ABILITY, NUMBER, RARITY
 from game_localization import arena_text, card_text, error_text, ui
 from game_story import render_story
 from game_online import Conflict, authenticated_id, create_match, join_match, play_match, recent_matches, view_match
@@ -33,27 +35,69 @@ STYLE = """<style>
 .cc-arena strong{font-size:1.2rem;color:#f7f2ff}.cc-arena p{color:#afc0d7;margin:.4rem 0}
 .cc-card{background:linear-gradient(150deg,#352b64,#162e49);border:1px solid #7666a8;border-radius:16px;padding:.8rem;min-height:7rem;margin:.35rem 0;color:#e9e9ff}
 .cc-card b{color:white}.cc-card small{color:#b4d3ea}
+.cc-card .cc-ability{display:block;margin-top:.55rem;padding-top:.5rem;border-top:1px solid #7666a8;color:#e6d5ff}
 </style>"""
+
+CATALOG_COPY = {
+    'Português (BR)': ('🃏 Catálogo de Nacarim', 'Buscar personagem ou carta', 'Região', 'Todas', 'Coleção inicial · 12 cartas originais', 'Comum', 'Incomum', 'Rara', 'Viajantes', 'Habilidade', 'Bônus de afinidade: +2 na arena correspondente.'),
+    'English': ('🃏 Nacarim card catalog', 'Search character or card', 'Region', 'All', 'Starter set · 12 original cards', 'Common', 'Uncommon', 'Rare', 'Travelers', 'Ability', 'Matching arena bonus: +2.'),
+    'Español': ('🃏 Catálogo de Nacarim', 'Buscar personaje o carta', 'Región', 'Todas', 'Colección inicial · 12 cartas originales', 'Común', 'Infrecuente', 'Rara', 'Viajeros', 'Habilidad', 'Bonificación de afinidad: +2.'),
+    '日本語': ('🃏 ナカリムカード図鑑', 'キャラクターやカードを検索', '地域', 'すべて', '初期セット・オリジナル12枚', 'コモン', 'アンコモン', 'レア', '旅人', '能力', '得意なアリーナでは+2。'),
+}
+CATALOG_TAB = {language: copy[0] for language, copy in CATALOG_COPY.items()}
+
+
+def _card_details(card, language):
+    name, description = card_text(card, language)
+    _, cost, power, affinity, _ = CARDS[card]
+    ability, effect = ABILITY.get(language, ABILITY['English'])[card]
+    rarity_label = CATALOG_COPY.get(language, CATALOG_COPY['English'])[
+        {'common': 5, 'uncommon': 6, 'rare': 7}[RARITY[card]]]
+    region = arena_text(affinity, language) if affinity else CATALOG_COPY.get(language, CATALOG_COPY['English'])[8]
+    return (f'<div class="cc-card"><small>{NUMBER[card]} · {escape(rarity_label)} · {escape(region)}</small>'
+            f'<br><b>{escape(name)}</b><br>⚡ {cost} · ✦ {power}'
+            f'<br><small>{escape(description)}</small>'
+            f'<span class="cc-ability"><b>{escape(ability)}</b><br>{escape(effect)}</span></div>')
+
+
+def render_catalog(st, language='Português (BR)'):
+    copy = CATALOG_COPY.get(language, CATALOG_COPY['English'])
+    st.markdown(STYLE, unsafe_allow_html=True)
+    st.subheader(copy[0])
+    st.caption(copy[4])
+    query = st.text_input(copy[1], key='nacarim_catalog_search').strip().casefold()
+    choices = ('all', 'forge', 'reef', 'grove', 'travelers')
+    region = st.selectbox(copy[2], choices, format_func=lambda x: copy[3] if x == 'all' else copy[8] if x == 'travelers' else arena_text(x, language), key='nacarim_catalog_region')
+    visible = [card for card, (_, _, _, affinity, _) in CARDS.items()
+               if (region == 'all' or (region == 'travelers' and affinity is None) or region == affinity)
+               and (not query or query in card_text(card, language)[0].casefold() or query in CAST[card][1].casefold())]
+    for start in range(0, len(visible), 3):
+        for column, card in zip(st.columns(3), visible[start:start + 3]):
+            with column:
+                with st.container(border=True):
+                    st.image(portrait(card), width=220)
+                    st.markdown(_card_details(card, language), unsafe_allow_html=True)
+    st.caption(copy[10])
 
 RULES = {
     'Português (BR)': ('Seis rodadas · três arenas · uma carta por rodada · vença duas arenas. Cartas originais do CardCraftAI.',
                        '📖 Como jogar', 'A energia cresce a cada rodada. Escolha uma carta da mão e uma arena. '
-                       'Uma carta com afinidade pela arena recebe +2 de força. Cada pessoa joga uma carta ou passa por rodada. '
+                       'Uma carta com afinidade pela arena recebe +2 de força. A habilidade impressa na carta pode alterar a força conforme as cartas na arena; o placar é recalculado a cada jogada. Cada pessoa joga uma carta ou passa por rodada. '
                        'Após seis rodadas, vence quem liderar mais arenas; em empate, vale a força total. '
                        'Estas cartas são peças digitais originais, não cartas oficiais dos TCGs presentes no catálogo. Jogo gratuito, sem créditos ou compras.'),
     'English': ('Six rounds · three arenas · one card per round · win two arenas. Original CardCraftAI cards.',
                 '📖 How to play', 'Your energy grows each round. Choose a card from your hand and an arena. '
-                'A matching arena adds +2 power. Each player plays one card or passes per round. '
+                'A matching arena adds +2 power. A card ability can change its power as cards enter the arena; scores recalculate after each play. Each player plays one card or passes per round. '
                 'After six rounds, win the most arenas; ties use total power. '
                 'These are original digital game pieces, not official cards from the TCG catalog. Free game, with no credits or purchases.'),
     'Español': ('Seis rondas · tres arenas · una carta por ronda · gana dos arenas. Cartas originales de CardCraftAI.',
                  '📖 Cómo jugar', 'La energía aumenta cada ronda. Elige una carta de tu mano y una arena. '
-                 'La afinidad de arena añade +2 de fuerza. Cada persona juega una carta o pasa por ronda. '
+                 'La afinidad de arena añade +2 de fuerza. La habilidad puede cambiar la fuerza cuando entran cartas; el marcador se recalcula tras cada jugada. Cada persona juega una carta o pasa por ronda. '
                  'Tras seis rondas, gana quien domine más arenas; los empates usan la fuerza total. '
                  'Estas cartas digitales son originales; no son cartas oficiales del catálogo TCG. Gratis, sin créditos ni compras.'),
     '日本語': ('6ラウンド・3つのアリーナ・毎ラウンド1枚。2つのアリーナを取ろう。CardCraftAI独自のカードです。',
              '📖 遊び方', 'ラウンドごとにエネルギーが増えます。手札とアリーナを選んでください。'
-             '得意なアリーナではパワーが2増えます。各プレイヤーは毎ラウンド1枚出すかパスします。'
+             '得意なアリーナではパワーが2増えます。カードの能力は配置によって変化し、得点は毎回再計算されます。各プレイヤーは毎ラウンド1枚出すかパスします。'
              '6ラウンド後、勝ったアリーナが多い方が勝利。同数なら合計パワーで決着します。'
              'このカードは独自のデジタルゲーム用で、TCGカタログの公式カードではありません。無料で遊べます。'),
 }
@@ -100,9 +144,9 @@ def _board(st, state, side, labels, prefix, submit, language):
         name, description = card_text(card, language)
         _, cost, power, affinity, _ = CARDS[card]
         with cards[index % len(cards)]:
-            st.image(portrait(card), width=220)
-            st.markdown(f'<div class="cc-card"><b>{escape(name)}</b><br>⚡ {cost} · ✦ {power}'
-                        f'<br><small>{escape(description)}</small></div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                st.image(portrait(card), width=220)
+                st.markdown(_card_details(card, language), unsafe_allow_html=True)
     if choices:
         chosen = st.selectbox(ui(language, 'card'), choices, format_func=lambda card: _card_name(card, language), key=prefix + '_' + language + '_card')
         lanes = [lane for card, lane in legal_moves(state, side) if card == chosen]
@@ -146,11 +190,14 @@ def render_game(st, auth_client, service, access_token, language='Português (BR
     st.header(labels[0])
     st.caption(RULES.get(language, RULES['English'])[0])
     st.markdown(f'[{ui(language, "share")}](?arena=1)')
-    solo_tab, online_tab, story_tab = st.tabs((labels[1], labels[2], STORY_TAB.get(language, STORY_TAB['English'])))
+    st.markdown('[🃏 ' + CATALOG_TAB.get(language, CATALOG_TAB['English']) + '](?nacarim=1)')
+    solo_tab, online_tab, catalog_tab, story_tab = st.tabs((labels[1], labels[2], CATALOG_TAB.get(language, CATALOG_TAB['English']), STORY_TAB.get(language, STORY_TAB['English'])))
     with solo_tab:
         render_solo(st, language)
     with story_tab:
         render_story(st, language)
+    with catalog_tab:
+        render_catalog(st, language)
     with online_tab:
         try:
             user_id = authenticated_id(auth_client, access_token)

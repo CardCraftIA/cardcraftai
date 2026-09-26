@@ -44,8 +44,15 @@ def points(cards, lane):
 
 
 def score(state):
-    return {lane: {side: points(state["lanes"][lane][side], lane) for side in ("a", "b")}
-            for lane, _, _ in ARENAS}
+    from game_cards import ability_bonus
+    result = {}
+    for lane, _, _ in ARENAS:
+        result[lane] = {}
+        for side in ('a', 'b'):
+            own = state['lanes'][lane][side]
+            opposing = state['lanes'][lane]['b' if side == 'a' else 'a']
+            result[lane][side] = points(own, lane) + sum(ability_bonus(card, own, opposing) for card in own)
+    return result
 
 
 def legal_moves(state, side):
@@ -109,11 +116,19 @@ def bot_move(state):
         return move(state, "b")
     totals = score(state)
     card, lane = max(options, key=lambda pair: (
-        CARDS[pair[0]][2] + (2 if CARDS[pair[0]][3] == pair[1] else 0)
-        + (3 if -4 <= totals[pair[1]]["b"] - totals[pair[1]]["a"] <= 1 else 0)
-        - max(0, totals[pair[1]]["b"] - totals[pair[1]]["a"] - 3),
+        (score(_simulate_lane(state, pair[0], pair[1]))[pair[1]]['b']
+         - score(_simulate_lane(state, pair[0], pair[1]))[pair[1]]['a'])
+        - (totals[pair[1]]['b'] - totals[pair[1]]['a'])
+        + (3 if -4 <= totals[pair[1]]['b'] - totals[pair[1]]['a'] <= 1 else 0)
+        - max(0, totals[pair[1]]['b'] - totals[pair[1]]['a'] - 3),
         pair[0], pair[1]))
     return move(state, "b", card, lane)
+
+
+def _simulate_lane(state, card, lane):
+    trial = deepcopy(state)
+    trial['lanes'][lane]['b'].append(card)
+    return trial
 
 
 def redacted(state, side):

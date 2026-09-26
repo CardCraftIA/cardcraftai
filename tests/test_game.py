@@ -49,7 +49,7 @@ class EngineTests(unittest.TestCase):
     def test_affinity_and_tie_break(self):
         state = new_game(1)
         state['lanes']['forge']['a'] = ['spark']
-        self.assertEqual(score(state)['forge']['a'], CARDS['spark'][2] + 2)
+        self.assertEqual(score(state)['forge']['a'], CARDS['spark'][2] + 2 + 1)
 
 
 class OnlineBoundaryTests(unittest.TestCase):
