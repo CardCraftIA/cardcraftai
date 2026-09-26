@@ -103,9 +103,9 @@ def _board(st, state, side, labels, prefix, submit, language):
             st.markdown(f'<div class="cc-card"><b>{escape(name)}</b><br>⚡ {cost} · ✦ {power}'
                         f'<br><small>{escape(description)}</small></div>', unsafe_allow_html=True)
     if choices:
-        chosen = st.selectbox(ui(language, 'card'), choices, format_func=lambda card: _card_name(card, language), key=prefix + '_card')
+        chosen = st.selectbox(ui(language, 'card'), choices, format_func=lambda card: _card_name(card, language), key=prefix + '_' + language + '_card')
         lanes = [lane for card, lane in legal_moves(state, side) if card == chosen]
-        destination = st.selectbox(ui(language, 'arena'), lanes, format_func=lambda lane: next(icon + ' ' + arena_text(lane, language) for key, _, icon in ARENAS if key == lane), key=prefix + '_lane')
+        destination = st.selectbox(ui(language, 'arena'), lanes, format_func=lambda lane: next(icon + ' ' + arena_text(lane, language) for key, _, icon in ARENAS if key == lane), key=prefix + '_' + language + '_lane')
         if st.button(labels[7], key=prefix + '_play', type='primary'):
             submit(chosen, destination)
             st.rerun()
