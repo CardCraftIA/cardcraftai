@@ -39,6 +39,13 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(view['players']['a']['deck'], [None] * 9)
         self.assertEqual(view['players']['b']['deck'], [None] * 9)
 
+    def test_first_two_rounds_have_affordable_draw(self):
+        for seed in range(100):
+            state = new_game(seed)
+            for side in ('a', 'b'):
+                self.assertTrue(any(CARDS[card][1] == 1 for card in state['players'][side]['hand']))
+                self.assertLessEqual(CARDS[state['players'][side]['deck'][0]][1], 2)
+
     def test_affinity_and_tie_break(self):
         state = new_game(1)
         state['lanes']['forge']['a'] = ['spark']

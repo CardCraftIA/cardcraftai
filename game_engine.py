@@ -30,6 +30,9 @@ def new_game(seed=None):
         rng.shuffle(deck)
         opening = next(i for i, card in enumerate(deck) if CARDS[card][1] == 1)
         deck.insert(0, deck.pop(opening))
+        # The round-two draw is always affordable, avoiding a forced early pass.
+        early = next(i for i in range(3, len(deck)) if CARDS[deck[i]][1] <= 2)
+        deck.insert(3, deck.pop(early))
         players[side] = {"hand": deck[:3], "deck": deck[3:], "passed": False}
     return {"version": 1, "round": 1, "turn": "a", "status": "active", "winner": None,
             "players": players, "lanes": {arena[0]: {"a": [], "b": []} for arena in ARENAS},
