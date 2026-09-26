@@ -11,6 +11,7 @@ import re
 from urllib.parse import quote_plus
 
 from collection import collection_metrics, load_collection_items
+from atlas_access import claim_question
 from chatbot_attachments import prepare_attachment, is_text_request, extract_text_answer, extract_card_evidence, ask_attachment_ai
 
 LABELS = {
@@ -474,10 +475,10 @@ def ask_ai(client, model, question, language):
 ATLAS_AVATAR = '🃏'
 
 
-def render_chatbot(st, client, ai_client, model, user_id, language, selected=None, external_search=None):
+def render_chatbot(st, client, ai_client, model, user_id, language, selected=None, external_search=None, on_upgrade=None, allowance_enabled=False):
     interface_labels = LABELS.get(language, LABELS['English'])
     st.header(ATLAS_AVATAR + ' ' + interface_labels['title'])
-    st.caption(interface_labels['intro'] + ' ' + interface_labels['credits'])
+    st.caption(interface_labels['intro'])
     st.caption(interface_labels['attachment_hint'])
     state_key = f'cardcraft_chat_{user_id}'
     history = st.session_state.setdefault(state_key, [])
@@ -494,6 +495,12 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
                 st.caption(entry_labels['source'] + ': ' + entry['source'])
             for title, url in entry.get('links', []):
                 st.link_button(title, url)
+    if st.session_state.get(f'atlas_upgrade_{user_id}') and on_upgrade:
+        if st.button({'Português (BR)': '✨ Ver planos para continuar com Atlas', 'English': '✨ View plans to continue with Atlas',
+                      'Español': '✨ Ver planes para continuar con Atlas', '日本語': '✨ Atlasのプランを見る'}.get(language, '✨ View plans'),
+                     key=f'atlas_upgrade_button_{user_id}', type='primary'):
+            on_upgrade('plans')
+            st.rerun()
     submission = st.chat_input(
         interface_labels['prompt'], key=f'cardcraft_chat_prompt_{user_id}',
         accept_file=True, file_type=['jpg', 'jpeg', 'png', 'webp', 'pdf'],
@@ -513,35 +520,34 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
                     'attachment_name': str(files[0].name)[:120] if files else ''})
     try:
         attachment = prepare_attachment(files[0]) if files else None
+        if allowance_enabled:
+            allowance = claim_question(client)
+            if not allowance['allowed']:
+                st.session_state[f'atlas_upgrade_{user_id}'] = True
+                result = {'text': upgrade_message(response_language), 'source': '', 'links': []}
+                history.append({'role': 'assistant', 'language': response_language, **result})
+                st.session_state[state_key] = history[-32:]
+                st.rerun()
+            if allowance.get('remaining') == 0 and not allowance.get('paid'):
+                st.session_state[f'atlas_upgrade_{user_id}'] = True
         if attachment and attachment['kind'] == 'pdf' and is_text_request(question) and extract_text_answer(attachment):
             result = {'text': extract_text_answer(attachment), 'source': labels['pdf_text'], 'links': []}
         elif attachment:
-            usage_key = f'cardcraft_chat_ai_calls_{user_id}'
-            calls = int(st.session_state.get(usage_key, 0))
-            if calls >= 3:
-                result = {'text': labels['ai_limit'], 'source': '', 'links': []}
+            if attachment['kind'] == 'image':
+                evidence = extract_card_evidence(ai_client, model, question, attachment)
+                result = verify_photo_evidence(evidence, client, response_language, external_search)
             else:
-                st.session_state[usage_key] = calls + 1
-                if attachment['kind'] == 'image':
-                    evidence = extract_card_evidence(ai_client, model, question, attachment)
-                    result = verify_photo_evidence(evidence, client, response_language, external_search)
-                else:
-                    result = {'text': ask_attachment_ai(ai_client, model, question or labels['attachment_question'],
-                                                         response_language, attachment),
-                              'source': labels['ai'], 'links': []}
+                result = {'text': ask_attachment_ai(ai_client, model, question or labels['attachment_question'],
+                                                     response_language, attachment),
+                          'source': labels['ai'], 'links': []}
         else:
             name, set_name, card_number = conversation_card_reference(question, selected)
             result = answer(question, name, selected, client, user_id, response_language, external_search, set_name, card_number)
             if result.get('needs_ai'):
-                usage_key = f'cardcraft_chat_ai_calls_{user_id}'
-                calls = int(st.session_state.get(usage_key, 0))
-                if calls >= 3:
-                    result = {'text': labels['ai_limit'], 'source': '', 'links': []}
-                else:
-                    # Count attempts before the request so repeated failures do not loop.
-                    st.session_state[usage_key] = calls + 1
-                    result = {'text': (result['text'] + '\n\n' if result['text'] else '')
-                              + ask_ai(ai_client, model, question, response_language), 'source': labels['ai'], 'links': []}
+                result = {'text': (result['text'] + '\n\n' if result['text'] else '')
+                          + ask_ai(ai_client, model, question, response_language), 'source': labels['ai'], 'links': []}
+        if allowance_enabled and st.session_state.get(f'atlas_upgrade_{user_id}') and allowance.get('remaining') == 0:
+            result['text'] += '\n\n' + upgrade_message(response_language)
         if not result['text']:
             result['text'] = labels['empty']
     except ValueError:
@@ -551,3 +557,12 @@ def render_chatbot(st, client, ai_client, model, user_id, language, selected=Non
     history.append({'role': 'assistant', 'language': response_language, **result})
     st.session_state[state_key] = history[-32:]
     st.rerun()
+
+
+def upgrade_message(language):
+    return {
+        'Português (BR)': 'Você usou suas 5 perguntas gratuitas ao Atlas. Para continuar a conversa com IA, escolha um plano. A busca no catálogo continua disponível.',
+        'English': 'You have used your 5 free Atlas questions. Choose a plan to continue the AI conversation. Catalog search remains available.',
+        'Español': 'Has usado tus 5 preguntas gratuitas a Atlas. Elige un plan para continuar la conversación con IA. La búsqueda en el catálogo sigue disponible.',
+        '日本語': 'Atlasの無料質問5回を使い切りました。AIとの会話を続けるにはプランを選んでください。カタログ検索は引き続き利用できます。',
+    }.get(language, 'Choose a plan to continue with Atlas.')

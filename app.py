@@ -27,6 +27,7 @@ from ui_messages import install_messages
 from payment_utils import package_code as validate_package_code, safe_checkout_url
 from community import render_community, community_nav_label
 from chatbot import render_chatbot
+from payment_assistant import render_payment_assistant
 from shop import render_shop
 from shop_tracking import process_outbound
 from commercial import admin_ids, render_commercial
@@ -9059,6 +9060,8 @@ elif pagina == "chatbot":
         st, supabase, gemini_client, AI_MODEL, st.session_state.user_id, idioma,
         selected=st.session_state.get('catalogo_selecionada_nome') or st.session_state.get('catalogo_selecionada_foto'),
         external_search=buscar_cartas_catalogo_pokemon,
+        on_upgrade=abrir_pagina,
+        allowance_enabled=str(st.secrets.get('ATLAS_ALLOWANCE_ENABLED', 'true')).lower() == 'true',
     )
 
 elif pagina == "community" and COMMUNITY_ENABLED:
@@ -9759,6 +9762,7 @@ elif pagina == "privacy":
 elif pagina == "plans":
 
     st.header(t("plans_title", idioma))
+    render_payment_assistant(st, idioma)
 
     retorno_pagamento = st.session_state.get(
         "payment_return_status"
