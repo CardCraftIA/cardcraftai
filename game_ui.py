@@ -4,6 +4,8 @@ from __future__ import annotations
 from html import escape
 
 from game_engine import ARENAS, CARDS, bot_move, legal_moves, move, new_game, score
+from game_art import card_svg
+from game_localization import arena_text, card_text, error_text, ui
 from game_online import Conflict, authenticated_id, create_match, join_match, play_match, recent_matches, view_match
 
 WORDS = {
@@ -36,42 +38,55 @@ RULES = {
     'Português (BR)': ('Seis rodadas · três arenas · uma carta por rodada · vença duas arenas. Cartas originais do CardCraftAI.',
                        '📖 Como jogar', 'A energia cresce a cada rodada. Escolha uma carta da mão e uma arena. '
                        'Uma carta com afinidade pela arena recebe +2 de força. Cada pessoa joga uma carta ou passa por rodada. '
-                       'Após seis rodadas, vence quem liderar mais arenas; em empate, vale a força total. Jogo gratuito, sem créditos ou compras.'),
+                       'Após seis rodadas, vence quem liderar mais arenas; em empate, vale a força total. '
+                       'Estas cartas são peças digitais originais, não cartas oficiais dos TCGs presentes no catálogo. Jogo gratuito, sem créditos ou compras.'),
     'English': ('Six rounds · three arenas · one card per round · win two arenas. Original CardCraftAI cards.',
                 '📖 How to play', 'Your energy grows each round. Choose a card from your hand and an arena. '
                 'A matching arena adds +2 power. Each player plays one card or passes per round. '
-                'After six rounds, win the most arenas; ties use total power. Free game, with no credits or purchases.'),
+                'After six rounds, win the most arenas; ties use total power. '
+                'These are original digital game pieces, not official cards from the TCG catalog. Free game, with no credits or purchases.'),
     'Español': ('Seis rondas · tres arenas · una carta por ronda · gana dos arenas. Cartas originales de CardCraftAI.',
                  '📖 Cómo jugar', 'La energía aumenta cada ronda. Elige una carta de tu mano y una arena. '
                  'La afinidad de arena añade +2 de fuerza. Cada persona juega una carta o pasa por ronda. '
-                 'Tras seis rondas, gana quien domine más arenas; los empates usan la fuerza total. Gratis, sin créditos ni compras.'),
+                 'Tras seis rondas, gana quien domine más arenas; los empates usan la fuerza total. '
+                 'Estas cartas digitales son originales; no son cartas oficiales del catálogo TCG. Gratis, sin créditos ni compras.'),
     '日本語': ('6ラウンド・3つのアリーナ・毎ラウンド1枚。2つのアリーナを取ろう。CardCraftAI独自のカードです。',
              '📖 遊び方', 'ラウンドごとにエネルギーが増えます。手札とアリーナを選んでください。'
              '得意なアリーナではパワーが2増えます。各プレイヤーは毎ラウンド1枚出すかパスします。'
-             '6ラウンド後、勝ったアリーナが多い方が勝利。同数なら合計パワーで決着します。無料で遊べます。'),
+             '6ラウンド後、勝ったアリーナが多い方が勝利。同数なら合計パワーで決着します。'
+             'このカードは独自のデジタルゲーム用で、TCGカタログの公式カードではありません。無料で遊べます。'),
 }
 
 
-def _card_name(card):
-    name, cost, power, affinity, _ = CARDS[card]
+def _card_name(card, language):
+    name, _ = card_text(card, language)
+    _, cost, power, affinity, _ = CARDS[card]
     return f'{name} · ⚡{cost} · ✦{power}' + (' · ' + next(icon for key, _, icon in ARENAS if key == affinity) if affinity else '')
 
 
-def _board(st, state, side, labels, prefix, submit):
+def _board(st, state, side, labels, prefix, submit, language):
     st.markdown(STYLE, unsafe_allow_html=True)
-    st.progress(min(state['round'], 6) / 6, text=f"Rodada {state['round']} / 6 · ⚡ {state['round']}")
+    st.progress(min(state['round'], 6) / 6, text=ui(language, 'round', n=state['round']))
     totals = score(state)
     columns = st.columns(3)
-    for column, (lane, title, icon) in zip(columns, ARENAS):
+    for column, (lane, _, icon) in zip(columns, ARENAS):
         ours, theirs = totals[lane][side], totals[lane]['b' if side == 'a' else 'a']
         with column:
             played = state['lanes'][lane][side]
-            visible = ', '.join(CARDS[c][0] for c in played) or '—'
+            rival = state['lanes'][lane]['b' if side == 'a' else 'a']
+            title = arena_text(lane, language)
             st.markdown(f'<div class="cc-arena"><strong>{icon} {escape(title)}</strong>'
-                        f'<p>Você {ours} × {theirs} rival</p><small>{escape(visible)}</small></div>', unsafe_allow_html=True)
+                        f'<p>{escape(ui(language, "score", you=ours, opponent=theirs))}</p></div>', unsafe_allow_html=True)
+            if played:
+                st.caption(ui(language, 'your_cards'))
+                st.image([card_svg(card, card_text(card, language)[0]) for card in played], width=88)
+            if rival:
+                st.caption(ui(language, 'opponent_cards'))
+                st.image([card_svg(card, card_text(card, language)[0]) for card in rival], width=88)
     if state['status'] == 'finished':
         winner = state['winner']
         st.success(labels[12] if winner == side else labels[14] if winner == 'draw' else labels[13])
+        st.info(ui(language, 'learned'))
         return
     if state['turn'] != side:
         st.info(labels[11])
@@ -81,14 +96,16 @@ def _board(st, state, side, labels, prefix, submit):
     hand = state['players'][side]['hand']
     cards = st.columns(min(3, max(1, len(hand))))
     for index, card in enumerate(hand):
-        name, cost, power, affinity, description = CARDS[card]
+        name, description = card_text(card, language)
+        _, cost, power, affinity, _ = CARDS[card]
         with cards[index % len(cards)]:
+            st.image(card_svg(card, name), width='stretch')
             st.markdown(f'<div class="cc-card"><b>{escape(name)}</b><br>⚡ {cost} · ✦ {power}'
                         f'<br><small>{escape(description)}</small></div>', unsafe_allow_html=True)
     if choices:
-        chosen = st.selectbox('Carta', choices, format_func=_card_name, key=prefix + '_card')
+        chosen = st.selectbox(ui(language, 'card'), choices, format_func=lambda card: _card_name(card, language), key=prefix + '_card')
         lanes = [lane for card, lane in legal_moves(state, side) if card == chosen]
-        destination = st.selectbox('Arena', lanes, format_func=lambda lane: next(icon + ' ' + name for key, name, icon in ARENAS if key == lane), key=prefix + '_lane')
+        destination = st.selectbox(ui(language, 'arena'), lanes, format_func=lambda lane: next(icon + ' ' + arena_text(lane, language) for key, _, icon in ARENAS if key == lane), key=prefix + '_lane')
         if st.button(labels[7], key=prefix + '_play', type='primary'):
             submit(chosen, destination)
             st.rerun()
@@ -105,9 +122,8 @@ def render_solo(st, language='Português (BR)', guest=False):
     with st.expander(help_title, expanded=False):
         st.write(instructions)
     if guest:
-        st.info('Esta é uma demonstração gratuita. Entre na sua conta para desafiar outra pessoa online.'
-                if language == 'Português (BR)' else 'This is a free demo. Sign in to challenge another player online.')
-        st.markdown('[Entrar no CardCraftAI / Sign in](./)')
+        st.info(ui(language, 'demo'))
+        st.markdown(f'[{ui(language, "sign_in")}](./)')
     key = 'cardcraft_solo_game'
     if key not in st.session_state or st.button(labels[3], key='new_cardcraft_solo'):
         st.session_state[key] = new_game()
@@ -117,14 +133,14 @@ def render_solo(st, language='Português (BR)', guest=False):
         while next_state['status'] == 'active' and next_state['turn'] == 'b':
             next_state = bot_move(next_state)
         st.session_state[key] = next_state
-    _board(st, state, 'a', labels, 'solo', solo_submit)
+    _board(st, state, 'a', labels, 'solo', solo_submit, language)
 
 
 def render_game(st, auth_client, service, access_token, language='Português (BR)'):
     labels = WORDS.get(language, WORDS['English'])
     st.header(labels[0])
     st.caption(RULES.get(language, RULES['English'])[0])
-    st.markdown('[Compartilhar demonstração solo / Share solo demo](?arena=1)')
+    st.markdown(f'[{ui(language, "share")}](?arena=1)')
     solo_tab, online_tab = st.tabs((labels[1], labels[2]))
     with solo_tab:
         render_solo(st, language)
@@ -132,7 +148,7 @@ def render_game(st, auth_client, service, access_token, language='Português (BR
         try:
             user_id = authenticated_id(auth_client, access_token)
         except PermissionError as error:
-            st.error(str(error))
+            st.error(error_text(error, language))
             return
         match_key = 'cardcraft_online_match_' + user_id
         if not st.session_state.get(match_key):
@@ -143,7 +159,7 @@ def render_game(st, auth_client, service, access_token, language='Português (BR
                         st.session_state[match_key] = old['id']
                         st.rerun()
             except Exception:
-                st.caption('Suas partidas anteriores não estão disponíveis agora.')
+                st.caption(ui(language, 'previous_unavailable'))
             left, right = st.columns(2)
             with left:
                 if st.button(labels[4], key='game_create'):
@@ -151,7 +167,7 @@ def render_game(st, auth_client, service, access_token, language='Português (BR
                         st.session_state[match_key] = create_match(service, user_id)['id']
                         st.rerun()
                     except Exception:
-                        st.error('Não foi possível criar a sala. Tente novamente.')
+                        st.error(ui(language, 'create_error'))
             with right:
                 code = st.text_input(labels[6], max_chars=10, key='game_join_code')
                 if st.button(labels[5], key='game_join'):
@@ -159,9 +175,9 @@ def render_game(st, auth_client, service, access_token, language='Português (BR
                         st.session_state[match_key] = join_match(service, user_id, code)
                         st.rerun()
                     except (ValueError, Conflict) as error:
-                        st.warning(str(error))
+                        st.warning(error_text(error, language))
                     except Exception:
-                        st.error('Não foi possível entrar na sala.')
+                        st.error(ui(language, 'join_error'))
             return
         if st.button(labels[16], key='game_leave'):
             st.session_state.pop(match_key, None)
@@ -178,17 +194,17 @@ def render_game(st, auth_client, service, access_token, language='Português (BR
                     st.code(match['code'])
                     st.caption(labels[15])
                     return
-                st.caption('Convite: ' + match['code'])
+                st.caption(ui(language, 'invite') + ': ' + match['code'])
                 def online_submit(card, lane):
                     try:
                         play_match(service, current_id, match['id'], match['version'], card, lane)
                     except (ValueError, Conflict) as error:
-                        st.warning(str(error))
+                        st.warning(error_text(error, language))
                     except Exception:
-                        st.error('Não foi possível salvar a jogada. Atualize a partida.')
-                _board(st, match['state'], match['side'], labels, 'online_' + match['id'], online_submit)
+                        st.error(ui(language, 'save_error'))
+                _board(st, match['state'], match['side'], labels, 'online_' + match['id'], online_submit, language)
             except (ValueError, PermissionError) as error:
-                st.warning(str(error))
+                st.warning(error_text(error, language))
             except Exception:
-                st.error('Não foi possível carregar a partida agora.')
+                st.error(ui(language, 'load_error'))
         live_match()

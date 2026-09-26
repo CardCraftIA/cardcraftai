@@ -428,6 +428,10 @@ if st.query_params.get("shop") == "1" or st.query_params.get("out"):
 if st.query_params.get("arena") == "1":
     demo_language = {'pt': 'Português (BR)', 'en': 'English', 'es': 'Español', 'ja': '日本語'}.get(
         st.query_params.get('lang', 'pt'), 'Português (BR)')
+    demo_language = st.selectbox('🌐 Language / Idioma',
+                                 ('Português (BR)', 'English', 'Español', '日本語'),
+                                 index=('Português (BR)', 'English', 'Español', '日本語').index(demo_language),
+                                 key='arena_demo_language')
     render_solo(st, demo_language, guest=True)
     st.stop()
 
