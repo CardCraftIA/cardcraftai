@@ -33,6 +33,8 @@ const cast=[{name:'Nilo',icon:'🦊',color:'#ffbe69'},{name:'Tora',icon:'🐢',c
 const niloSprite=new Image();niloSprite.src=/*NILO_SPRITE*/;
 const niloDirections=new Image();niloDirections.src=/*NILO_DIRECTIONS*/;
 const bridgeImage=new Image();bridgeImage.src=/*BRIDGE_IMAGE*/;
+const enemySprites=new Image();enemySprites.src=/*ENEMY_SPRITES*/;
+const niloGroundRun=new Image();niloGroundRun.src=/*NILO_GROUND_RUN*/;
 let chosen=0,phase='menu',player,shadows=[],bolts=[],particles=[],keys=new Set(),kills=0,clock=0,spawnClock=0,attackClock=0,powerClock=0,hurtClock=0,castClock=0,previous=0,frame=0,fullscreenFallback=false;
 const W=canvas.width,H=canvas.height,clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -87,9 +89,10 @@ function drawWorld(){if(bridgeImage.complete&&bridgeImage.naturalWidth){ctx.draw
  for(let i=0;i<6;i++){let t=i/5,y=250+282*t*t,offset=168+310*t;for(const sx of [-1,1]){let x=480+sx*offset;limb(x,y,x,y-18-26*t,4+5*t,'#594b48');ctx.shadowBlur=12+14*t;ctx.shadowColor='#ffda94';ellipse(x,y-20-28*t,4+3*t,7+4*t,'#ffe1a3');ctx.shadowBlur=0;}}
  for(let i=0;i<20;i++){let x=(i*173+80)%W,y=255+(i*59)%270;ellipse(x,y,1+(y/300),1+(y/400),'#d8e6aa66');}
 }
-function drawHero(){if(!player)return;let h=cast[chosen],moving=player.moving,step=player.step,swing=moving?Math.sin(step)*9:0,bob=moving?Math.abs(Math.sin(step))*3:Math.sin(clock*2)*1.2;
+function drawHero(){if(!player)return;let h=cast[chosen],moving=player.moving,step=player.step,swing=moving?Math.sin(step)*9:0,bob=chosen===0?0:moving?Math.abs(Math.sin(step))*2:Math.sin(clock*2)*1.2;
  let depth=.72+clamp((player.y-250)/290,0,1)*.38;
- if(chosen===0&&player.direction!=='side'&&niloDirections.complete&&niloDirections.naturalWidth){let sw=niloDirections.naturalWidth/2,sh=niloDirections.naturalHeight/2,row=player.direction==='up'?0:1,col=moving?Math.floor(step/2.2)%2:0;ctx.save();ctx.translate(player.x,player.y-bob);ctx.scale(depth,depth);ellipse(0,25,28,7,'#151b3299');ctx.drawImage(niloDirections,col*sw,row*sh,sw,sh,-67,-101,134,135);if(castClock>0){ctx.strokeStyle=h.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-20,40,0,Math.PI*2);ctx.stroke();}ctx.restore();return;}
+ if(chosen===0&&player.direction!=='side'&&niloDirections.complete&&niloDirections.naturalWidth){let sw=niloDirections.naturalWidth/2,sh=niloDirections.naturalHeight/2,row=player.direction==='up'?0:1,col=moving?Math.floor(step/2.2)%2:0;ctx.save();ctx.translate(player.x,player.y);ctx.scale(depth,depth);ellipse(0,26,29,7,'#151b3299');ctx.drawImage(niloDirections,col*sw,row*sh,sw,sh,-67,row===0?-109:-94,134,135);if(castClock>0){ctx.strokeStyle=h.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,-20,40,0,Math.PI*2);ctx.stroke();}ctx.restore();return;}
+ if(chosen===0&&moving&&castClock<=0&&niloGroundRun.complete&&niloGroundRun.naturalWidth){let sw=niloGroundRun.naturalWidth/2,sh=niloGroundRun.naturalHeight,col=Math.floor(step/2.2)%2;ctx.save();ctx.translate(player.x,player.y);ctx.scale(player.face*depth,depth);ellipse(0,28,31,7,'#151b3299');ctx.drawImage(niloGroundRun,col*sw,0,sw,sh,-65,-97,130,150);ctx.restore();return;}
  if(chosen===0&&niloSprite.complete&&niloSprite.naturalWidth){let frame=castClock>0?3:moving?(Math.floor(step/2.2)%2?1:2):0;let sw=niloSprite.naturalWidth/2,sh=niloSprite.naturalHeight/2;ctx.save();ctx.translate(player.x,player.y-bob);ctx.scale(player.face*depth,depth);ellipse(0,34,32,8,'#151b3299');ctx.drawImage(niloSprite,(frame%2)*sw,Math.floor(frame/2)*sh,frame===0?sw-24:sw,sh,-64,-87,128,133);if(castClock>0){ctx.strokeStyle=h.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,36+18*(1-castClock/.55),0,Math.PI*2);ctx.stroke();}ctx.restore();return;}
  ctx.save();ctx.translate(player.x,player.y-bob);ctx.scale(player.face*depth,depth);
  ellipse(0,29,28,7,'#151b3299');
@@ -106,6 +109,7 @@ function drawHero(){if(!player)return;let h=cast[chosen],moving=player.moving,st
  if(castClock>0){ctx.strokeStyle=h.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,34+12*(1-castClock/.55),0,Math.PI*2);ctx.stroke();}
  ctx.restore();}
 function drawShadow(enemy){let swing=Math.sin(enemy.step)*6,scale=.66+clamp((enemy.y-210)/330,0,1)*.56,ink=enemy.hit>0?'#e9b9e8':'#30283d';ctx.save();ctx.translate(enemy.x,enemy.y);ctx.scale(enemy.face*scale,scale);
+ if(enemySprites.complete&&enemySprites.naturalWidth){let sw=enemySprites.naturalWidth/3,sh=enemySprites.naturalHeight/2,row=Math.floor(enemy.step/2.2)%2;ellipse(0,1,enemy.kind===2?30:35,7,'#101a2c88');if(enemy.hit>0){ctx.shadowColor='#ffdaec';ctx.shadowBlur=20;}ctx.drawImage(enemySprites,enemy.kind*sw,row*sh,sw,sh,-57,enemy.kind===2?-114:-103,114,106);ctx.restore();return;}
  ellipse(0,4,30,7,'#101a2c88');
  if(enemy.kind===0){ // Rift fox: low and quick, with a luminous split tail.
   for(const tail of [-1,1]){ctx.strokeStyle=tail<0?'#a477bd':'#6f8dab';ctx.lineWidth=10;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-16,-21);ctx.quadraticCurveTo(-50,-53+tail*12,-58,-22+tail*18);ctx.stroke();}
