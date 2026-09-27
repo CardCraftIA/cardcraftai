@@ -2,6 +2,13 @@
 import json
 from pathlib import Path
 
+LABELS = {
+    'Português (BR)': {'title': 'Nacarim: Guardiões da Luz 3D'},
+    'English': {'title': 'Nacarim: Guardians of Light 3D'},
+    'Español': {'title': 'Nacarim: Guardianes de la Luz 3D'},
+    '日本語': {'title': 'ナカリム：光の守護者 3D'},
+}
+
 
 def game_html(language='Português (BR)'):
     template = (Path(__file__).resolve().parent / 'assets' / 'nacarim' /
