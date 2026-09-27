@@ -29,6 +29,7 @@ const words=/*CONFIG_JSON*/;
 const byId=id=>document.getElementById(id);
 const canvas=byId('canvas'),ctx=canvas.getContext('2d');
 const cast=[{name:'Nilo',icon:'🦊',color:'#ffbe69'},{name:'Tora',icon:'🐢',color:'#72d8e6'},{name:'Pipa',icon:'🐭',color:'#a6e988'},{name:'Lume',icon:'🦉',color:'#d3a8ff'}];
+const niloSprite=new Image();niloSprite.src=/*NILO_SPRITE*/;
 let chosen=0,phase='menu',player,shadows=[],bolts=[],particles=[],keys=new Set(),kills=0,clock=0,spawnClock=0,attackClock=0,powerClock=0,hurtClock=0,castClock=0,previous=0,frame=0;
 const W=canvas.width,H=canvas.height,clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -80,6 +81,7 @@ function drawWorld(){let sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(
  for(let i=0;i<12;i++){let x=(i*173+80)%W,y=255+(i*59)%270;ellipse(x,y,2,2,'#d8e6aa88');}
 }
 function drawHero(){if(!player)return;let h=cast[chosen],moving=player.moving,step=player.step,swing=moving?Math.sin(step)*9:0,bob=moving?Math.abs(Math.sin(step))*3:Math.sin(clock*2)*1.2;
+ if(chosen===0&&niloSprite.complete&&niloSprite.naturalWidth){let frame=castClock>0?3:moving?(Math.floor(step/2.2)%2?1:2):0;let sw=niloSprite.naturalWidth/2,sh=niloSprite.naturalHeight/2;ctx.save();ctx.translate(player.x,player.y-bob);ctx.scale(player.face,1);ellipse(0,34,32,8,'#151b3299');ctx.drawImage(niloSprite,(frame%2)*sw,Math.floor(frame/2)*sh,sw,sh,-64,-87,128,133);if(castClock>0){ctx.strokeStyle=h.color;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,36+18*(1-castClock/.55),0,Math.PI*2);ctx.stroke();}ctx.restore();return;}
  ctx.save();ctx.translate(player.x,player.y-bob);ctx.scale(player.face,1);
  ellipse(0,29,28,7,'#151b3299');
  if(chosen===0){ctx.fillStyle='#c76334';ctx.beginPath();ctx.moveTo(-12,8);ctx.bezierCurveTo(-46,6,-48,-32,-63,-18);ctx.bezierCurveTo(-58,7,-31,25,-15,18);ctx.fill();ellipse(-48,-10,12,8,'#f5d9ad');}
