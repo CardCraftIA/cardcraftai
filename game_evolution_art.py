@@ -59,7 +59,8 @@ def evolution_svg(card):
     stage = _stage(card)
     color, bright = REGION_COLORS[CARDS[card][3]]
     accent = STAGE_COLORS[stage - 1]
-    image = b64encode((Path(ART_DIR) / f'{character}.jpg').read_bytes()).decode('ascii')
+    picture = Path(ART_DIR) / f'{character}.jpg' if stage == 1 else Path(ART_DIR) / 'poses' / f'{card}.jpg'
+    image = b64encode(picture.read_bytes()).decode('ascii')
     effect = _effect(stage, accent, bright)
     # Main portrait is visible; the power scene surrounds its body and foreground.
     return f'''<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="720" viewBox="0 0 512 720" role="img" aria-label="{escape(CAST[character][0])}, stage {stage}">

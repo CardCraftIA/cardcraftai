@@ -5,6 +5,7 @@ subscription ledger must be deployed before showing approval links.
 """
 
 from urllib.parse import urlparse
+import re
 
 class PayPalGateway:
     def __init__(self, client_id, client_secret, webhook_id, *, sandbox=True):
@@ -22,7 +23,11 @@ class PayPalGateway:
 
     def create_subscription(self, plan_id, custom_id, return_url, cancel_url):
         import requests
-        if not plan_id or not custom_id or not all(urlparse(url).scheme == 'https' for url in (return_url, cancel_url)):
+        if not re.fullmatch(r'P-[A-Za-z0-9]{8,40}', str(plan_id or '')) or not re.fullmatch(r'[A-Za-z0-9_-]{8,127}', str(custom_id or '')):
+            raise ValueError('Invalid subscription request')
+        parsed_urls = [urlparse(str(url)) for url in (return_url, cancel_url)]
+        if any(url.scheme != 'https' or not url.hostname or url.username or url.password or url.fragment
+               for url in parsed_urls) or parsed_urls[0].hostname != parsed_urls[1].hostname:
             raise ValueError('Invalid subscription request')
         response = requests.post(self.base + '/v1/billing/subscriptions',
                                  headers={'Authorization': 'Bearer ' + self.token(), 'Content-Type': 'application/json'},
@@ -31,9 +36,24 @@ class PayPalGateway:
         response.raise_for_status()
         data = response.json()
         approve = next((link.get('href') for link in data.get('links', []) if link.get('rel') == 'approve'), None)
-        if not approve or urlparse(approve).hostname not in {'www.paypal.com', 'www.sandbox.paypal.com'}:
+        expected_host = 'www.sandbox.paypal.com' if self.base.endswith('sandbox.paypal.com') else 'www.paypal.com'
+        approved = urlparse(str(approve or ''))
+        if approved.scheme != 'https' or approved.hostname != expected_host or approved.username or approved.password:
             raise ValueError('PayPal approval URL missing')
         return data['id'], approve
+
+    def subscription(self, subscription_id):
+        """Read provider state; a browser redirect is never proof of payment."""
+        import requests
+        if not re.fullmatch(r'I-[A-Za-z0-9]{8,40}', str(subscription_id or '')):
+            raise ValueError('Invalid subscription ID')
+        response = requests.get(self.base + '/v1/billing/subscriptions/' + subscription_id,
+                                headers={'Authorization': 'Bearer ' + self.token()}, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        if data.get('id') != subscription_id:
+            raise ValueError('Subscription ID mismatch')
+        return data
 
     def verify_webhook(self, headers, event):
         import requests

@@ -33,6 +33,7 @@ from game_story import render_story
 from shop import render_shop
 from shop_tracking import process_outbound
 from commercial import admin_ids, render_commercial
+from development_assistant import render_development_assistant
 from google_auth import PendingGoogleAuth, canonical_app_url
 
 
@@ -1773,7 +1774,7 @@ NAVIGATION_OPTIONS = (
     + ["chatbot", "analysis", "game"]
     + (["community"] if COMMUNITY_ENABLED else [])
     + (["collection"] if COLLECTIONS_ENABLED else [])
-    + (["commercial"] if SHOP_ADMIN_VISIBLE else [])
+    + (["commercial", "development"] if SHOP_ADMIN_VISIBLE else [])
     + [
         "plans",
         "account",
@@ -8904,6 +8905,8 @@ st.sidebar.radio(
         if pagina_id == "analysis"
         else "📊 Shop Intelligence"
         if pagina_id == "commercial"
+        else "🛠️ Assistente de desenvolvimento"
+        if pagina_id == "development"
         else community_nav_label(idioma)
         if pagina_id == "community"
         else (
@@ -9122,6 +9125,17 @@ elif pagina == "commercial" and SHOP_ADMIN_VISIBLE:
     render_commercial(st, supabase_service,
                       st.secrets.get('SHOP_LINK_SIGNING_KEY', SUPABASE_SERVICE_ROLE_KEY),
                       st.secrets.get('SHOP_AFFILIATE_LINKS', {}))
+
+elif pagina == "development" and SHOP_ADMIN_VISIBLE:
+    try:
+        authenticated = supabase.auth.get_user(st.session_state.access_token).user
+        admin_ok = authenticated and str(authenticated.id) in SHOP_ADMIN_IDS
+    except Exception:
+        admin_ok = False
+    if not admin_ok:
+        st.error('Acesso restrito à equipe do CardCraftAI.')
+        st.stop()
+    render_development_assistant(st, gemini_client, AI_MODEL, st.secrets, idioma)
 
 elif pagina == "analysis":
     mode_names = (t("nav_search", idioma), t("nav_photo", idioma))

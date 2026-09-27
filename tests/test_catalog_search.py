@@ -159,6 +159,7 @@ class CatalogSearchUITests(unittest.TestCase):
 import streamlit as st
 from catalog_search import render_suggestions
 idioma = 'English'
+ANALYSIS_UI = {'English': ('Analysis', 'Photo', 'Card name', 'Atlas')}
 def t(key, *args, **kwargs): return key
 def buscar_cartas_catalogo_pokemon(**kwargs):
     st.session_state['calls'] = st.session_state.get('calls', []) + [kwargs]
