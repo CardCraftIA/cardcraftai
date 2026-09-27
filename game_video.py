@@ -11,16 +11,16 @@ LABELS = {
     '日本語': dict(title='ナカリム：光の守護者', intro='移動して力を放ち、影から橋を守ろう。', choose='守護者を選ぶ', start='遊ぶ', restart='もう一度', move='移動: WASD または矢印', run='走る: Shift', attack='攻撃: スペース', special='能力: E', goal='影を12体退けて橋を守ろう。', health='体力', defeated='影', power='能力', ready='使用可能', victory='橋を守った！', defeat='今回は影に負けた。', pause='一時停止', resume='再開', paused='一時停止中', controls='画面の操作', up='上', down='下', left='左', right='右'),
 }
 FULLSCREEN_LABELS = {
-    'Português (BR)': ('⛶ Tela cheia', 'Sair da tela cheia', 'Tela cheia indisponível'),
-    'English': ('⛶ Fullscreen', 'Exit fullscreen', 'Fullscreen unavailable'),
-    'Español': ('⛶ Pantalla completa', 'Salir de pantalla completa', 'Pantalla completa no disponible'),
-    '日本語': ('⛶ 全画面', '全画面を終了', '全画面を使用できません'),
+    'Português (BR)': ('⛶ Tela cheia', 'Sair da tela cheia', '↗ Abrir jogo em nova aba'),
+    'English': ('⛶ Fullscreen', 'Exit fullscreen', '↗ Open game in new tab'),
+    'Español': ('⛶ Pantalla completa', 'Salir de pantalla completa', '↗ Abrir juego en otra pestaña'),
+    '日本語': ('⛶ 全画面', '全画面を終了', '↗ 新しいタブで開く'),
 }
 
 
 def game_html(language='Português (BR)'):
     labels = LABELS.get(language, LABELS['English']).copy()
-    labels.update(zip(('fullscreen', 'exitFullscreen', 'fullscreenUnavailable'),
+    labels.update(zip(('fullscreen', 'exitFullscreen', 'openTab'),
                       FULLSCREEN_LABELS.get(language, FULLSCREEN_LABELS['English'])))
     art_dir = Path(__file__).resolve().parent / 'assets' / 'nacarim'
     template = (art_dir / 'video_game.html').read_text(encoding='utf-8')
