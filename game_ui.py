@@ -6,6 +6,7 @@ from html import escape
 from game_engine import ARENAS, BASE_IDS, CARDS, base_id, bot_move, legal_moves, move, new_game, score, variant_id
 from game_characters import portrait
 from game_characters import CAST
+from game_evolution_art import evolution_svg
 from game_cards import ABILITY, NUMBER, RARITY
 from game_localization import arena_text, card_text, error_text, ui
 from game_lore import BIO
@@ -87,7 +88,7 @@ def render_catalog(st, language='Português (BR)'):
         for column, card in zip(st.columns(3), shown[start:start + 3]):
             with column:
                 with st.container(border=True):
-                    st.image(portrait(card), width=220)
+                    st.image(evolution_svg(card), width=220)
                     st.markdown(_card_details(card, language), unsafe_allow_html=True)
                     st.caption(BIO.get(language, BIO['English'])[base_id(card)])
     st.caption(copy[10])
@@ -137,10 +138,10 @@ def _board(st, state, side, labels, prefix, submit, language):
                         f'<p>{escape(ui(language, "score", you=ours, opponent=theirs))}</p></div>', unsafe_allow_html=True)
             if played:
                 st.caption(ui(language, 'your_cards'))
-                st.image([portrait(card) for card in played], width=88)
+                st.image([evolution_svg(card) for card in played], width=88)
             if rival:
                 st.caption(ui(language, 'opponent_cards'))
-                st.image([portrait(card) for card in rival], width=88)
+                st.image([evolution_svg(card) for card in rival], width=88)
     if state['status'] == 'finished':
         winner = state['winner']
         st.success(labels[12] if winner == side else labels[14] if winner == 'draw' else labels[13])
@@ -158,7 +159,7 @@ def _board(st, state, side, labels, prefix, submit, language):
         _, cost, power, affinity, _ = CARDS[card]
         with cards[index % len(cards)]:
             with st.container(border=True):
-                st.image(portrait(card), width=220)
+                st.image(evolution_svg(card), width=220)
                 st.markdown(_card_details(card, language), unsafe_allow_html=True)
     if choices:
         chosen = st.selectbox(ui(language, 'card'), choices, format_func=lambda card: _card_name(card, language), key=prefix + '_' + language + '_card')
