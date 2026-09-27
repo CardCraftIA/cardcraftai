@@ -65,9 +65,22 @@ UI = {
 
 def card_text(card, language='Português (BR)'):
     from game_characters import CAST
-    index = CARD_IDS.index(card)
+    from game_engine import base_id
+    character = base_id(card)
+    index = CARD_IDS.index(character)
     title = CARD_NAMES.get(language, CARD_NAMES['English'])[index]
-    return f'{CAST[card][0]} · {title}', CARD_DESCRIPTIONS.get(language, CARD_DESCRIPTIONS['English'])[index]
+    if card != character:
+        edition = int(card.rpartition('_v')[2])
+        title = f'{title} · {EDITION_NAMES.get(language, EDITION_NAMES["English"])[edition - 2]}'
+    return f'{CAST[character][0]} · {title}', CARD_DESCRIPTIONS.get(language, CARD_DESCRIPTIONS['English'])[index]
+
+
+EDITION_NAMES = {
+    'Português (BR)': ('Aurora', 'Encontro', 'Desafio', 'Bastião', 'Duelo', 'Coro', 'Convergência', 'Virada', 'Apogeu'),
+    'English': ('Dawn', 'Gathering', 'Challenge', 'Bastion', 'Duel', 'Chorus', 'Convergence', 'Turnabout', 'Zenith'),
+    'Español': ('Aurora', 'Encuentro', 'Desafío', 'Bastión', 'Duelo', 'Coro', 'Convergencia', 'Giro', 'Apogeo'),
+    '日本語': ('夜明け', '集い', '挑戦', '砦', '決闘', '合唱', '収束', '逆転', '頂点'),
+}
 
 
 def arena_text(lane, language='Português (BR)'):

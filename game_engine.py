@@ -19,6 +19,33 @@ CARDS = {
     "canopy": ("Copa Viva", 4, 8, "grove", "Uma aposta forte no Bosque."),
     "comet": ("Cometa", 5, 10, None, "Força decisiva no fim da partida."),
 }
+BASE_IDS = tuple(CARDS)
+VARIANTS = tuple(range(1, 11))
+
+
+def base_id(card):
+    """Resolve a variant ID while keeping original match IDs stable."""
+    if card in BASE_IDS:
+        return card
+    name, marker, edition = card.rpartition('_v')
+    if marker and name in BASE_IDS and edition.isdigit() and 2 <= int(edition) <= 10:
+        return name
+    raise KeyError(card)
+
+
+def variant_id(character, edition):
+    if character not in BASE_IDS or edition not in VARIANTS:
+        raise ValueError('Unknown card edition')
+    return character if edition == 1 else f'{character}_v{edition}'
+
+
+# Ten distinct base-power values per character; all editions have unique abilities.
+for _character in BASE_IDS:
+    _name, _cost, _power, _affinity, _description = CARDS[_character]
+    _powers = [value for value in range(2, 13) if value != _power]
+    for _edition in range(2, 11):
+        CARDS[variant_id(_character, _edition)] = (
+            _name, min(5, _edition // 2), _powers[_edition - 2], _affinity, _description)
 MAX_ROUNDS = 6
 
 
@@ -26,7 +53,10 @@ def new_game(seed=None):
     rng = random.Random(seed) if seed is not None else random.SystemRandom()
     players = {}
     for side in ("a", "b"):
-        deck = list(CARDS)
+        # One edition per character, with four accessible early cards.
+        low_cost = set(rng.sample(BASE_IDS, 4))
+        deck = [variant_id(character, rng.choice((2, 3)) if character in low_cost else rng.choice(VARIANTS))
+                for character in BASE_IDS]
         rng.shuffle(deck)
         opening = next(i for i, card in enumerate(deck) if CARDS[card][1] == 1)
         deck.insert(0, deck.pop(opening))

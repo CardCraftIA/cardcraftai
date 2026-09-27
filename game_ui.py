@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from html import escape
 
-from game_engine import ARENAS, CARDS, bot_move, legal_moves, move, new_game, score
+from game_engine import ARENAS, BASE_IDS, CARDS, base_id, bot_move, legal_moves, move, new_game, score, variant_id
 from game_characters import portrait
 from game_characters import CAST
 from game_cards import ABILITY, NUMBER, RARITY
@@ -40,10 +40,10 @@ STYLE = """<style>
 </style>"""
 
 CATALOG_COPY = {
-    'Português (BR)': ('🃏 Catálogo de Nacarim', 'Buscar personagem ou carta', 'Região', 'Todas', 'Coleção inicial · 12 cartas originais', 'Comum', 'Incomum', 'Rara', 'Viajantes', 'Habilidade', 'Bônus de afinidade: +2 na arena correspondente.'),
-    'English': ('🃏 Nacarim card catalog', 'Search character or card', 'Region', 'All', 'Starter set · 12 original cards', 'Common', 'Uncommon', 'Rare', 'Travelers', 'Ability', 'Matching arena bonus: +2.'),
-    'Español': ('🃏 Catálogo de Nacarim', 'Buscar personaje o carta', 'Región', 'Todas', 'Colección inicial · 12 cartas originales', 'Común', 'Infrecuente', 'Rara', 'Viajeros', 'Habilidad', 'Bonificación de afinidad: +2.'),
-    '日本語': ('🃏 ナカリムカード図鑑', 'キャラクターやカードを検索', '地域', 'すべて', '初期セット・オリジナル12枚', 'コモン', 'アンコモン', 'レア', '旅人', '能力', '得意なアリーナでは+2。'),
+    'Português (BR)': ('🃏 Catálogo de Nacarim', 'Buscar personagem ou carta', 'Região', 'Todas', 'Coleção Nacarim · 120 cartas · 10 por personagem', 'Comum', 'Incomum', 'Rara', 'Viajantes', 'Habilidade', 'Bônus de afinidade: +2 na arena correspondente.'),
+    'English': ('🃏 Nacarim card catalog', 'Search character or card', 'Region', 'All', 'Nacarim set · 120 cards · 10 per character', 'Common', 'Uncommon', 'Rare', 'Travelers', 'Ability', 'Matching arena bonus: +2.'),
+    'Español': ('🃏 Catálogo de Nacarim', 'Buscar personaje o carta', 'Región', 'Todas', 'Colección Nacarim · 120 cartas · 10 por personaje', 'Común', 'Infrecuente', 'Rara', 'Viajeros', 'Habilidad', 'Bonificación de afinidad: +2.'),
+    '日本語': ('🃏 ナカリムカード図鑑', 'キャラクターやカードを検索', '地域', 'すべて', 'ナカリム・120枚・各キャラクター10枚', 'コモン', 'アンコモン', 'レア', '旅人', '能力', '得意なアリーナでは+2。'),
 }
 CATALOG_TAB = {language: copy[0] for language, copy in CATALOG_COPY.items()}
 
@@ -69,16 +69,27 @@ def render_catalog(st, language='Português (BR)'):
     query = st.text_input(copy[1], key='nacarim_catalog_search').strip().casefold()
     choices = ('all', 'forge', 'reef', 'grove', 'travelers')
     region = st.selectbox(copy[2], choices, format_func=lambda x: copy[3] if x == 'all' else copy[8] if x == 'travelers' else arena_text(x, language), key='nacarim_catalog_region')
-    visible = [card for card, (_, _, _, affinity, _) in CARDS.items()
-               if (region == 'all' or (region == 'travelers' and affinity is None) or region == affinity)
-               and (not query or query in card_text(card, language)[0].casefold() or query in CAST[card][1].casefold())]
-    for start in range(0, len(visible), 3):
-        for column, card in zip(st.columns(3), visible[start:start + 3]):
+    character = st.selectbox({'Português (BR)': 'Personagem', 'English': 'Character', 'Español': 'Personaje', '日本語': 'キャラクター'}.get(language, 'Character'),
+                             ('all',) + BASE_IDS, format_func=lambda x: copy[3] if x == 'all' else CAST[x][0], key='nacarim_catalog_character')
+    visible = [card for base in BASE_IDS for edition in range(1, 11) for card in (variant_id(base, edition),)
+               if (character == 'all' or base == character)
+               and (region == 'all' or (region == 'travelers' and CARDS[card][3] is None) or region == CARDS[card][3])
+               and (not query or query in card_text(card, language)[0].casefold() or query in CAST[base][1].casefold() or query in NUMBER[card].casefold())]
+    page_size = 12
+    pages = max(1, (len(visible) + page_size - 1) // page_size)
+    if st.session_state.get('nacarim_catalog_page', 1) > pages:
+        st.session_state['nacarim_catalog_page'] = 1
+    page = st.number_input({'Português (BR)': 'Página', 'English': 'Page', 'Español': 'Página', '日本語': 'ページ'}.get(language, 'Page'),
+                           min_value=1, max_value=pages, value=1, key='nacarim_catalog_page')
+    shown = visible[(page - 1) * page_size:page * page_size]
+    st.caption(f'{len(visible)} / {len(CARDS)}')
+    for start in range(0, len(shown), 3):
+        for column, card in zip(st.columns(3), shown[start:start + 3]):
             with column:
                 with st.container(border=True):
                     st.image(portrait(card), width=220)
                     st.markdown(_card_details(card, language), unsafe_allow_html=True)
-                    st.caption(BIO.get(language, BIO['English'])[card])
+                    st.caption(BIO.get(language, BIO['English'])[base_id(card)])
     st.caption(copy[10])
 
 RULES = {

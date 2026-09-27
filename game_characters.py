@@ -1,5 +1,6 @@
 """Original cast and card portraits for the world of Nacarim."""
 from pathlib import Path
+from game_engine import base_id
 
 ART_DIR = Path(__file__).resolve().parent / 'assets' / 'nacarim'
 CAST = {
@@ -20,6 +21,4 @@ CAST = {
 
 def portrait(card):
     """Return the bundled portrait for a stable game card ID."""
-    if card not in CAST:
-        raise KeyError(card)
-    return str(ART_DIR / f'{card}.webp')
+    return str(ART_DIR / f'{base_id(card)}.webp')

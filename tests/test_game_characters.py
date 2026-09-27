@@ -2,7 +2,7 @@ from pathlib import Path
 import unittest
 
 from game_characters import CAST, portrait
-from game_engine import CARDS
+from game_engine import BASE_IDS, CARDS, base_id
 from game_localization import CARD_IDS, card_text
 from game_story import STORY, MORE_CHAPTERS
 from game_lore import WORLD, BIO
@@ -10,14 +10,14 @@ from game_lore import WORLD, BIO
 
 class CharacterTests(unittest.TestCase):
     def test_every_playable_card_has_original_portrait_and_localized_identity(self):
-        self.assertEqual(set(CARDS), set(CAST))
-        self.assertEqual(set(CARDS), set(CARD_IDS))
+        self.assertEqual(set(BASE_IDS), set(CAST))
+        self.assertEqual(set(BASE_IDS), set(CARD_IDS))
         for card in CARDS:
             self.assertTrue(Path(portrait(card)).is_file())
             self.assertGreater(Path(portrait(card)).stat().st_size, 10_000)
             for language in STORY:
                 name, description = card_text(card, language)
-                self.assertIn(CAST[card][0], name)
+                self.assertIn(CAST[base_id(card)][0], name)
                 self.assertTrue(description)
 
     def test_pilot_has_six_panels_in_each_language(self):
@@ -25,9 +25,9 @@ class CharacterTests(unittest.TestCase):
 
     def test_chapters_origins_and_destinies_cover_full_cast(self):
         for language in STORY:
-            self.assertEqual(set(BIO[language]), set(CARDS))
+            self.assertEqual(set(BIO[language]), set(BASE_IDS))
             self.assertEqual(len(WORLD[language]), 3)
             self.assertEqual(len(MORE_CHAPTERS[language]), 2)
             self.assertTrue(all(len(episode[2]) == 6 for episode in MORE_CHAPTERS[language]))
             cast_in_story = {card for episode in MORE_CHAPTERS[language] for card, _, _ in episode[2]}
-            self.assertEqual(cast_in_story, set(CARDS))
+            self.assertEqual(cast_in_story, set(BASE_IDS))

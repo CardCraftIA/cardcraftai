@@ -1,11 +1,15 @@
 """Nacarim starter set metadata and deterministic arena abilities."""
-from game_engine import CARDS
+from game_engine import BASE_IDS, CARDS, base_id, variant_id
 
 # Effects are scored from the current board, so solo and online resolve alike.
 RARITY = {'spark': 'common', 'anchor': 'common', 'sprout': 'common', 'scout': 'common',
           'ember': 'uncommon', 'current': 'uncommon', 'root': 'uncommon', 'wanderer': 'uncommon',
           'kiln': 'rare', 'tide': 'rare', 'canopy': 'rare', 'comet': 'rare'}
-NUMBER = {card: f'NAC-{index:03d}' for index, card in enumerate(CARDS, 1)}
+for _character in BASE_IDS:
+    for _edition in range(2, 11):
+        RARITY[variant_id(_character, _edition)] = ('rare' if _edition >= 8 else 'uncommon' if _edition >= 5 else 'common')
+NUMBER = {variant_id(character, edition): f'NAC-{index:03d}'
+          for index, (character, edition) in enumerate(((character, edition) for character in BASE_IDS for edition in range(1, 11)), 1)}
 
 ABILITY = {
     'Português (BR)': {
@@ -66,10 +70,72 @@ ABILITY = {
     },
 }
 
+VARIANT_ABILITIES = {
+    'Português (BR)': (
+        ('Aurora', '+2 se for sua primeira carta nesta arena.'),
+        ('Encontro', '+1 por outra carta sua aqui, até +3.'),
+        ('Desafio', '+2 se o rival tiver mais cartas aqui.'),
+        ('Bastião', '+2 enquanto o rival não tiver carta aqui.'),
+        ('Duelo', '+3 se houver exatamente uma carta de cada lado aqui.'),
+        ('Coro', '+1 por carta rival aqui, até +3.'),
+        ('Convergência', '+3 se você tiver três ou mais cartas aqui.'),
+        ('Virada', '+4 se for sua única carta e houver duas ou mais cartas rivais aqui.'),
+        ('Apogeu', '+2 se você tiver quatro cartas aqui.'),
+    ),
+    'English': (
+        ('Dawn', '+2 if this is your first card in this arena.'),
+        ('Gathering', '+1 for each other friendly card here, up to +3.'),
+        ('Challenge', '+2 if the opponent has more cards here.'),
+        ('Bastion', '+2 while the opponent has no card here.'),
+        ('Duel', '+3 if each side has exactly one card here.'),
+        ('Chorus', '+1 per opposing card here, up to +3.'),
+        ('Convergence', '+3 if you have at least three cards here.'),
+        ('Turnabout', '+4 if this is your only card here against at least two opposing cards.'),
+        ('Zenith', '+2 if you have four cards here.'),
+    ),
+    'Español': (
+        ('Aurora', '+2 si es tu primera carta en esta arena.'),
+        ('Encuentro', '+1 por otra carta tuya aquí, hasta +3.'),
+        ('Desafío', '+2 si tu rival tiene más cartas aquí.'),
+        ('Bastión', '+2 mientras tu rival no tenga cartas aquí.'),
+        ('Duelo', '+3 si hay exactamente una carta de cada lado aquí.'),
+        ('Coro', '+1 por carta rival aquí, hasta +3.'),
+        ('Convergencia', '+3 si tienes tres o más cartas aquí.'),
+        ('Giro', '+4 si es tu única carta frente a dos o más cartas rivales.'),
+        ('Apogeo', '+2 si tienes cuatro cartas aquí.'),
+    ),
+    '日本語': (
+        ('夜明け', 'このアリーナで最初の自分のカードなら+2。'),
+        ('集い', 'ここにある他の自分のカード1枚につき+1、最大+3。'),
+        ('挑戦', '相手のカード枚数が多ければ+2。'),
+        ('砦', '相手のカードがなければ+2。'),
+        ('決闘', '両者のカードがちょうど1枚ずつなら+3。'),
+        ('合唱', '相手のカード1枚につき+1、最大+3。'),
+        ('収束', '自分のカードが3枚以上なら+3。'),
+        ('逆転', '自分のカードがこれだけで相手が2枚以上なら+4。'),
+        ('頂点', '自分のカードが4枚なら+2。'),
+    ),
+}
+for _language, _edition_text in VARIANT_ABILITIES.items():
+    for _character in BASE_IDS:
+        for _edition in range(2, 11):
+            ABILITY[_language][variant_id(_character, _edition)] = _edition_text[_edition - 2]
+
 
 def ability_bonus(card, own, opposing):
     """Pure board calculation; no hidden state or random rolls."""
     allies, enemies = len(own), len(opposing)
+    if card != base_id(card):
+        edition = int(card.rpartition('_v')[2])
+        if edition == 2: return 2 * (own[0] == card)
+        if edition == 3: return min(3, allies - 1)
+        if edition == 4: return 2 * (enemies > allies)
+        if edition == 5: return 2 * (enemies == 0)
+        if edition == 6: return 3 * (allies == 1 and enemies == 1)
+        if edition == 7: return min(3, enemies)
+        if edition == 8: return 3 * (allies >= 3)
+        if edition == 9: return 4 * (allies == 1 and enemies >= 2)
+        if edition == 10: return 2 * (allies == 4)
     if card == 'spark': return int(own[0] == card)
     if card == 'anchor': return 2 * (enemies > allies)
     if card == 'sprout': return min(2, allies - 1)
