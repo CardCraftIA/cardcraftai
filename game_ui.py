@@ -12,6 +12,7 @@ from game_localization import arena_text, card_text, error_text, ui
 from game_lore import BIO
 from game_story import render_story
 from game_adventure import render_quest, COPY as QUEST_COPY
+from game_video import render_video_game, LABELS as VIDEO_LABELS
 from game_online import Conflict, authenticated_id, create_match, join_match, play_match, recent_matches, view_match
 
 WORDS = {
@@ -206,9 +207,11 @@ def render_game(st, auth_client, service, access_token, language='Português (BR
     st.caption(RULES.get(language, RULES['English'])[0])
     st.markdown(f'[{ui(language, "share")}](?arena=1)')
     st.markdown('[🃏 ' + CATALOG_TAB.get(language, CATALOG_TAB['English']) + '](?nacarim=1)')
-    solo_tab, quest_tab, online_tab, catalog_tab, story_tab = st.tabs((labels[1], QUEST_COPY.get(language, QUEST_COPY['English'])[0], labels[2], CATALOG_TAB.get(language, CATALOG_TAB['English']), STORY_TAB.get(language, STORY_TAB['English'])))
+    solo_tab, video_tab, quest_tab, online_tab, catalog_tab, story_tab = st.tabs((labels[1], '🎮 ' + VIDEO_LABELS.get(language, VIDEO_LABELS['English'])['title'], QUEST_COPY.get(language, QUEST_COPY['English'])[0], labels[2], CATALOG_TAB.get(language, CATALOG_TAB['English']), STORY_TAB.get(language, STORY_TAB['English'])))
     with solo_tab:
         render_solo(st, language)
+    with video_tab:
+        render_video_game(st, language)
     with quest_tab:
         render_quest(st, language)
     with story_tab:
