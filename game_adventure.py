@@ -1,5 +1,6 @@
 """Small solo tactics encounter in the original Nacarim world."""
 from copy import deepcopy
+from html import escape
 
 from game_characters import CAST
 
@@ -123,13 +124,13 @@ def render_quest(st, language='Português (BR)'):
     st.progress(state['health'] / state['max_health'])
     tiles = []
     for y in range(SIZE):
-        line = []
         for x in range(SIZE):
             enemy = next((e for e in state['enemies'] if e['health'] and e['position'] == (x, y)), None)
-            line.append(HERO_ICONS[state['hero']] if state['position'] == (x, y)
-                        else '👤' if enemy else '·')
-        tiles.append('　'.join(line))
-    st.code('\n'.join(tiles), language=None)
+            hero_here = state['position'] == (x, y)
+            symbol = HERO_ICONS[state['hero']] if hero_here else '🌑' if enemy else '✧'
+            kind = 'hero' if hero_here else 'enemy' if enemy else 'empty'
+            tiles.append(f'<div class="nacarim-tile {kind}" aria-label="{escape(CAST[state["hero"]][0] if hero_here else labels[14] if enemy else "")}">{symbol}</div>')
+    st.markdown('<style>.nacarim-board{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-width:480px;margin:1rem 0;padding:12px;border-radius:18px;background:linear-gradient(145deg,#182941,#30234a);border:1px solid #756299}.nacarim-tile{display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:11px;background:#17243b;border:1px solid #465575;font-size:clamp(1.4rem,4vw,2.3rem);color:#677c9c}.nacarim-tile.hero{background:#574070;border-color:#d5a9ff;box-shadow:inset 0 0 20px #a981ff88}.nacarim-tile.enemy{background:#3a2742;border-color:#ac638c;box-shadow:inset 0 0 18px #b25a8688}</style><div class="nacarim-board" role="img" aria-label="Nacarim: arena de cinco por cinco">'+''.join(tiles)+'</div>', unsafe_allow_html=True)
     if state['status'] != 'active':
         st.success(labels[10]) if state['status'] == 'won' else st.warning(labels[11])
         return
