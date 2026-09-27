@@ -10,7 +10,7 @@ Escolher guardião (Nilo nesta versão) → cumprir um objetivo → ganhar pontu
 
 | Fase | Objetivo | Novidades | Vitória |
 | --- | --- | --- | --- |
-| Ponte 1: Despertar | Dissipar 12 sombras | Rápidas; piras de luz | 12 dissipaçōes |
+| Ponte 1: Despertar | Dissipar 12 sombras | Rápidas; piras de luz | 12 dissipações |
 | Ponte 2: Vigília | Sobreviver 60 segundos | Tanques mais resistentes | Cronômetro zerado com vida |
 | Ponte 3: O Núcleo | Defender o Núcleo por 75 segundos | Atiradoras, projéteis e HP do Núcleo | Núcleo e jogador sobrevivem |
 | Ponte 4: Chamas Perdidas | Acender 3 piras e dissipar 10 sombras | Zona segura temporária após acender | Ambas as metas cumpridas |
