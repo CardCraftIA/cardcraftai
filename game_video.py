@@ -25,8 +25,12 @@ def game_html(language='Português (BR)'):
     art_dir = Path(__file__).resolve().parent / 'assets' / 'nacarim'
     template = (art_dir / 'video_game.html').read_text(encoding='utf-8')
     sprite_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nilo-sprites-v1.webp').read_bytes()).decode('ascii')
+    directions_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nilo-directions-v1.webp').read_bytes()).decode('ascii')
+    bridge_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nacarim-bridge-v2.webp').read_bytes()).decode('ascii')
     return (template.replace('/*CONFIG_JSON*/', json.dumps(labels, ensure_ascii=False))
-            .replace('/*NILO_SPRITE*/', json.dumps(sprite_url)))
+            .replace('/*NILO_SPRITE*/', json.dumps(sprite_url))
+            .replace('/*NILO_DIRECTIONS*/', json.dumps(directions_url))
+            .replace('/*BRIDGE_IMAGE*/', json.dumps(bridge_url)))
 
 
 def render_video_game(st, language='Português (BR)'):
