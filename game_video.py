@@ -1,6 +1,7 @@
 """Nacarim 3D game embedded in a Streamlit HTML component."""
 import json
 from pathlib import Path
+from game_video_legacy import game_html as legacy_game_html
 
 LABELS = {
     'Português (BR)': {'title': 'Nacarim: Guardiões da Luz 3D'},
@@ -13,7 +14,9 @@ LABELS = {
 def game_html(language='Português (BR)'):
     template = (Path(__file__).resolve().parent / 'assets' / 'nacarim' /
                 'video_game_3d.html').read_text(encoding='utf-8')
-    return template.replace('/*LANGUAGE*/', json.dumps(language, ensure_ascii=False))
+    legacy = json.dumps(legacy_game_html(language), ensure_ascii=True).replace('<', '\\u003c')
+    return (template.replace('/*LANGUAGE*/', json.dumps(language, ensure_ascii=False))
+            .replace('/*LEGACY_HTML*/', legacy))
 
 
 def render_video_game(st, language='Português (BR)'):
