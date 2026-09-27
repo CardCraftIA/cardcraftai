@@ -10,10 +10,18 @@ LABELS = {
     'Español': dict(title='Nacarim: Guardianes de la Luz', intro='Muévete, usa poderes y protege los puentes de las sombras.', choose='Elige tu guardián', start='Jugar', restart='Jugar de nuevo', move='Mover: WASD o flechas', run='Correr: Shift', attack='Ataque: espacio', special='Poder: E', goal='Disipa 12 sombras para salvar el puente.', health='Vida', defeated='Sombras', power='Poder', ready='Listo', victory='¡El puente está a salvo!', defeat='Las sombras ganaron esta vez.', pause='Pausa', resume='Continuar', paused='Juego en pausa', controls='Controles en pantalla', up='Arriba', down='Abajo', left='Izquierda', right='Derecha'),
     '日本語': dict(title='ナカリム：光の守護者', intro='移動して力を放ち、影から橋を守ろう。', choose='守護者を選ぶ', start='遊ぶ', restart='もう一度', move='移動: WASD または矢印', run='走る: Shift', attack='攻撃: スペース', special='能力: E', goal='影を12体退けて橋を守ろう。', health='体力', defeated='影', power='能力', ready='使用可能', victory='橋を守った！', defeat='今回は影に負けた。', pause='一時停止', resume='再開', paused='一時停止中', controls='画面の操作', up='上', down='下', left='左', right='右'),
 }
+FULLSCREEN_LABELS = {
+    'Português (BR)': ('⛶ Tela cheia', 'Sair da tela cheia', 'Tela cheia indisponível'),
+    'English': ('⛶ Fullscreen', 'Exit fullscreen', 'Fullscreen unavailable'),
+    'Español': ('⛶ Pantalla completa', 'Salir de pantalla completa', 'Pantalla completa no disponible'),
+    '日本語': ('⛶ 全画面', '全画面を終了', '全画面を使用できません'),
+}
 
 
 def game_html(language='Português (BR)'):
-    labels = LABELS.get(language, LABELS['English'])
+    labels = LABELS.get(language, LABELS['English']).copy()
+    labels.update(zip(('fullscreen', 'exitFullscreen', 'fullscreenUnavailable'),
+                      FULLSCREEN_LABELS.get(language, FULLSCREEN_LABELS['English'])))
     art_dir = Path(__file__).resolve().parent / 'assets' / 'nacarim'
     template = (art_dir / 'video_game.html').read_text(encoding='utf-8')
     sprite_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nilo-sprites-v1.webp').read_bytes()).decode('ascii')
