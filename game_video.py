@@ -27,10 +27,14 @@ def game_html(language='Português (BR)'):
     sprite_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nilo-sprites-v1.webp').read_bytes()).decode('ascii')
     directions_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nilo-directions-v1.webp').read_bytes()).decode('ascii')
     bridge_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nacarim-bridge-v2.webp').read_bytes()).decode('ascii')
+    enemies_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nacarim-adversaries-v1.webp').read_bytes()).decode('ascii')
+    run_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nilo-ground-run-v1.webp').read_bytes()).decode('ascii')
     return (template.replace('/*CONFIG_JSON*/', json.dumps(labels, ensure_ascii=False))
             .replace('/*NILO_SPRITE*/', json.dumps(sprite_url))
             .replace('/*NILO_DIRECTIONS*/', json.dumps(directions_url))
-            .replace('/*BRIDGE_IMAGE*/', json.dumps(bridge_url)))
+            .replace('/*BRIDGE_IMAGE*/', json.dumps(bridge_url))
+            .replace('/*ENEMY_SPRITES*/', json.dumps(enemies_url))
+            .replace('/*NILO_GROUND_RUN*/', json.dumps(run_url)))
 
 
 def render_video_game(st, language='Português (BR)'):
