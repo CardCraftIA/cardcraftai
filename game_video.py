@@ -1,5 +1,6 @@
 """Self-contained real-time Nacarim action game for Streamlit's sandboxed iframe."""
 import json
+from base64 import b64encode
 from pathlib import Path
 
 
@@ -13,8 +14,11 @@ LABELS = {
 
 def game_html(language='Português (BR)'):
     labels = LABELS.get(language, LABELS['English'])
-    template = (Path(__file__).resolve().parent / 'assets' / 'nacarim' / 'video_game.html').read_text(encoding='utf-8')
-    return template.replace('/*CONFIG_JSON*/', json.dumps(labels, ensure_ascii=False))
+    art_dir = Path(__file__).resolve().parent / 'assets' / 'nacarim'
+    template = (art_dir / 'video_game.html').read_text(encoding='utf-8')
+    sprite_url = 'data:image/webp;base64,' + b64encode((art_dir / 'nilo-sprites-v1.webp').read_bytes()).decode('ascii')
+    return (template.replace('/*CONFIG_JSON*/', json.dumps(labels, ensure_ascii=False))
+            .replace('/*NILO_SPRITE*/', json.dumps(sprite_url)))
 
 
 def render_video_game(st, language='Português (BR)'):
