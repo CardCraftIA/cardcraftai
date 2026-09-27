@@ -1,7 +1,6 @@
-"""Code-native power scenes composed around each original animal portrait.
+"""Power scenes for the ten distinct portraits of each Nacarim character.
 
-Ten visual stages are derived from the same character portrait. The stage
-effects are original SVG shapes, rendered consistently in the catalog and game.
+Each stage uses its own pose and original SVG effects in the catalog and game.
 """
 from base64 import b64encode
 from functools import lru_cache
