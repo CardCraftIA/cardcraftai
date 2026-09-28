@@ -12,10 +12,13 @@ LABELS = {
 
 
 def game_html(language='Português (BR)'):
+    language = language if language in LABELS else 'English'
     template = (Path(__file__).resolve().parent / 'assets' / 'nacarim' /
                 'video_game_3d.html').read_text(encoding='utf-8')
     legacy = json.dumps(legacy_game_html(language), ensure_ascii=True).replace('<', '\\u003c')
-    return (template.replace('/*LANGUAGE*/', json.dumps(language, ensure_ascii=False))
+    return (template.replace('Nacarim: Guardiões da Luz 3D</h1>', LABELS[language]['title'] + '</h1>')
+            .replace('<html lang="pt">', '<html lang="' + {'Português (BR)': 'pt-BR', 'English': 'en', 'Español': 'es', '日本語': 'ja'}[language] + '">')
+            .replace('/*LANGUAGE*/', json.dumps(language, ensure_ascii=False))
             .replace('/*LEGACY_HTML*/', legacy))
 
 

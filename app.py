@@ -22,6 +22,7 @@ from collection import catalog_record, render_collection
 from catalog_search import render_suggestions
 from auth_state import accept_session, confirmed_email, restore_session, clear_identity, auth_error_status
 from image_utils import load_upload
+from card_photo import prepare_card_photo
 from security_utils import redact_diagnostic
 from ui_messages import install_messages
 from payment_utils import package_code as validate_package_code, safe_checkout_url
@@ -9246,7 +9247,7 @@ if pagina == "photo":
                                 try:
                                     resultado = executar_analise_com_credito(
                                         idioma=idioma,
-                                        imagem_pil=imagem,
+                                        imagem_pil=prepare_card_photo(imagem),
                                         tipo_acao="analise_foto",
                                     )
                                     st.session_state.resultado_analise = resultado
