@@ -1,5 +1,7 @@
 # Crônicas de Nacarim — universo original do CardCraftAI
 
+> **Projeto suspenso em 2026-09-28.** Esta ficção está arquivada junto da Arena e do game; não é uma funcionalidade pública ativa.
+
 ## Premissa
 
 Antes de flutuarem, as ilhas eram uma só terra. A Tempestade do Silêncio separou Nacarim. A Forja guardou nomes gravados em metal, a Maré conservou histórias em cantos e o Bosque as cultivou em sementes. Dessas lembranças compartilhadas nasceram caminhos de luz. Cada travessia acrescenta uma lembrança ao caminho. Quando as rotas começam a desaparecer, as pessoas esquecem lugares e vínculos. Doze animais de origens distintas descobrem que a memória coletiva pode reacender as passagens. A pergunta da série: o que uma comunidade precisa lembrar para permanecer unida?

@@ -8,7 +8,7 @@
 
 ## Contratos preservados
 
-- O app Streamlit continua a operar Atlas, contas, pagamentos, coleção, Shop e Arena durante a migração. A nova interface não recebe tokens de sessão nem executa análise paga; seus links apontam ao ambiente existente indicado por `NEXT_PUBLIC_LEGACY_APP_URL`.
+- O app Streamlit continua a operar Atlas, contas, pagamentos, coleção e Shop durante a migração. Arena e game foram suspensos em 2026-09-28: não aparecem na navegação e suas antigas URLs exibem um aviso. A nova interface não recebe tokens de sessão nem executa análise paga; seus links apontam ao ambiente existente indicado por `NEXT_PUBLIC_LEGACY_APP_URL`.
 - Créditos são reservados no banco por `reserve_credit` antes da chamada de IA e concluídos ou estornados por RPC. No Supabase TEST, a atualização condicionada do saldo e o índice único de `usage_logs.request_id` foram verificados em 2026-09-28. As alterações desta revisão não mudam o esquema do banco.
 - Preços mantêm as fontes externas, o cache de consulta de uma hora e a classificação de idade já presentes em `app.py`. Não foi introduzido Redis sem medidas de tráfego e sem quota/licença de API dos fornecedores. Nenhum preço é inferido pela IA.
 - Atlas só considera confirmados os dados lidos do catálogo; observações da foto e OCR permanecem preliminares. A avaliação física de autenticidade exige inspeção especializada.

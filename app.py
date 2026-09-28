@@ -29,10 +29,6 @@ from payment_utils import package_code as validate_package_code, safe_checkout_u
 from community import render_community, community_nav_label
 from chatbot import render_chatbot
 from payment_assistant import render_payment_assistant
-from game_ui import render_catalog, render_game, render_solo
-from game_adventure import render_quest
-from game_video import render_video_game
-from game_story import render_story
 from shop import render_shop
 from shop_tracking import process_outbound
 from commercial import admin_ids, render_commercial
@@ -429,32 +425,16 @@ if st.query_params.get("shop") == "1" or st.query_params.get("out"):
         render_shop(st, st.query_params.get("lang", "pt"), shop_affiliates, shop_signing_key)
     st.stop()
 
-# Public, no-account demo keeps all match state in this browser session.
-if st.query_params.get("arena") == "1" or st.query_params.get("story") == "1" or st.query_params.get("nacarim") == "1" or st.query_params.get("quest") == "1" or st.query_params.get("video") == "1":
-    demo_language = {'pt': 'Português (BR)', 'en': 'English', 'es': 'Español', 'ja': '日本語'}.get(
-        st.query_params.get('lang', 'pt'), 'Português (BR)')
-    demo_language = st.selectbox('🌐 Language / Idioma',
-                                 ('Português (BR)', 'English', 'Español', '日本語'),
-                                 index=('Português (BR)', 'English', 'Español', '日本語').index(demo_language),
-                                 key='arena_demo_language')
-    if st.query_params.get('video') == '1':
-        render_video_game(st, demo_language)
-        st.markdown('[🎮 Arena](?arena=1)')
-    elif st.query_params.get('quest') == '1':
-        render_quest(st, demo_language)
-        st.markdown('[🎮 Arena](?arena=1)')
-    elif st.query_params.get('nacarim') == '1':
-        render_catalog(st, demo_language)
-        st.markdown('[🎮 Arena](?arena=1)')
-    elif st.query_params.get('story') == '1':
-        render_story(st, demo_language)
-        st.markdown(f'[🎮 {"Jogar" if demo_language == "Português (BR)" else "Play"}](?arena=1)')
-    else:
-        render_solo(st, demo_language, guest=True)
-        st.markdown('[🎮 Nacarim: Guardiões da Luz](?video=1)')
-        st.markdown('[⚔️ Jornada de Nacarim](?quest=1)')
-        st.markdown(f'[{"📖 Ler as Crônicas de Nacarim" if demo_language == "Português (BR)" else "📖 Read the Chronicles of Nacarim"}](?story=1)')
-        st.markdown('[🃏 Catálogo de Nacarim](?nacarim=1)')
+# These public game routes are paused; old bookmarks never launch the game.
+if any(st.query_params.get(route) == "1" for route in ("arena", "story", "nacarim", "quest", "video")):
+    paused_messages = {
+        'pt': 'A Arena e o game estão temporariamente suspensos. O catálogo, o Atlas e o Shop continuam disponíveis.',
+        'en': 'The Arena and game are temporarily paused. The catalog, Atlas and Shop remain available.',
+        'es': 'La Arena y el juego están temporalmente suspendidos. El catálogo, Atlas y Shop siguen disponibles.',
+        'ja': 'アリーナとゲームは一時停止中です。カタログ、Atlas、Shopは引き続き利用できます。',
+    }
+    st.info(paused_messages.get(st.query_params.get('lang', 'pt'), paused_messages['pt']))
+    st.link_button('CardCraftAI', '?')
     st.stop()
 
 
@@ -1726,13 +1706,6 @@ CHAT_NAV = {
     '日本語': ('Atlas', 'カード、コレクション、購入先について質問できます。'),
 }
 
-GAME_NAV = {
-    'English': ('CardCraft Arena', 'Play a quick card duel solo or invite another player.'),
-    'Português (BR)': ('Arena CardCraft', 'Jogue um duelo rápido solo ou convide outra pessoa.'),
-    'Español': ('Arena CardCraft', 'Juega un duelo rápido solo o invita a otra persona.'),
-    '日本語': ('CardCraftアリーナ', '一人でも友達とでも短いカード対戦ができます。'),
-}
-
 SHOP_ENTRY = {
     'English': ('CardCraft Shop', 'Explore TCG cards and accessories. Opens in a new tab.', 'en'),
     'Português (BR)': ('CardCraft Shop', 'Explore cartas e acessórios TCG. Abre em outra aba.', 'pt'),
@@ -1782,7 +1755,7 @@ SHOP_ADMIN_VISIBLE = st.session_state.get('user_id') in SHOP_ADMIN_IDS
 
 NAVIGATION_OPTIONS = (
     ["home"]
-    + ["chatbot", "analysis", "game"]
+    + ["chatbot", "analysis"]
     + (["community"] if COMMUNITY_ENABLED else [])
     + (["collection"] if COLLECTIONS_ENABLED else [])
     + (["commercial", "development"] if SHOP_ADMIN_VISIBLE else [])
@@ -8910,8 +8883,6 @@ st.sidebar.radio(
         if pagina_id == "home"
         else "🃏 " + CHAT_NAV.get(idioma, CHAT_NAV['English'])[0]
         if pagina_id == "chatbot"
-        else "🎮 " + GAME_NAV.get(idioma, GAME_NAV['English'])[0]
-        if pagina_id == "game"
         else "🔎 " + ANALYSIS_UI[idioma][0]
         if pagina_id == "analysis"
         else "📊 Shop Intelligence"
@@ -9066,7 +9037,6 @@ if pagina == "home":
     shortcuts = [
         ("analysis", "🔎", ANALYSIS_UI[idioma][0], ANALYSIS_UI[idioma][1]),
         ("chatbot", "🃏", *CHAT_NAV.get(idioma, CHAT_NAV['English'])),
-        ("game", "🎮", *GAME_NAV.get(idioma, GAME_NAV['English'])),
     ]
     if COLLECTIONS_ENABLED:
         shortcuts.append(("collection", "🃏", collection_label, collection_description))
@@ -9109,9 +9079,6 @@ elif pagina == "chatbot":
         on_upgrade=abrir_pagina,
         allowance_enabled=str(st.secrets.get('ATLAS_ALLOWANCE_ENABLED', 'true')).lower() == 'true',
     )
-
-elif pagina == "game":
-    render_game(st, supabase, supabase_service, st.session_state.get('access_token'), idioma)
 
 elif pagina == "community" and COMMUNITY_ENABLED:
     render_community(

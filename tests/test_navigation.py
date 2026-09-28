@@ -29,6 +29,22 @@ class Query:
 
 
 class NavigationTests(TestCase):
+    def test_arena_and_game_routes_are_paused(self):
+        app_path = str(Path(__file__).resolve().parents[1] / 'app.py')
+        for route in ('arena', 'story', 'nacarim', 'quest', 'video'):
+            with self.subTest(route=route):
+                app = AppTest.from_file(app_path, default_timeout=15)
+                app.query_params[route] = '1'
+                app.run()
+                self.assertFalse(app.exception)
+                self.assertTrue(any('suspensos' in notice.value for notice in app.info))
+                self.assertFalse(app.sidebar.radio)
+
+    def test_game_is_not_in_navigation_or_home_shortcuts(self):
+        app = self.render_app('home', language='Português (BR)')
+        self.assertNotIn('game', app.sidebar.radio[0].options)
+        self.assertFalse(any(button.key == 'home_open_game' for button in app.button))
+
     def render_app(self, page, language='English', fail_purchases=False, subsequent=(), shortcut=None, shop_admin=False):
         fake = Mock()
         fake.auth.set_session.return_value = Obj(

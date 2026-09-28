@@ -1,5 +1,7 @@
 # CardCraft Arena · staging
 
+> **Suspenso em 2026-09-28.** A Arena, o game e suas rotas públicas estão indisponíveis por decisão de produto. Este documento permanece como registro para uma eventual retomada.
+
 CardCraft Arena is an original, free card strategy game in CardCraftAI. It does not use a user's physical collection, analysis credits, third-party card art, collectible purchases or prizes. The Nacarim set contains 120 playable editions, ten for each of twelve original animal characters. A match uses one randomly selected edition of each character (a 12-card deck), six rounds, three arenas and two modes: solo against a deterministic heuristic bot, and private online rooms shared by a ten-character invite code. The solo demo is available at `?arena=1` without signing in; online rooms require an account.
 
 Each player takes one action per round: play a card whose energy cost does not exceed the round number, or pass. A matching arena grants +2 power. The player leading more arenas wins; total power breaks an arena-count tie. A complete tie is a draw. The opening hand always contains a cost-one card. These rules are purposely smaller than existing TCG rules to teach hand, energy, board placement and affinity quickly.
