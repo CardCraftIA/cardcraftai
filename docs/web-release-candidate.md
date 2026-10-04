@@ -29,7 +29,7 @@ Na Vercel, `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` f
 
 ## Bloqueios de lançamento / paridade
 
-1. Definir `GEMINI_API_KEY` e `GEMINI_MODEL` no Preview, confirmar modelo aprovado e testar geração real, upload e respostas em vários idiomas. Sem configuração, API retorna indisponibilidade antes de reservar pergunta. Com provedor configurado, falha após reserva consome a tentativa de TEST; é necessário implementar finalização/estorno confiável no servidor antes de vender esse fluxo.
+1. Definir `GEMINI_API_KEY` e `GEMINI_MODEL` no Preview, confirmar modelo aprovado e testar geração real, upload e respostas em vários idiomas. Sem configuração, API retorna indisponibilidade antes de reservar pergunta. A reserva agora é confirmada após resposta utilizável; falhas tentam estorno idempotente com capacidade secreta por solicitação, mantida apenas no servidor. Reservas abandonadas expiram após dois minutos e são reconciliadas na próxima solicitação válida. A entrega HTTP não é transacional com o banco: se a confirmação persistir mas a resposta de rede se perder, uma pergunta concluída pode continuar consumida. Histórico recuperável de respostas ainda não foi implementado.
 2. Autorizar o callback `https://project-ay3im-git-staging-francisnolasco47-8892.vercel.app/auth/callback` (incluindo fluxo recovery) no Supabase TEST e testar Google, confirmação e recuperação por e-mail em conta controlada. O conector Supabase atual não expõe alteração das configurações Auth. Não mudar o Site URL do app anterior sem necessidade.
 3. Não há checkout PayPal ativo. Exige conta merchant/Sandbox, produto/plano, credenciais server-only, endpoint verificado, conciliação idempotente e testes de cancelamento/reembolso. A preparação Python existente foi preservada. Mercado Pago anterior não foi removido, mas não é exposto como compra nesta interface.
 4. Preços/valor de coleção e indicadores comerciais de receita dependem de fontes, permissões e confirmação de conversões. O Shop novo ainda não envia eventos ao coletor antigo; não chamar listas locais de analytics. Cache compartilhado de cotações, busca vetorial/OCR híbrido, estatísticas de receita, histórico de análise e autonomia do assistente de desenvolvimento não foram migrados nesta entrega.
@@ -38,3 +38,12 @@ Na Vercel, `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` f
 7. Rever apresentação dos documentos legais na nova hospedagem com o responsável; o texto vigente foi preservado, acrescido de aviso de hospedagem Vercel/checkout indisponível nesta interface.
 
 Não promover para produção sem essas validações. Main e Supabase produção não foram alterados.
+
+## Continuação — estorno do Atlas
+
+- Migração atlas_web_settlement aplicada apenas em TEST. Pedidos históricos continuam concluídos e não podem ser estornados pelo novo fluxo.
+- Dez testes Node passaram, incluindo falha de provedor, repetição idempotente da confirmação, bloqueio de duplicatas/limite e indisponibilidade na confirmação. Build TypeScript/Next passou.
+- Teste SQL em transação revertida passou: estorno simples/duplicado, segredo inválido, tentativa entre contas, conclusão irreversível, expiração de reserva, saldo de conta paga e ausência de acesso direto à tabela. Script: supabase/tests/atlas_web_settlement.sql.
+- A CI da entrega anterior (f971b3e) passou para web e Python 3.12/3.14.
+- Alertas preexistentes do Supabase continuam documentados acima; nenhuma nova função SECURITY DEFINER foi exposta em public. Guia de correção: https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable
+- As variáveis GEMINI_API_KEY e GEMINI_MODEL continuam ausentes do Preview/staging. A geração real e upload ainda não puderam ser validados.

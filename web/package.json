@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "smoke": "node scripts/smoke.mjs",
-    "test": "node --experimental-strip-types --test scripts/security.test.mjs"
+    "test": "node --experimental-strip-types --test scripts/*.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
