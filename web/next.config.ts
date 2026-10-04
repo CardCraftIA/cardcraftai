@@ -1,6 +1,3 @@
 import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
-  outputFileTracingIncludes: {'/api/catalog': ['./data/catalog_name_index_tcgdex_en.json']}
-};
+const nextConfig:NextConfig={outputFileTracingIncludes:{'/api/catalog':['./data/catalog_name_index_tcgdex_en.json'],'/api/atlas':['./data/catalog_name_index_tcgdex_en.json']},async headers(){return [{source:'/(.*)',headers:[{key:'X-Content-Type-Options',value:'nosniff'},{key:'Referrer-Policy',value:'strict-origin-when-cross-origin'},{key:'X-Frame-Options',value:'DENY'}]}]}};
 export default nextConfig;

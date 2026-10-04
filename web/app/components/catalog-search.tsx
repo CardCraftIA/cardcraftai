@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 
 type Card = {name: string; id: string; image: string};
 
@@ -33,10 +35,10 @@ export function CatalogSearch() {
     <input id="card-search" type="search" value={query} onChange={event => setQuery(event.target.value)}
       placeholder="Experimente Pikachu, Charizard, Mew..." maxLength={80} autoComplete="off" />
     <p className="search-status" role="status">{status}</p>
-    <div className="card-grid">{cards.map(card => <article className="card-result" key={card.id}>
-      {card.image && <img src={card.image} alt={`Imagem representativa de ${card.name}`} loading="lazy" />}
+    <div className="card-grid">{cards.map(card => <Link className="card-result" key={card.id} href={`/catalogo/${encodeURIComponent(card.id)}`}>
+      {card.image && <Image width={150} height={175} unoptimized src={card.image} alt={`Imagem representativa de ${card.name}`} loading="lazy" />}
       <strong>{card.name}</strong><small>Exemplo: {card.id}</small>
-    </article>)}</div>
+    <span className="card-cta">Ver edição →</span></Link>)}</div>
     <p className="source-note">Fonte: índice TCGdex. Imagens e nomes são referências externas; nenhum preço ou autenticidade é inferido.</p>
   </section>;
 }

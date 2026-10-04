@@ -1,0 +1,2 @@
+import texts from "@/lib/legal.json";
+export default function Page(){return <main className="page narrow"><h1>Termos e privacidade</h1><p>Documentos vigentes do CardCraftAI, versão 2026-09-17. Esta interface de teste também utiliza hospedagem Vercel. O pagamento permanece indisponível nesta interface.</p>{texts.map((text,i)=><section className="panel preserve" key={i}><h2>{i===0?"Termos de Uso":"Política de Privacidade"}</h2>{text}</section>)}</main>;}

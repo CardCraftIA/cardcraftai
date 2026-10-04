@@ -12,3 +12,7 @@ node_modules/
 /Imagem do Codex 18 de set. de 2026, 15_10_25.png
 prototypes/collection/index.html
 prototypes/collection/assets/concept.png
+
+supabase/.temp/
+web/.env*
+!web/.env.example

@@ -1,0 +1,3 @@
+'use client';
+import {useState} from 'react';
+export function SaveCard({id}:{id:string}){const [status,setStatus]=useState(''),[busy,setBusy]=useState(false);async function save(wishlist:boolean){setBusy(true);try{const r=await fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({catalog_id:id,wishlist})});const d=await r.json();setStatus(r.ok?'Carta salva na sua coleção.':d.error);}catch{setStatus('Não foi possível salvar.');}finally{setBusy(false);}}return <><div className="actions"><button disabled={busy} onClick={()=>save(false)}>+ Minha coleção</button><button className="secondary" disabled={busy} onClick={()=>save(true)}>♡ Lista de desejos</button></div><p role="status">{status}</p></>;}
