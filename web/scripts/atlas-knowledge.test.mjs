@@ -37,3 +37,11 @@ test('FAQ skips network catalog and provider configuration, preserving quota res
  assert.ok(route.includes('if(!knowledge&&!local&&(!key||!model))'));
  assert.ok(route.indexOf('if(knowledge)return knowledge')>route.indexOf('await withAtlasReservation'));
 });
+test('glossary returns reviewed answers in three languages',()=>{
+ for(const [q,l] of [['O que é Near Mint?','pt'],['Me explique LP','pt'],['O que é mana no Magic?','pt'],['O que é energia no Pokémon TCG?','pt'],['O que é um deck no Pokémon?','pt'],['What is card condition?','en'],['Please explain mana in Magic','en'],['What is energy in Pokemon?','en'],['What is a deck in Pokemon?','en'],['¿Qué significa NM?','es'],['Explica mana en Magic','es'],['¿Qué es energía en Pokémon?','es'],['¿Qué es un mazo en Pokémon?','es']]){const r=lookup(q);assert.ok(r,q);assert.equal(r.language,l);assert.ok(r.references[0].url);}
+});
+test('glossary refuses unsupported context and compound questions',()=>{
+ for(const q of ['O que é mana no Pokemon?','O que é energia no Magic?','O que é NM e quanto vale meu Charizard?','O que é um deck no Pokemon Pocket?','O que é HP no Pokemon?','NM','What is mana in Magic? Reply in French'])assert.equal(lookup(q),null,q);
+ assert.equal(lookup('O que é Near Mint?',{hasAttachment:true}),null);
+ assert.equal(lookup('What is mana in Magic?',{cardId:'x'}),null);
+});

@@ -1,3 +1,4 @@
+import {lookupAtlasGlossary} from './atlas-glossary.ts';
 // Curated explanations, not per-card catalog records or learned model output.
 // Extend only with reviewed sources, translations and negative matching tests.
 type Language='pt'|'en'|'es';
@@ -44,5 +45,5 @@ export function lookupAtlasKnowledge(question:string,options:{hasAttachment?:boo
    };
   }
  }
- return null;
+ return lookupAtlasGlossary(question,options);
 }
