@@ -4,7 +4,7 @@
 const vocabulary=['sleeve','toploader','grading','holografica','holografico',
  'reverse','pokemon','diferenca','difference','diferencia','significa',
  'conservacao','colecao','collection','coleccion','raridade','rarity',
- 'rareza','graduacao','reimpressao','energia','energy'];
+ 'rareza','graduacao','reimpressao','energia','energy','comecar','iniciar','colecionar'];
 const validWords=['diferenciar','significam','significan'];
 const regional={pt:['diferenca','conservacao','colecao','raridade','graduacao','reimpressao'],
  en:['difference','collection','rarity','energy'],es:['diferencia','coleccion','rareza']};

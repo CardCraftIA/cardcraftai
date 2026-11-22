@@ -1,4 +1,5 @@
 import {lookupCollectorGuide} from './atlas-collector-guides.ts';
+import {lookupBeginnerGuide} from './atlas-beginner.ts';
 import {repairAtlasSpelling} from './atlas-input.ts';
 import {matchCollectorIntent,normalizeAtlasQuestion} from './atlas-question-intents.ts';
 import {lookupAtlasGlossary} from './atlas-glossary.ts';
@@ -49,7 +50,7 @@ function lookupExactKnowledge(question:string,options:{hasAttachment?:boolean;ca
    };
   }
  }
- return lookupAtlasGlossary(question,options)??lookupCollectorGuide(question,options);
+ return lookupAtlasGlossary(question,options)??lookupCollectorGuide(question,options)??lookupBeginnerGuide(question,options);
 }
 export function lookupAtlasKnowledge(question:string,options:{hasAttachment?:boolean;cardId?:string}={}){
  if(options.hasAttachment||options.cardId||question.length>240)return null;
