@@ -47,6 +47,8 @@ const guides=[
     ],
     "terms": {
       "pt": [
+        "sleeve",
+        "toploader",
         "um sleeve",
         "um toploader"
       ],

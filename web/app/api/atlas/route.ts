@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import {lookupAtlasKnowledge} from '@/lib/atlas-knowledge';
+import {lookupAtlasClarification} from '@/lib/atlas-clarification';
 import {geminiRequest} from '@/lib/gemini-request';
 import {withAtlasReservation} from '@/lib/atlas-reservation';
 import {PDFDocument} from 'pdf-lib';
@@ -17,6 +18,9 @@ export async function POST(request:Request){try{
  let attachment:{inlineData:{mimeType:string;data:string}}|undefined;
  if(file instanceof File&&file.size){if(file.size>3*1024*1024)throw new HttpError(413,'Envie um arquivo de até 3 MB.');const bytes=Buffer.from(await file.arrayBuffer());if(file.type==='application/pdf'&&bytes.subarray(0,5).toString()==='%PDF-'){try{const pdf=await PDFDocument.load(bytes);if(pdf.getPageCount()>20||pdf.getPageCount()<1)throw new Error();}catch{throw new HttpError(400,'Use um PDF válido, sem senha e com até 20 páginas.');}attachment={inlineData:{mimeType:'application/pdf',data:bytes.toString('base64')}};}else{try{const image=sharp(bytes,{limitInputPixels:16000000,animated:false});const meta=await image.metadata();if(!['jpeg','png','webp'].includes(meta.format||'')||(meta.pages||1)>1)throw new Error();const clean=await image.rotate().resize({width:1600,height:1600,fit:'inside',withoutEnlargement:true}).jpeg({quality:85}).toBuffer();attachment={inlineData:{mimeType:'image/jpeg',data:clean.toString('base64')}};}catch{throw new HttpError(400,'Use uma imagem JPEG, PNG ou WebP válida, de até 16 megapixels, ou um PDF.');}}}
  const knowledge=lookupAtlasKnowledge(message,{hasAttachment:Boolean(attachment),cardId});
+ // Asking for missing context is not a substantive answer and does not use quota.
+ const clarification=knowledge?null:lookupAtlasClarification(message,{hasAttachment:Boolean(attachment),cardId});
+ if(clarification)return json(clarification);
  const lang=knowledge?.language||questionLanguage(message);const index=knowledge?[]:await loadIndex();const exact=index.find(c=>c.display_name.toLowerCase()===message.toLowerCase()||c.representative_id.toLowerCase()===message.toLowerCase());
  let card=null;const lookup=exact?.representative_id||(/^[a-z0-9.]+-[a-z0-9.]+$/i.test(message)?message:cardId);
  if(lookup)try{card=await cardDetail(lookup);}catch{}

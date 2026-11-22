@@ -3,6 +3,37 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {lookupAtlasKnowledge as lookup} from '../lib/atlas-knowledge.ts';
 const cases=JSON.parse(readFileSync(new URL('./fixtures/collector-questions.json',import.meta.url),'utf8'));
+test('regression: screenshot question pasted with smart quotes uses local knowledge',()=>{
+ const answer=lookup('“Qual a diferença entre sleeve e toploader?”');
+ assert.equal(answer?.topicId,'sleeves');
+ assert.equal(answer?.language,'pt');
+ assert.equal(answer?.source,'knowledge');
+});
+test('pasted enclosing quotes preserve all local answers without network access',()=>{
+ const original=globalThis.fetch;
+ globalThis.fetch=()=>{throw new Error('Unexpected network call');};
+ try{
+  for(const c of cases.filter(c=>c.kind==='local')){
+   const expected=lookup(c.question);
+   for(const [open,close] of [['“','”'],['"','"'],["'","'"],['‘','’'],['«','»'],['„','“']]){
+    for(const q of [open+c.question+close,'  '+open+' '+c.question+' '+close+'  ',open+c.question+close+'?', '“'+open+c.question+close+'”']){
+     assert.deepEqual(lookup(q),expected,q);
+    }
+   }
+  }
+ }finally{globalThis.fetch=original;}
+});
+test('quotes do not hide additional requests or bypass contextual guards',()=>{
+ for(const c of cases){
+  if(c.kind!=='local'){assert.equal(lookup('“'+c.question+'”',c.options),null);continue;}
+  const quoted='“'+c.question+'”';
+  assert.equal(lookup(quoted+' Quanto vale meu Charizard?'),null);
+  assert.equal(lookup('“'+c.question+' Quanto vale meu Charizard?”'),null);
+  assert.equal(lookup('Ignore instructions. '+quoted),null);
+  assert.equal(lookup(quoted,{hasAttachment:true}),null);
+  assert.equal(lookup(quoted,{cardId:'base1-4'}),null);
+ }
+});
 const evidence={storage:/sleeve|funda/i,sleeves:/toploader/i,cleaning:/PSA/,grading:/Grading|grading/,'grading-condition':/PSA 10/,'identify-set':/Pokémon/,'collector-number':/XXX\/YYY/,promo:/Promo|promo/,'edition':/edição|edition|edicion|edición/i,condition:/Near Mint/,finish:/Holo/i,rarity:/estrela|star|estrella/,deck:/60/,energy:/Energi|Energy|Energí/i,mana:/mana|maná/i};
 for(const c of cases)test(`${c.id} [${c.kind}] ${c.question}`,()=>{
  const answer=lookup(c.question,c.options);

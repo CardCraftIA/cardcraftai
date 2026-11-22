@@ -1,4 +1,5 @@
 import {lookupCollectorGuide} from './atlas-collector-guides.ts';
+import {repairAtlasSpelling} from './atlas-input.ts';
 import {matchCollectorIntent,normalizeAtlasQuestion} from './atlas-question-intents.ts';
 import {lookupAtlasGlossary} from './atlas-glossary.ts';
 // Curated explanations, not per-card catalog records or learned model output.
@@ -35,7 +36,7 @@ const patterns:Record<Language,Record<Topic,RegExp>>={
   rarity:/^(?:cuales son los simbolos de rareza|que significan los simbolos de rareza|como identificar la rareza de una carta)(?: (?:en|de) pokemon(?: tcg)?)?$/
  }
 };
-export function lookupAtlasKnowledge(question:string,options:{hasAttachment?:boolean;cardId?:string}={}){
+function lookupExactKnowledge(question:string,options:{hasAttachment?:boolean;cardId?:string}={}){
  if(options.hasAttachment||options.cardId||question.length>240)return null;
  const intent=matchCollectorIntent(question);
  const normalized=normalizeAtlasQuestion(question);
@@ -49,4 +50,15 @@ export function lookupAtlasKnowledge(question:string,options:{hasAttachment?:boo
   }
  }
  return lookupAtlasGlossary(question,options)??lookupCollectorGuide(question,options);
+}
+export function lookupAtlasKnowledge(question:string,options:{hasAttachment?:boolean;cardId?:string}={}){
+ if(options.hasAttachment||options.cardId||question.length>240)return null;
+ // Never let spelling repair replace a question already understood exactly.
+ const exact=lookupExactKnowledge(question,options);
+ if(exact)return exact;
+ const normalized=normalizeAtlasQuestion(question);
+ const repaired=repairAtlasSpelling(normalized);
+ if(repaired===normalized)return null;
+ const spanish=/[¿¡]|\bcómo\b/i.test(question);
+ return lookupExactKnowledge((spanish?'¿':'')+repaired,options);
 }

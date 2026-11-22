@@ -1,13 +1,26 @@
 // Conservative, whole-question intent recognition. No network or model calls.
 // Do not turn a keyword mention inside a longer request into a complete answer.
+import {expandAtlasShorthand} from './atlas-input.ts';
 type Language='pt'|'en'|'es';
 type Topic='condition'|'finish'|'rarity'|'deck'|'energy'|'mana';
+function unwrapQuestion(question:string){
+ let text=question.trim();
+ const quotes:Record<string,string>={'"':'"',"'":"'",'“':'”','‘':'’','«':'»','„':'“'};
+ // Only remove enclosing pairs, never quotes or extra requests within a question.
+ for(;;){
+  const previous=text;
+  text=text.replace(/[?!.]+$/,'').trim();
+  if(text.length>=2&&quotes[text[0]]===text.at(-1))text=text.slice(1,-1).trim();
+  if(text===previous)return text;
+ }
+}
 export function normalizeAtlasQuestion(question:string){
- return question.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+ const normalized=unwrapQuestion(question).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
   .replace(/near[-‐‑]mint/g,'near mint').trim().replace(/^[¿¡]/,'')
   .replace(/^(?:oi|ola|hello|hi|hola|atlas)[,!]?\s+/,'')
   .replace(/[?!.]+$/,'').trim()
   .replace(/,?\s+(?:por favor|please)$/,'').trim().replace(/\s+/g,' ');
+ return expandAtlasShorthand(normalized);
 }
 const rules:Record<Language,Record<Topic,RegExp[]>>={
  pt:{
