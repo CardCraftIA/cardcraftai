@@ -274,66 +274,75 @@
   },
   {
     "id": "collector-040",
-    "kind": "gap",
-    "topic": "identification",
+    "kind": "local",
+    "topic": "identify-set",
     "language": "pt",
-    "question": "Como descobrir a coleção da minha carta?"
+    "question": "Como descobrir a coleção da minha carta?",
+    "previousKind": "gap"
   },
   {
     "id": "collector-041",
-    "kind": "gap",
-    "topic": "identification",
+    "kind": "local",
+    "topic": "collector-number",
     "language": "pt",
-    "question": "O que significa o número 123/100?"
+    "question": "O que significa o número 123/100?",
+    "previousKind": "gap"
   },
   {
     "id": "collector-042",
-    "kind": "gap",
-    "topic": "identification",
+    "kind": "local",
+    "topic": "promo",
     "language": "pt",
-    "question": "O que é uma carta promo?"
+    "question": "O que é uma carta promo?",
+    "previousKind": "gap"
   },
   {
     "id": "collector-043",
-    "kind": "gap",
-    "topic": "identification",
+    "kind": "local",
+    "topic": "edition",
     "language": "pt",
-    "question": "Qual a diferença entre primeira edição e reimpressão?"
+    "question": "Qual a diferença entre primeira edição e reimpressão?",
+    "previousKind": "gap"
   },
   {
     "id": "collector-044",
-    "kind": "gap",
+    "kind": "local",
     "topic": "storage",
     "language": "pt",
-    "question": "Como guardar as cartas sem estragar?"
+    "question": "Como guardar as cartas sem estragar?",
+    "previousKind": "gap"
   },
   {
     "id": "collector-045",
-    "kind": "gap",
-    "topic": "storage",
+    "kind": "local",
+    "topic": "sleeves",
     "language": "pt",
-    "question": "Qual a diferença entre sleeve e toploader?"
+    "question": "Qual a diferença entre sleeve e toploader?",
+    "previousKind": "gap"
   },
   {
     "id": "collector-046",
-    "kind": "gap",
-    "topic": "storage",
+    "kind": "local",
+    "topic": "cleaning",
     "language": "pt",
-    "question": "Posso limpar minha carta com álcool?"
+    "question": "Posso limpar minha carta com álcool?",
+    "previousKind": "gap"
   },
   {
     "id": "collector-047",
-    "kind": "gap",
+    "kind": "local",
     "topic": "grading",
     "language": "pt",
-    "question": "O que é grading?"
+    "question": "O que é grading?",
+    "previousKind": "gap"
   },
   {
     "id": "collector-048",
-    "kind": "gap",
-    "topic": "grading",
+    "kind": "local",
+    "topic": "grading-condition",
     "language": "pt",
-    "question": "Near Mint é a mesma coisa que PSA 10?"
+    "question": "Near Mint é a mesma coisa que PSA 10?",
+    "previousKind": "gap"
   },
   {
     "id": "collector-049",
@@ -501,5 +510,278 @@
     "options": {
       "cardId": "base1-4"
     }
+  },
+  {
+    "id": "collector-072",
+    "kind": "local",
+    "topic": "storage",
+    "language": "pt",
+    "question": "Como proteger minhas cartas?"
+  },
+  {
+    "id": "collector-073",
+    "kind": "local",
+    "topic": "storage",
+    "language": "en",
+    "question": "How should I store my cards?"
+  },
+  {
+    "id": "collector-074",
+    "kind": "local",
+    "topic": "storage",
+    "language": "es",
+    "question": "¿Cómo guardar mis cartas sin dañarlas?"
+  },
+  {
+    "id": "collector-075",
+    "kind": "local",
+    "topic": "sleeves",
+    "language": "pt",
+    "question": "Preciso de sleeve dentro do toploader?"
+  },
+  {
+    "id": "collector-076",
+    "kind": "local",
+    "topic": "sleeves",
+    "language": "en",
+    "question": "What is the difference between a sleeve and a toploader?"
+  },
+  {
+    "id": "collector-077",
+    "kind": "local",
+    "topic": "sleeves",
+    "language": "es",
+    "question": "¿Cuál es la diferencia entre una funda y un toploader?"
+  },
+  {
+    "id": "collector-078",
+    "kind": "local",
+    "topic": "cleaning",
+    "language": "pt",
+    "question": "Posso passar álcool na carta?"
+  },
+  {
+    "id": "collector-079",
+    "kind": "local",
+    "topic": "cleaning",
+    "language": "en",
+    "question": "Can I clean my card with alcohol?"
+  },
+  {
+    "id": "collector-080",
+    "kind": "local",
+    "topic": "cleaning",
+    "language": "es",
+    "question": "¿Puedo limpiar mi carta con alcohol?"
+  },
+  {
+    "id": "collector-081",
+    "kind": "local",
+    "topic": "grading",
+    "language": "pt",
+    "question": "Como funciona a graduação de cartas?"
+  },
+  {
+    "id": "collector-082",
+    "kind": "local",
+    "topic": "grading",
+    "language": "en",
+    "question": "What is card grading?"
+  },
+  {
+    "id": "collector-083",
+    "kind": "local",
+    "topic": "grading",
+    "language": "es",
+    "question": "¿Qué es una carta graduada?"
+  },
+  {
+    "id": "collector-084",
+    "kind": "local",
+    "topic": "grading-condition",
+    "language": "pt",
+    "question": "Uma carta Near Mint garante PSA 10?"
+  },
+  {
+    "id": "collector-085",
+    "kind": "local",
+    "topic": "grading-condition",
+    "language": "en",
+    "question": "Is Near Mint the same as PSA 10?"
+  },
+  {
+    "id": "collector-086",
+    "kind": "local",
+    "topic": "grading-condition",
+    "language": "es",
+    "question": "¿Near Mint es lo mismo que PSA 10?"
+  },
+  {
+    "id": "collector-087",
+    "kind": "local",
+    "topic": "identify-set",
+    "language": "pt",
+    "question": "Como identificar a coleção de uma carta Pokémon?"
+  },
+  {
+    "id": "collector-088",
+    "kind": "local",
+    "topic": "identify-set",
+    "language": "en",
+    "question": "How can I identify my Pokemon card set?"
+  },
+  {
+    "id": "collector-089",
+    "kind": "local",
+    "topic": "identify-set",
+    "language": "es",
+    "question": "¿Cómo identificar la colección de mi carta Pokémon?"
+  },
+  {
+    "id": "collector-090",
+    "kind": "local",
+    "topic": "collector-number",
+    "language": "pt",
+    "question": "Por que o número da carta é maior que o total da coleção?"
+  },
+  {
+    "id": "collector-091",
+    "kind": "local",
+    "topic": "collector-number",
+    "language": "en",
+    "question": "What does the number 123/100 mean?"
+  },
+  {
+    "id": "collector-092",
+    "kind": "local",
+    "topic": "collector-number",
+    "language": "es",
+    "question": "¿Qué significa el número 123/100?"
+  },
+  {
+    "id": "collector-093",
+    "kind": "local",
+    "topic": "promo",
+    "language": "pt",
+    "question": "O que significa promo no Pokémon?"
+  },
+  {
+    "id": "collector-094",
+    "kind": "local",
+    "topic": "promo",
+    "language": "en",
+    "question": "What is a promo card?"
+  },
+  {
+    "id": "collector-095",
+    "kind": "local",
+    "topic": "promo",
+    "language": "es",
+    "question": "¿Qué es una carta promocional?"
+  },
+  {
+    "id": "collector-096",
+    "kind": "local",
+    "topic": "edition",
+    "language": "pt",
+    "question": "Como reconhecer primeira edição no Pokémon?"
+  },
+  {
+    "id": "collector-097",
+    "kind": "local",
+    "topic": "edition",
+    "language": "en",
+    "question": "What is the difference between first edition and a reprint?"
+  },
+  {
+    "id": "collector-098",
+    "kind": "local",
+    "topic": "edition",
+    "language": "es",
+    "question": "¿Cuál es la diferencia entre primera edición y reimpresión?"
+  },
+  {
+    "id": "collector-099",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "pt",
+    "question": "Como guardar as cartas sem estragar e quanto vale meu Charizard?"
+  },
+  {
+    "id": "collector-100",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "pt",
+    "question": "Como identificar a coleção de uma carta de Magic?"
+  },
+  {
+    "id": "collector-101",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "pt",
+    "question": "Minha carta 123/100 é original?"
+  },
+  {
+    "id": "collector-102",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "pt",
+    "question": "Qual nota minha carta receberá na PSA?"
+  },
+  {
+    "id": "collector-103",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "pt",
+    "question": "Quanto custa graduar uma carta hoje?"
+  },
+  {
+    "id": "collector-104",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "pt",
+    "question": "Posso limpar minha carta com álcool e vender como NM?"
+  },
+  {
+    "id": "collector-105",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "pt",
+    "question": "Qual a diferença entre primeira edição e reimpressão no Yu-Gi-Oh?"
+  },
+  {
+    "id": "collector-106",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "pt",
+    "question": "O que é uma carta promo Charizard SM211?"
+  },
+  {
+    "id": "collector-107",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "en",
+    "question": "What is card grading and what is my card worth?"
+  },
+  {
+    "id": "collector-108",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "es",
+    "question": "¿Mi carta recibirá PSA 10?"
+  },
+  {
+    "id": "collector-109",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "de",
+    "question": "Wie bewahre ich meine Karten auf?"
+  },
+  {
+    "id": "collector-110",
+    "kind": "guard",
+    "topic": "scope",
+    "language": "pt",
+    "question": "Como proteger minhas cartas? Responda em francês"
   }
 ]

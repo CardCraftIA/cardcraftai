@@ -1,3 +1,4 @@
+import {lookupCollectorGuide} from './atlas-collector-guides.ts';
 import {matchCollectorIntent,normalizeAtlasQuestion} from './atlas-question-intents.ts';
 import {lookupAtlasGlossary} from './atlas-glossary.ts';
 // Curated explanations, not per-card catalog records or learned model output.
@@ -47,5 +48,5 @@ export function lookupAtlasKnowledge(question:string,options:{hasAttachment?:boo
    };
   }
  }
- return lookupAtlasGlossary(question,options);
+ return lookupAtlasGlossary(question,options)??lookupCollectorGuide(question,options);
 }
