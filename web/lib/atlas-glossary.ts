@@ -1,3 +1,4 @@
+import {matchCollectorIntent,normalizeAtlasQuestion} from './atlas-question-intents.ts';
 // Original summaries linked to public sources; no copied artwork or bulk source text.
 // This is reviewed retrieval, not a trained model. Unknown questions must fall through.
 type Lang='pt'|'en'|'es';
@@ -16,7 +17,6 @@ const entries=[
         "nm",
         "lp",
         "mp",
-        "hp",
         "dmg"
       ],
       "en": [
@@ -25,7 +25,6 @@ const entries=[
         "nm",
         "lp",
         "mp",
-        "hp",
         "dmg"
       ],
       "es": [
@@ -34,7 +33,6 @@ const entries=[
         "nm",
         "lp",
         "mp",
-        "hp",
         "dmg"
       ]
     },
@@ -140,14 +138,15 @@ const conditionSubjects:Record<Lang,RegExp>={
 };
 export function lookupAtlasGlossary(question:string,options:{hasAttachment?:boolean;cardId?:string}={}){
  if(options.hasAttachment||options.cardId||question.length>240)return null;
- const text=question.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/^[¿¡]/,'').replace(/[?.!]+$/,'').trim().replace(/\s+/g,' ');
+ const intent=matchCollectorIntent(question);
+ const text=normalizeAtlasQuestion(question);
  for(const lang of ['pt','en','es'] as const){
   const englishMeaning=lang==='en'?text.match(/^what does (.+) mean$/):null;
-  if(!prefixes[lang].test(text)&&!englishMeaning)continue;
+  if(!prefixes[lang].test(text)&&!englishMeaning&&intent?.language!==lang)continue;
   const subject=englishMeaning?englishMeaning[1]:text.replace(prefixes[lang],'');
   const condition=conditionSubjects[lang].exec(subject);
-  const entry=entries.find(e=>e.id==='condition'&&condition||(e.aliases[lang] as readonly string[]).includes(subject));
-  if(entry)return {answer:entry.answers[lang],source:'knowledge' as const,language:lang,
+  const entry=entries.find(e=>(intent?.language===lang&&intent.topic===e.id)||(e.id==='condition'&&condition)||(e.aliases[lang] as readonly string[]).includes(subject));
+  if(entry)return {answer:entry.answers[lang],source:'knowledge' as const,language:lang,topicId:entry.id,
    sourceLabel:{pt:'Base revisada do Atlas · sem geração por IA',en:'Atlas reviewed knowledge · no AI generation',es:'Base revisada de Atlas · sin generación por IA'}[lang],
    references:[entry.reference],reviewedAt:'2026-11-19'};
  }

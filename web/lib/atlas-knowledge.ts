@@ -1,3 +1,4 @@
+import {matchCollectorIntent,normalizeAtlasQuestion} from './atlas-question-intents.ts';
 import {lookupAtlasGlossary} from './atlas-glossary.ts';
 // Curated explanations, not per-card catalog records or learned model output.
 // Extend only with reviewed sources, translations and negative matching tests.
@@ -35,11 +36,12 @@ const patterns:Record<Language,Record<Topic,RegExp>>={
 };
 export function lookupAtlasKnowledge(question:string,options:{hasAttachment?:boolean;cardId?:string}={}){
  if(options.hasAttachment||options.cardId||question.length>240)return null;
- const normalized=question.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/^[¿¡]/,'').replace(/[?.!]+$/,'').trim().replace(/\s+/g,' ');
+ const intent=matchCollectorIntent(question);
+ const normalized=normalizeAtlasQuestion(question);
  for(const language of ['pt','en','es'] as const){
   for(const topic of ['finish','rarity'] as const){
-   if(patterns[language][topic].test(normalized))return {
-    answer:answers[language][topic],source:'knowledge' as const,language,
+   if((intent?.topic===topic&&intent.language===language)||patterns[language][topic].test(normalized))return {
+    answer:answers[language][topic],source:'knowledge' as const,language,topicId:topic,
     sourceLabel:{pt:'Base revisada do Atlas · sem geração por IA',en:'Atlas reviewed knowledge · no AI generation',es:'Base revisada de Atlas · sin generación por IA'}[language],
     references:[reference],reviewedAt:'2026-11-19'
    };
