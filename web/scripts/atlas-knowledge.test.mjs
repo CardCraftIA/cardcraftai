@@ -45,3 +45,17 @@ test('glossary refuses unsupported context and compound questions',()=>{
  assert.equal(lookup('O que é Near Mint?',{hasAttachment:true}),null);
  assert.equal(lookup('What is mana in Magic?',{cardId:'x'}),null);
 });
+test('condition definitions accept natural card phrasing without partial matches',()=>{
+ for(const [q,language] of [
+  ['o que significa uma carta NM','pt'],['O que é uma carta Near Mint?','pt'],
+  ['Me explique uma carta em NM','pt'],['O que significa a condição LP?','pt'],
+  ['What does an NM card mean?','en'],['What is a near mint card?','en'],
+  ['¿Qué significa una carta NM?','es'],['Explica una carta en estado LP','es']
+ ]){const r=lookup(q);assert.ok(r,q);assert.equal(r.language,language);assert.equal(r.source,'knowledge');}
+ for(const q of ['O que significa uma carta NM e quanto vale?',
+  'O que significa uma carta NM Charizard?', 'O que significa uma carta HP no Pokemon?',
+  'What is a near mint card worth?', 'What does an NM card mean and is mine fake?',
+  'O que significa uma carta NM? Responda em alemão'])assert.equal(lookup(q),null,q);
+ assert.equal(lookup('o que significa uma carta NM',{hasAttachment:true}),null);
+ assert.equal(lookup('o que significa uma carta NM',{cardId:'base1-4'}),null);
+});

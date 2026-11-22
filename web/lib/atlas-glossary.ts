@@ -131,13 +131,22 @@ const prefixes:Record<Lang,RegExp>={
  en:/^(?:what is|what does it mean|explain|please explain) /,
  es:/^(?:que (?:es|significa)|explica|explicame|puedes explicar) /
 };
+// Match complete definition requests, not arbitrary mentions of a condition.
+// In particular HP with Pokémon context may mean hit points, not Heavily Played.
+const conditionSubjects:Record<Lang,RegExp>={
+ pt:/^(?:(?:uma? |a |o )?(?:carta|card|condicao|estado)(?: em| na condicao| no estado)? )?(near mint|nm|lp|mp|dmg)$/,
+ en:/^(?:(?:an? |the )?(?:card|condition)(?: in)? )?(?:(?:an? |the )?)(near mint|nm|lp|mp|dmg)(?: card| condition)?$/,
+ es:/^(?:(?:una? |la |el )?(?:carta|estado|condicion)(?: en| en estado)? )?(near mint|nm|lp|mp|dmg)$/
+};
 export function lookupAtlasGlossary(question:string,options:{hasAttachment?:boolean;cardId?:string}={}){
  if(options.hasAttachment||options.cardId||question.length>240)return null;
  const text=question.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/^[¿¡]/,'').replace(/[?.!]+$/,'').trim().replace(/\s+/g,' ');
  for(const lang of ['pt','en','es'] as const){
-  if(!prefixes[lang].test(text))continue;
-  const subject=text.replace(prefixes[lang],'');
-  const entry=entries.find(e=>(e.aliases[lang] as readonly string[]).includes(subject));
+  const englishMeaning=lang==='en'?text.match(/^what does (.+) mean$/):null;
+  if(!prefixes[lang].test(text)&&!englishMeaning)continue;
+  const subject=englishMeaning?englishMeaning[1]:text.replace(prefixes[lang],'');
+  const condition=conditionSubjects[lang].exec(subject);
+  const entry=entries.find(e=>e.id==='condition'&&condition||(e.aliases[lang] as readonly string[]).includes(subject));
   if(entry)return {answer:entry.answers[lang],source:'knowledge' as const,language:lang,
    sourceLabel:{pt:'Base revisada do Atlas · sem geração por IA',en:'Atlas reviewed knowledge · no AI generation',es:'Base revisada de Atlas · sin generación por IA'}[lang],
    references:[entry.reference],reviewedAt:'2026-11-19'};
