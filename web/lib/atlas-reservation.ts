@@ -8,6 +8,7 @@ type RpcClient = {rpc: (name: string, args: Record<string, unknown>) => PromiseL
 export async function withAtlasReservation<T>(
   db: RpcClient, requestId: string, work: () => Promise<T>,
   limitMessage = 'Você usou suas cinco perguntas. Consulte os planos para saber quando o upgrade estará disponível.',
+  chargeFor: (value:T)=>boolean = ()=>true,
 ): Promise<{value: T; remaining: unknown}> {
   const token = randomUUID();
   const args = {p_request_id: requestId, p_token: token};
@@ -29,17 +30,20 @@ export async function withAtlasReservation<T>(
   }
 
   let value: T;
+  let charged: boolean;
   try {
     value = await work();
+    charged=chargeFor(value);
   } catch {
     const result = await settle(false);
     throw new HttpError(503, result?.status === 'refunded'
       ? 'Não foi possível gerar a resposta. Sua pergunta foi devolvida ao limite disponível.'
       : 'Não foi possível gerar a resposta. A reserva pendente será reconciliada na próxima solicitação válida após dois minutos.');
   }
-  const result = await settle(true);
-  if (result?.status !== 'completed') {
+  const result = await settle(charged);
+  if (result?.status !== (charged?'completed':'refunded')) {
     throw new HttpError(503, 'Não foi possível confirmar a resposta. Aguarde dois minutos antes de tentar novamente.');
   }
   return {value, remaining: result.remaining};
 }
+

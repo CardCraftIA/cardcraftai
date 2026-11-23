@@ -34,7 +34,8 @@ test('never substitute general knowledge for unsupported or contextual requests'
 test('FAQ skips network catalog and provider configuration, preserving quota reservation',()=>{
  const route=readFileSync(new URL('../app/api/atlas/route.ts',import.meta.url),'utf8');
  assert.ok(route.includes('knowledge?[]:await loadIndex()'));
- assert.ok(route.includes('if(!knowledge&&!local&&(!key||!model))'));
+ assert.ok(route.includes('if(!knowledge&&!local){'));
+ assert.ok(route.indexOf('if(!knowledge&&!local){')<route.indexOf('modelConfig=atlasModelConfig'));
  assert.ok(route.indexOf('if(knowledge)return knowledge')>route.indexOf('await withAtlasReservation'));
 });
 test('glossary returns reviewed answers in three languages',()=>{
